@@ -1,6 +1,6 @@
 {
   "name": "sourcey",
-  "version": "3.6.1",
+  "version": "3.6.2",
   "description": "Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown. Static HTML you own.",
   "type": "module",
   "engines": {

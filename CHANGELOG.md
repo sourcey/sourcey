@@ -2,6 +2,12 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.6.2 - 2026-06-05
+
+### Fixed
+
+- Rust re-exports (`use` items) now render with their real name and a `pub use` signature instead of an empty `reexport.` placeholder, and appear correctly in the sidebar, page outline, and search.
+
 ## 3.6.1 - 2026-05-31
 
 ### Added
