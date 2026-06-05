@@ -270,7 +270,7 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
       if (!tab || tab.source.kind !== "doxygen") return;
 
       log(`rebuilding doxygen tab "${tab.label}"`);
-      const { pages, navTab } = await loadDoxygenTab(tab.source.config, tab.slug, tab.label);
+      const { pages, navTab } = await loadDoxygenTab(tab.source.config, tab.slug, tab.label, config.titleSeparator);
       if (cache !== snapshot) return;
 
       for (const [key, page] of data.pageMap) {

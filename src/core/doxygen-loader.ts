@@ -92,6 +92,7 @@ export async function loadDoxygenTab(
   config: ResolvedDoxygenConfig,
   tabSlug: string,
   tabLabel: string,
+  titleSeparator: string,
 ): Promise<DoxygenResult> {
   let generated: Awaited<ReturnType<typeof generate>>;
   try {
@@ -99,6 +100,7 @@ export async function loadDoxygenTab(
       directory: config.xml,
       language: config.language,
       sourceUrl: config.sourceUrl,
+      titleSeparator,
       quiet: true,
     });
   } catch (error) {

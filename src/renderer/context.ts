@@ -70,6 +70,7 @@ export const PageContext = createContext<CurrentPage>(null as never);
  */
 export interface SiteConfig {
   name: string;
+  titleSeparator: string;
   siteUrl?: string;
   baseUrl: string;
   prettyUrls: PrettyUrls;

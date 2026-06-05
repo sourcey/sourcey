@@ -37,6 +37,7 @@ const defaultOptions: RenderOptions = {
 
 const defaultSite: SiteConfig = {
   name: "Test",
+  titleSeparator: " - ",
   siteUrl: undefined,
   baseUrl: "",
   theme: {

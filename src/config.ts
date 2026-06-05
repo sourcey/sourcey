@@ -56,6 +56,12 @@ export interface ChangelogConfig {
 
 export interface SourceyConfig {
   name?: string;
+  /**
+   * Separator inserted between the page title and the site name in `<title>`/OG
+   * metadata, and between fields in generated API search snippets.
+   * @default " - "
+   */
+  titleSeparator?: string;
   /** Public site origin for absolute feeds, OG metadata, and canonical URLs (e.g. "https://docs.example.com"). */
   siteUrl?: string;
   /** Public path prefix when the docs are served from a subpath (e.g. "/reference"). */
@@ -334,6 +340,7 @@ export interface ResolvedChangelogConfig {
 
 export interface ResolvedConfig {
   name: string;
+  titleSeparator: string;
   siteUrl?: string;
   baseUrl: string;
   prettyUrls: PrettyUrls;
@@ -470,6 +477,7 @@ export function configFromSpec(specPath: string): ResolvedConfig {
   const absSpec = resolve(specPath);
   return {
     name: "API Reference",
+    titleSeparator: " - ",
     siteUrl: undefined,
     baseUrl: "",
     prettyUrls: false,
@@ -515,6 +523,7 @@ export async function resolveConfigFromRaw(
 
   return {
     name: raw.name ?? "",
+    titleSeparator: raw.titleSeparator ?? " - ",
     siteUrl: normalizeSiteUrl(raw.siteUrl),
     baseUrl: normalizeBaseUrl(raw.baseUrl),
     prettyUrls: resolvePrettyUrls(raw.prettyUrls),

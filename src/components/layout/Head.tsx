@@ -13,16 +13,17 @@ export function Head() {
     : undefined;
 
   const siteName = site.name || spec.info.title || "";
+  const separator = site.titleSeparator;
   const pageTitle = page.kind === "markdown"
-    ? composePageTitle(page.markdown.title, siteName)
+    ? composePageTitle(page.markdown.title, siteName, separator)
     : page.kind === "changelog"
       ? (() => {
           const baseTitle = changelogVersion
-            ? `${changelogVersion.version ?? "Unreleased"} - ${page.changelog.title}`
+            ? `${changelogVersion.version ?? "Unreleased"}${separator}${page.changelog.title}`
             : page.changelog.title;
-          return composePageTitle(baseTitle, siteName);
+          return composePageTitle(baseTitle, siteName, separator);
         })()
-      : composePageTitle(siteName, "API Reference");
+      : composePageTitle(siteName, "API Reference", separator);
 
   const pageDescription = page.kind === "markdown"
     ? page.markdown.description || pageTitle
@@ -99,10 +100,10 @@ export function Head() {
   );
 }
 
-function composePageTitle(title: string, siteName: string): string {
+function composePageTitle(title: string, siteName: string, separator: string): string {
   if (!siteName) return title;
   if (!title) return siteName;
-  return sameTitle(title, siteName) ? title : `${title} - ${siteName}`;
+  return sameTitle(title, siteName) ? title : `${title}${separator}${siteName}`;
 }
 
 function sameTitle(left: string, right: string): boolean {

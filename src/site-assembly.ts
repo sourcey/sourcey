@@ -64,7 +64,7 @@ export async function assembleSite(config: ResolvedConfig): Promise<SiteAssembly
     }
 
     if (tab.source.kind === "doxygen") {
-      const { pages, navTab } = await loadDoxygenTab(tab.source.config, tab.slug, tab.label);
+      const { pages, navTab } = await loadDoxygenTab(tab.source.config, tab.slug, tab.label, config.titleSeparator);
 
       for (const [slug, page] of pages) {
         const outputPath = pageOutputPath(tab.slug, slug, config.prettyUrls);
@@ -352,6 +352,7 @@ export async function buildSiteConfig(config: ResolvedConfig): Promise<SiteConfi
 
   return {
     name: config.name,
+    titleSeparator: config.titleSeparator,
     siteUrl: config.siteUrl,
     baseUrl: config.baseUrl,
     prettyUrls: config.prettyUrls,
