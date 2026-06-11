@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/sourcey-sourcey-badge.png)](https://mseep.ai/app/sourcey-sourcey)
+
 # Sourcey
 
 > Docs straight from the source.
