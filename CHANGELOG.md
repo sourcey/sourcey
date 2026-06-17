@@ -2,7 +2,17 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.6.3 - 2026-06-17
+
+### Added
+
+- OpenAPI operations now render author-provided examples. Named `examples` and a single `example` on responses and request bodies take priority over the schema-generated shape, every media type contributes instead of only the first, and a switcher moves between multiple examples when an operation has more than one. External examples (`externalValue`) render as a link.
+
 ## 3.6.2 - 2026-06-05
+
+### Changed
+
+- Bumped `moxygen` to 2.1.10, so C++ reference search snippets render the page title and matched text with a cleaner ` - ` separator.
 
 ### Fixed
 

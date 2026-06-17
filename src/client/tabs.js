@@ -34,13 +34,13 @@
       trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
     });
 
-    // Select a language from the dropdown
+    // Select a language / example variant from the dropdown
     document.addEventListener('click', function (e) {
       var option = e.target.closest('.code-lang-option');
       if (!option) return;
 
-      var container = option.closest('.code-group');
-      var index = option.getAttribute('data-lang-index');
+      var dropdown = option.closest('.code-lang-dropdown');
+      var canSync = !!(dropdown && dropdown.hasAttribute('data-lang-sync'));
       var lang = option.textContent.trim();
 
       // Close the menu
@@ -52,17 +52,16 @@
       }
 
       var scrollY = window.scrollY;
-      activateLang(container, index);
+      activateLang(option);
 
-      // Sync language across all code-sample groups
-      if (lang !== selectedLang) {
+      // Sync language across code-sample groups only (not example variants).
+      if (canSync && lang !== selectedLang) {
         selectedLang = lang;
+        var ownGroup = option.closest('.code-group');
         document.querySelectorAll('.code-group').forEach(function (group) {
-          if (group === container || !group.querySelector('.code-lang-dropdown')) return;
+          if (group === ownGroup || !group.querySelector('.code-lang-dropdown[data-lang-sync]')) return;
           group.querySelectorAll('.code-lang-option').forEach(function (opt) {
-            if (opt.textContent.trim() === lang) {
-              activateLang(group, opt.getAttribute('data-lang-index'));
-            }
+            if (opt.textContent.trim() === lang) activateLang(opt);
           });
         });
       }
@@ -70,32 +69,51 @@
       window.scrollTo(0, scrollY);
     });
 
-    function activateLang(container, index) {
-      // Update dropdown label
-      var options = container.querySelectorAll('.code-lang-option');
-      var label = container.querySelector('.code-lang-label');
-      options.forEach(function (opt) {
-        var isActive = opt.getAttribute('data-lang-index') === index;
-        opt.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        opt.className = opt.className.replace(/(dark:)?text-\[rgb\([^\]]+\)\]/g, '').trim();
-        if (isActive) {
-          opt.classList.add('text-[rgb(var(--color-primary))]', 'dark:text-[rgb(var(--color-primary-light))]');
-          if (label) label.textContent = opt.textContent.trim();
-          // Update trigger icon to match selected language
-          var triggerIcon = container.querySelector('.code-lang-trigger .code-lang-icon');
-          var optIcon = opt.querySelector('.lang-icon');
-          if (triggerIcon && optIcon) {
-            triggerIcon.innerHTML = optIcon.outerHTML;
-          }
-        } else {
-          opt.classList.add('text-[rgb(var(--color-stone-600))]', 'dark:text-[rgb(var(--color-stone-400))]');
-        }
-      });
+    // The panels a dropdown controls. A header variant dropdown (in the shared
+    // card header) drives the matching response status panel; otherwise panels
+    // live in the dropdown's own `.code-lang-scope` or `.code-group`.
+    function panelScopeForOption(option) {
+      var headerWrap = option.closest('[data-response-dropdown]');
+      if (headerWrap) {
+        var idx = headerWrap.getAttribute('data-response-dropdown');
+        var group = headerWrap.closest('.code-group');
+        var panel = group && group.querySelector('.response-panel[data-response-panel="' + idx + '"]');
+        if (panel) return panel;
+      }
+      return option.closest('.code-lang-scope') || option.closest('.code-group');
+    }
 
-      // Update panels
-      container.querySelectorAll('.code-lang-panel').forEach(function (p) {
-        p.classList.toggle('active', p.getAttribute('data-lang-panel') === index);
-      });
+    function activateLang(option) {
+      var dropdown = option.closest('.code-lang-dropdown');
+      var scope = panelScopeForOption(option);
+      var index = option.getAttribute('data-lang-index');
+
+      // Update the dropdown label + options (label/trigger live in the dropdown,
+      // which for a header variant switcher is separate from the panel scope).
+      if (dropdown) {
+        var label = dropdown.querySelector('.code-lang-label');
+        dropdown.querySelectorAll('.code-lang-option').forEach(function (opt) {
+          var isActive = opt.getAttribute('data-lang-index') === index;
+          opt.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          opt.className = opt.className.replace(/(dark:)?text-\[rgb\([^\]]+\)\]/g, '').trim();
+          if (isActive) {
+            opt.classList.add('text-[rgb(var(--color-primary))]', 'dark:text-[rgb(var(--color-primary-light))]');
+            if (label) label.textContent = opt.textContent.trim();
+            var triggerIcon = dropdown.querySelector('.code-lang-trigger .code-lang-icon');
+            var optIcon = opt.querySelector('.lang-icon');
+            if (triggerIcon && optIcon) triggerIcon.innerHTML = optIcon.outerHTML;
+          } else {
+            opt.classList.add('text-[rgb(var(--color-stone-600))]', 'dark:text-[rgb(var(--color-stone-400))]');
+          }
+        });
+      }
+
+      // Update panels within the controlled scope.
+      if (scope) {
+        scope.querySelectorAll('.code-lang-panel').forEach(function (p) {
+          p.classList.toggle('active', p.getAttribute('data-lang-panel') === index);
+        });
+      }
     }
 
     // ── Response Tabs ──────────────────────────────────────────────────
@@ -120,6 +138,11 @@
         p.classList.toggle('active', p.getAttribute('data-response-panel') === index);
       });
 
+      // Show only the active status's variant switcher in the header.
+      container.querySelectorAll('[data-response-dropdown]').forEach(function (d) {
+        d.classList.toggle('hidden', d.getAttribute('data-response-dropdown') !== index);
+      });
+
       window.scrollTo(0, scrollY);
     });
 
@@ -132,8 +155,11 @@
       var container = btn.closest('.code-group') || btn.closest('.prose-code-block');
       if (!container) return;
 
-      // Find the active panel's code, or the nearest code element
-      var activePanel = container.querySelector('.code-lang-panel.active, .response-panel.active');
+      // Find the active panel's code, or the nearest code element. With nested
+      // panels (a variant switcher inside a response tab), prefer the deepest
+      // active panel, which is last in document order.
+      var activePanels = container.querySelectorAll('.code-lang-panel.active, .response-panel.active');
+      var activePanel = activePanels.length ? activePanels[activePanels.length - 1] : null;
       var codeEl = activePanel
         ? activePanel.querySelector('code, .code-block, .font-mono')
         : container.querySelector('code, .code-block, .font-mono');

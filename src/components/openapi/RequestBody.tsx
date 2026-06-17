@@ -1,8 +1,9 @@
 import type { NormalizedRequestBody } from "../../core/types.js";
 import { SchemaView } from "../schema/SchemaView.js";
-import { ExampleView } from "../schema/ExampleView.js";
+import { ExampleVariantsCard } from "../schema/ExampleView.js";
 import { Markdown } from "../ui/Markdown.js";
 import { MediaTypeDetails } from "./MediaTypeDetails.js";
+import { buildExampleVariants } from "../../utils/example-variants.js";
 
 interface RequestBodyProps {
   body: NormalizedRequestBody;
@@ -49,11 +50,8 @@ interface RequestBodyExampleProps {
  * Request body example (rendered in the sticky code panel).
  */
 export function RequestBodyExample({ body }: RequestBodyExampleProps) {
-  const mediaTypes = Object.entries(body.content);
-  if (!mediaTypes.length) return null;
+  const variants = buildExampleVariants(body.content);
+  if (!variants.length) return null;
 
-  const [, content] = mediaTypes[0];
-  if (!content.schema) return null;
-
-  return <ExampleView schema={content.schema} title="Request Body" />;
+  return <ExampleVariantsCard variants={variants} title="Request Body" />;
 }

@@ -1425,7 +1425,9 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Visible so an open header dropdown menu is not clipped by the card; the
+     code body's rounded corners are clipped by .code-card-body instead. */
+  overflow: visible;
   border-radius: var(--radius);
   border: 1px solid rgb(var(--color-stone-950) / 0.1);
 }
@@ -1435,9 +1437,19 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 #sourcey .code-group > div:first-child {
   background: rgb(var(--color-stone-50));
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 .dark #sourcey .code-group > div:first-child {
   background: rgb(255 255 255 / 0.03);
+}
+
+/* Clips the code panels' rounded bottom corners now that the card itself does
+   not clip. Horizontal code scrolling stays on the inner body element. */
+#sourcey .code-card-body {
+  overflow: hidden;
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
 }
 
 /* ── Selection ─────────────────────────────────────────────────────── */

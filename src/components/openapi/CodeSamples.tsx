@@ -32,7 +32,7 @@ export function CodeSamplesExamples({ operation, serverUrl, codeSampleLangs }: C
         </div>
         {/* Language dropdown + copy */}
         <div class="flex shrink-0 items-center justify-end gap-1.5">
-          <div class="code-lang-dropdown relative">
+          <div class="code-lang-dropdown relative" data-lang-sync>
             <button
               type="button"
               class="code-lang-trigger group relative my-1 mb-1.5 flex items-center whitespace-nowrap font-medium leading-6 outline-0 text-[rgb(var(--color-stone-500))] dark:text-[rgb(var(--color-stone-400))] cursor-pointer text-xs"
@@ -69,20 +69,22 @@ export function CodeSamplesExamples({ operation, serverUrl, codeSampleLangs }: C
       </div>
 
       {/* Code panels */}
-      {samples.map((sample, i) => {
-        const html = highlightCode(sample.source, sample.lang);
-        return (
-          <div
-            key={i}
-            class={`code-lang-panel${i === 0 ? " active" : ""}`}
-            data-lang-panel={String(i)}
-          >
-            <div class="relative w-full px-4 py-3.5 text-sm leading-6 bg-[rgb(var(--color-code-block-light))] dark:bg-[rgb(var(--color-code-block-dark))] overflow-x-auto" style="font-variant-ligatures: none">
-              <div class="font-mono whitespace-pre text-xs leading-[1.35rem] code-block" dangerouslySetInnerHTML={{ __html: html }} />
+      <div class="code-card-body">
+        {samples.map((sample, i) => {
+          const html = highlightCode(sample.source, sample.lang);
+          return (
+            <div
+              key={i}
+              class={`code-lang-panel${i === 0 ? " active" : ""}`}
+              data-lang-panel={String(i)}
+            >
+              <div class="relative w-full px-4 py-3.5 text-sm leading-6 bg-[rgb(var(--color-code-block-light))] dark:bg-[rgb(var(--color-code-block-dark))] overflow-x-auto" style="font-variant-ligatures: none">
+                <div class="font-mono whitespace-pre text-xs leading-[1.35rem] code-block" dangerouslySetInnerHTML={{ __html: html }} />
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

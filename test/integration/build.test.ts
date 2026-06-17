@@ -2,10 +2,21 @@ import { describe, it, expect } from "vitest";
 import { buildDocs, buildSiteDocs } from "../../src/index.js";
 import { loadConfig } from "../../src/config.js";
 import { resolve, dirname } from "node:path";
-import { readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { readFile, rm, writeFile, mkdir, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 
 const FIXTURES = resolve(import.meta.dirname, "../fixtures");
+
+/** Concatenate every rendered HTML page under a build output directory. */
+async function readAllHtml(dir: string): Promise<string> {
+  const entries = await readdir(dir, { recursive: true });
+  const html = await Promise.all(
+    entries
+      .filter((e) => e.endsWith(".html"))
+      .map((e) => readFile(resolve(dir, e), "utf-8")),
+  );
+  return html.join("\n");
+}
 
 describe("buildDocs (integration)", () => {
   it("builds from a Swagger 2.0 JSON spec", async () => {
@@ -358,6 +369,30 @@ describe("buildDocs (integration)", () => {
       expect(searchIndex).not.toContain(".html\"");
 
       expect(existsSync(resolve(outputDir, "_redirects"))).toBe(false);
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("renders provided response/request examples with a variant switcher (issue #70)", async () => {
+    const outputDir = resolve(import.meta.dirname, "../../.test-output-issue-70");
+    try {
+      await buildDocs({ specSource: `${FIXTURES}/issue-70.json`, outputDir });
+      const html = await readAllHtml(outputDir);
+
+      // Provided named examples render (not just the schema-generated shape).
+      expect(html).toContain("Bruce");
+      expect(html).toContain("Two clients");
+      expect(html).toContain("No clients");
+
+      // A provided single response example renders.
+      expect(html).toContain("a-real-token");
+      // A provided request body example renders.
+      expect(html).toContain("s3cret");
+
+      // The variant switcher is wired up (dropdown + switchable panels).
+      expect(html).toContain("code-lang-panel");
+      expect(html).toContain("data-lang-panel");
     } finally {
       await rm(outputDir, { recursive: true, force: true });
     }

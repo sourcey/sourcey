@@ -1,0 +1,103 @@
+{
+  "openapi": "3.0.0",
+  "info": { "title": "Issue 70 API", "version": "1.0.0" },
+  "paths": {
+    "/clients": {
+      "get": {
+        "operationId": "listClients",
+        "summary": "List clients",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/BasicClient" }
+                },
+                "examples": {
+                  "two-clients": {
+                    "summary": "Two clients",
+                    "value": [
+                      { "userId": "c12cfeef", "firstName": "Bruce", "lastName": "Wayne", "email": "bwayne@example.com" },
+                      { "userId": "d12cfeef", "firstName": "George", "lastName": "Washington", "email": "gw@example.com" }
+                    ]
+                  },
+                  "empty": {
+                    "summary": "No clients",
+                    "value": []
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "message": "No clients found" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth": {
+      "post": {
+        "operationId": "authenticate",
+        "summary": "Authenticate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthRequest" },
+              "example": { "username": "user", "password": "s3cret" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" },
+                "example": { "token": "a-real-token", "valid_until": "2026-01-01T00:00:00Z" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BasicClient": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "email": { "type": "string" }
+        }
+      },
+      "AuthRequest": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string" },
+          "password": { "type": "string" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "valid_until": { "type": "string" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } }
+      }
+    }
+  }
+}

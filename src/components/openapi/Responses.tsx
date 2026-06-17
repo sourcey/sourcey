@@ -1,11 +1,10 @@
 import type { NormalizedResponse } from "../../core/types.js";
 import { httpStatusText } from "../../utils/http.js";
 import { SchemaDatatype } from "../schema/SchemaDatatype.js";
-import { ExampleView } from "../schema/ExampleView.js";
+import { ExampleVariantsCard, VariantBody, VariantDropdown } from "../schema/ExampleView.js";
 import { Markdown } from "../ui/Markdown.js";
 import { CopyButton } from "../ui/CopyButton.js";
-import { generateExample } from "../../utils/example-generator.js";
-import { highlightCode } from "../../utils/highlighter.js";
+import { buildExampleVariants } from "../../utils/example-variants.js";
 
 interface ResponsesProps {
   responses: NormalizedResponse[];
@@ -67,36 +66,29 @@ export function ResponsesCopy({ responses }: ResponsesProps) {
 export function ResponsesExamples({ responses }: ResponsesProps) {
   if (!responses.length) return null;
 
-  const examples = responses
-    .map((r) => {
-      const schema = getResponseSchema(r);
-      if (!schema) return null;
-      const example = schema.example ?? generateExample(schema);
-      if (example === undefined) return null;
-      const json = JSON.stringify(example, null, 2);
-      const html = highlightCode(json, "json");
-      return { statusCode: r.statusCode, html };
-    })
-    .filter(Boolean) as { statusCode: string; html: string }[];
+  const groups = responses
+    .map((r) => ({ statusCode: r.statusCode, variants: buildExampleVariants(r.content) }))
+    .filter((g) => g.variants.length > 0);
 
-  if (!examples.length) return null;
+  if (!groups.length) return null;
 
-  // Single response: use plain ExampleView
-  if (examples.length === 1) {
-    const r = responses.find((r) => r.statusCode === examples[0].statusCode)!;
-    const schema = getResponseSchema(r)!;
-    return <ExampleView schema={schema} title={`${examples[0].statusCode}`} />;
+  // Single status code: a standalone card, with a variant switcher when the
+  // response carries more than one example (named examples / content types).
+  if (groups.length === 1) {
+    return <ExampleVariantsCard variants={groups[0].variants} title={groups[0].statusCode} />;
   }
 
-  // Multiple responses: tabbed code block with status code tabs in the header
+  // Multiple status codes: status tabs on the left of the header; on the right,
+  // a per-status variant switcher (shown for the active status) next to copy,
+  // matching the language select. Panels live in the clipped card body.
   return (
     <div class="response-tabs code-group not-prose">
-      {/* Tab bar with status code tabs */}
+      {/* Header: status tabs + active-status variant switcher + copy */}
       <div class="relative flex items-center justify-between gap-2 px-3">
         <div class="response-tab-list flex gap-1 overflow-x-auto text-xs leading-6" role="tablist">
-          {examples.map((ex, i) => (
+          {groups.map((g, i) => (
             <button
-              key={ex.statusCode}
+              key={g.statusCode}
               type="button"
               role="tab"
               aria-selected={i === 0 ? "true" : "false"}
@@ -104,29 +96,53 @@ export function ResponsesExamples({ responses }: ResponsesProps) {
               data-response-index={String(i)}
             >
               <div class="z-10 flex items-center gap-1.5 rounded-lg px-1.5 group-hover:bg-[rgb(var(--color-stone-200)/0.5)] group-hover:text-[rgb(var(--color-primary))] dark:group-hover:bg-[rgb(var(--color-stone-700)/0.7)] dark:group-hover:text-[rgb(var(--color-primary-light))]">
-                {ex.statusCode}
+                {g.statusCode}
               </div>
             </button>
           ))}
         </div>
         <div class="flex shrink-0 items-center justify-end gap-1.5">
+          {groups.map((g, i) =>
+            g.variants.length > 1 ? (
+              <div
+                key={g.statusCode}
+                data-response-dropdown={String(i)}
+                class={i === 0 ? undefined : "hidden"}
+              >
+                <VariantDropdown variants={g.variants} />
+              </div>
+            ) : null
+          )}
           <CopyButton />
         </div>
       </div>
 
-      {/* Code panels */}
-      {examples.map((ex, i) => (
-        <div
-          key={ex.statusCode}
-          class={`response-panel${i === 0 ? " active" : ""}`}
-          role="tabpanel"
-          data-response-panel={String(i)}
-        >
-          <div class="relative w-full px-4 py-3.5 text-sm leading-6 bg-[rgb(var(--color-code-block-light))] dark:bg-[rgb(var(--color-code-block-dark))] overflow-x-auto" style="font-variant-ligatures: none">
-            <div class="font-mono whitespace-pre text-xs leading-[1.35rem]" dangerouslySetInnerHTML={{ __html: ex.html }} />
+      {/* Code panels (one per status; a status with several examples nests its
+          own variant panels switched by the header dropdown). */}
+      <div class="code-card-body">
+        {groups.map((g, i) => (
+          <div
+            key={g.statusCode}
+            class={`response-panel${i === 0 ? " active" : ""}`}
+            role="tabpanel"
+            data-response-panel={String(i)}
+          >
+            {g.variants.length > 1 ? (
+              g.variants.map((v, j) => (
+                <div
+                  key={j}
+                  class={`code-lang-panel${j === 0 ? " active" : ""}`}
+                  data-lang-panel={String(j)}
+                >
+                  <VariantBody variant={v} />
+                </div>
+              ))
+            ) : (
+              <VariantBody variant={g.variants[0]} />
+            )}
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
