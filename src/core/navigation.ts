@@ -37,6 +37,10 @@ export interface SiteTab {
 
 export interface SiteNavGroup {
   label: string;
+  /** Optional section link for generated groups such as OpenAPI tag intros. */
+  href?: string;
+  /** Unique ID for section-level active-state matching. */
+  id?: string;
   items: SiteNavItem[];
 }
 
@@ -85,6 +89,7 @@ export function buildNavFromSpec(
   const tagsByName = new Map(spec.tags.map((tag) => [tag.name, tag]));
   for (const tag of spec.tags) {
     if (tag.hidden) continue;
+    const tagId = `tag-${htmlId(tag.name)}`;
     const items: SiteNavItem[] = tag.operations.map((op) => ({
       label: op.summary ?? `${op.method.toUpperCase()} ${op.path}`,
       href: `${basePath}#operation-${htmlId(op.path)}-${htmlId(op.method)}`,
@@ -92,7 +97,12 @@ export function buildNavFromSpec(
       method: op.method,
     }));
     if (!items.length) continue;
-    groups.push({ label: tagNavigationLabel(tag, tagsByName), items });
+    groups.push({
+      label: tagNavigationLabel(tag, tagsByName),
+      href: `${basePath}#${tagId}`,
+      id: tagId,
+      items,
+    });
   }
 
   // Models group

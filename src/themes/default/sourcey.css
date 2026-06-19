@@ -218,6 +218,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 /* ── Nav Links ────────────────────────────────────────────────────── */
 
 #sourcey .nav-group-label {
+  display: block;
   padding: 0 0.75rem 0.25rem 1rem;
   margin-bottom: 0.625rem;
   font-size: inherit;
@@ -226,6 +227,24 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 }
 .dark #sourcey .nav-group-label {
   color: rgb(var(--color-gray-200));
+}
+#sourcey .nav-group-link {
+  cursor: pointer;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  transition: color 0.15s, background-color 0.15s;
+}
+#sourcey .nav-group-link:hover {
+  color: rgb(var(--color-primary-ink));
+}
+.dark #sourcey .nav-group-link:hover {
+  color: rgb(var(--color-primary-light));
+}
+#sourcey .nav-group-link.active {
+  color: rgb(var(--color-primary-ink));
+}
+.dark #sourcey .nav-group-link.active {
+  color: rgb(var(--color-primary-light));
 }
 
 #sourcey .nav-tab-label {

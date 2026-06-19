@@ -185,6 +185,8 @@ describe("buildDocs (integration)", () => {
       expect(html).toContain("operation-");
       expect(html).toContain('id="sidebar"');
       expect(html).toContain('id="nav"');
+      expect(html).toContain('href="api.html#tag-cheese"');
+      expect(html).toContain('class="nav-group-label nav-group-link"');
       expect(html).toContain("Authentication");
       expect(html).toContain("bearer");
     } finally {

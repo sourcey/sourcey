@@ -1,12 +1,12 @@
 // Scroll tracker — highlights the active sidebar nav link as user scrolls.
 //
 // Observes [data-traverse-target] section anchors and toggles .active
-// on the matching #nav .nav-link. All visual styling is in sourcey.css;
+// on the matching #nav fragment link. All visual styling is in sourcey.css;
 // this file only manages the class.
 (function () {
   function init() {
     var navbar = document.getElementById('navbar');
-    var navLinks = document.querySelectorAll('#nav .nav-link');
+    var navLinks = document.querySelectorAll('#nav .nav-link, #nav .nav-group-link');
     var targets = document.querySelectorAll('[data-traverse-target]');
 
     // For prose pages, also track heading elements that TOC links point to
@@ -113,7 +113,7 @@
     if (tocEl) tocEl.addEventListener('click', function (e) { handleAnchorClick(e, '.toc-item'); });
 
     var navEl = document.getElementById('nav');
-    if (navEl) navEl.addEventListener('click', function (e) { handleAnchorClick(e, '.nav-link'); });
+    if (navEl) navEl.addEventListener('click', function (e) { handleAnchorClick(e, '.nav-link, .nav-group-link'); });
 
     // Use scroll event for reliable activation at all positions.
     function onScroll() {
