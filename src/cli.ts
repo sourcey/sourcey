@@ -16,6 +16,7 @@ import {
 } from "./site-assembly.js";
 import type { GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import type { RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
+import { findPlaceholderServerUrls } from "./utils/server-warnings.js";
 import pkg from "../package.json" with { type: "json" };
 
 const build = defineCommand({
@@ -74,6 +75,7 @@ const build = defineCommand({
         });
 
         if (!args.quiet) {
+          logQuickBuildServerWarnings(result.spec);
           logChangelogDiagnostics(result.changelogDiagnostics);
           const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
           console.log(`  Spec:       ${result.spec.info.title} v${result.spec.info.version}`);
@@ -327,6 +329,15 @@ function logRustdocDiagnostics(diagnostics: RustdocLoaderDiagnostic[]): void {
   for (const diagnostic of diagnostics) {
     const writer = diagnostic.severity === "error" ? console.error : console.log;
     writer(`  ${formatRustdocDiagnostic(diagnostic)}`);
+  }
+}
+
+function logQuickBuildServerWarnings(spec: Parameters<typeof findPlaceholderServerUrls>[0]): void {
+  const placeholderUrls = findPlaceholderServerUrls(spec);
+  for (const url of placeholderUrls) {
+    console.warn(
+      `  Warning: quick build is using placeholder server URL "${url}". Generated code samples will target that host. Use sourcey.config.ts or correct the source document before publishing.`,
+    );
   }
 }
 

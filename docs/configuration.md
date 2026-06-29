@@ -102,6 +102,32 @@ public link while generated pages still show `Defined in path:line`.
 
 Sourcey ships `default`, `minimal`, and `api-first` presets. Theme settings let you set brand colours, fonts, layout, and extra CSS without giving up a deterministic static build.
 
+## Code Samples
+
+OpenAPI tabs generate cURL, JavaScript, and Python examples by default. Set `codeSamples` when you want a different picker order or more languages:
+
+```ts
+export default defineConfig({
+  codeSamples: [
+    "curl",
+    "go",
+    "javascript",
+    "typescript",
+    "python",
+    "ruby",
+    "java",
+    "php",
+    "rust",
+    "csharp",
+  ],
+  navigation: {
+    tabs: [{ tab: "API Reference", source: openapi("./openapi.yaml") }],
+  },
+});
+```
+
+Supported values are `curl`, `javascript`, `typescript`, `python`, `go`, `ruby`, `java`, `php`, `rust`, and `csharp`.
+
 ## Build flow
 
 ```bash

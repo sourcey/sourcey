@@ -22,7 +22,7 @@ npx sourcey init
 ## Features
 
 - **OpenAPI 2.0, 3.0, 3.1, and 3.2**: full spec coverage including `QUERY` operations, response summaries, hierarchical tags, `deviceAuthorization` OAuth, `querystring` parameters, and `$self`-aware refs for multi-document APIs
-- **API reference from OpenAPI**: endpoints, parameters, request/response schemas, auto-generated code samples in 10 languages (cURL, JavaScript, TypeScript, Python, Go, Ruby, Java, PHP, Rust, C#)
+- **API reference from OpenAPI**: endpoints, parameters, request/response schemas, and auto-generated code samples across 10 supported languages. The default set is cURL, JavaScript, and Python; configure TypeScript, Go, Ruby, Java, PHP, Rust, and C# when you want them
 - **MCP server documentation**: tools, resources, prompts rendered as browsable reference with JSON-RPC, TypeScript, and Python code samples. Color-coded method types, annotation badges, connection config cards
 - **Rich guides**: markdown pages with steps, cards, accordions, syntax-highlighted code blocks, and prose alongside your API reference
 - **MkDocs source import**: point a tab at `mkdocs.yml`; Sourcey reads `docs_dir` and `nav` so existing MkDocs markdown sites can render without hand-copying the sidebar structure
