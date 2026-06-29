@@ -1571,6 +1571,130 @@ h6[id] {
   overscroll-behavior: contain;
 }
 
+/* ── Print/PDF output ─────────────────────────────────────────────── */
+
+@media print {
+  @page {
+    margin: 0.7in;
+  }
+
+  html,
+  body,
+  #sourcey,
+  #sourcey #page,
+  #sourcey #docs {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  #sourcey #page::before,
+  #sourcey #navbar,
+  #sourcey #toc,
+  #sourcey #search-dialog,
+  #sourcey .mobile-nav-dialog,
+  #sourcey .copy-btn,
+  #sourcey .prose-code-copy,
+  #sourcey .code-lang-dropdown {
+    display: none !important;
+  }
+
+  #sourcey .max-w-\[92rem\],
+  #sourcey .max-w-3xl {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #sourcey #docs {
+    padding-top: 0 !important;
+  }
+
+  #sourcey #docs > .flex,
+  #sourcey #docs [class*="lg:flex-row"],
+  #sourcey #docs [class*="xl:flex-row"] {
+    display: block !important;
+  }
+
+  #sourcey #content-area {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #sourcey #sidebar {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    margin: 0 0 1.5rem !important;
+    padding: 0 0 1rem !important;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  #sourcey #sidebar > div {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  #sourcey #sidebar .sticky {
+    display: none !important;
+  }
+
+  #sourcey #sidebar #nav::before {
+    content: "Table of Contents";
+    display: block;
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  #sourcey #sidebar .nav-group-label,
+  #sourcey #sidebar .nav-link {
+    color: #111827 !important;
+    background: transparent !important;
+  }
+
+  #sourcey #sidebar .nav-link {
+    padding: 0.125rem 0 !important;
+  }
+
+  #sourcey #docs article aside {
+    display: none !important;
+  }
+
+  #sourcey #docs [class*="lg:hidden"],
+  #sourcey #docs [class*="xl:hidden"] {
+    display: block !important;
+  }
+
+  #sourcey .code-group,
+  #sourcey .prose-code-block,
+  #sourcey .param-item,
+  #sourcey .schema-expandable,
+  #sourcey .sourcey-changelog-version {
+    break-inside: avoid;
+  }
+
+  #sourcey .code-group,
+  #sourcey .prose-code-block,
+  #sourcey .prose-code-content,
+  #sourcey .code-card-body,
+  #sourcey .code-card-body > div,
+  #sourcey .code-card-body .font-mono {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  #sourcey a {
+    color: #111827 !important;
+    text-decoration: underline;
+  }
+}
+
 /* ── Selection ─────────────────────────────────────────────────────── */
 
 #sourcey ::selection {
