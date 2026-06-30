@@ -18,7 +18,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -59,7 +59,7 @@ jobs:
           mkdir -p .stage/release
           npm pack --pack-destination .stage/release
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sourcey-npm-package
           path: .stage/release/sourcey-*.tgz
@@ -71,7 +71,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sourcey-npm-package
           path: .stage/release
@@ -90,7 +90,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -98,7 +98,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sourcey-npm-package
           path: .stage/release
@@ -139,13 +139,13 @@ jobs:
             echo "Skipping Docker publish: DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are not configured."
           fi
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.publish == 'true'
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
         if: steps.gate.outputs.publish == 'true'
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         if: steps.gate.outputs.publish == 'true'
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -154,7 +154,7 @@ jobs:
       - name: Extract Docker metadata
         if: steps.gate.outputs.publish == 'true'
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: sourcey/sourcey
           tags: |
@@ -163,7 +163,7 @@ jobs:
 
       - name: Build and push Docker image
         if: steps.gate.outputs.publish == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
