@@ -4,9 +4,16 @@ All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepa
 
 ## Unreleased
 
+## 3.6.5 - 2026-07-12
+
+### Added
+
+- Astro integration, exported from `sourcey/astro`. An Astro site can mount Sourcey directly instead of running a separate docs build: the integration reads the same `sourcey.config.ts`, derives `siteUrl` and `baseUrl` from Astro's `site`/`base` plus `routeBase`, serves docs in Astro dev, and writes docs into Astro's build output.
+
 ### Changed
 
 - OpenAPI tag headings render at the operation title size instead of a step below it, so a tag's section heading is no longer smaller than the operations nested under it.
+- C++ reference output picks up moxygen 2.1.12: `@retval`, `@throws`, and `@tparam` documentation renders as tables, and headings nest relative to the page they are embedded in rather than at a fixed level.
 
 ## 3.6.4 - 2026-06-24
 
