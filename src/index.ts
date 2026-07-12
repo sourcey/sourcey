@@ -1,26 +1,12 @@
-import { readFile } from "node:fs/promises";
-import { extname, resolve } from "node:path";
-import { buildSite as buildSiteHtml } from "./renderer/html-builder.js";
-import type { SitePage } from "./renderer/html-builder.js";
+import { resolve } from "node:path";
 import type {
   ChangelogDiagnostic,
-  NormalizedChangelogVersion,
   NormalizedSpec,
 } from "./core/types.js";
 import type { ResolvedConfig } from "./config.js";
 import { loadConfig, configFromSpec } from "./config.js";
-import { buildSiteNavigation } from "./core/navigation.js";
-import { buildSearchIndex } from "./core/search-indexer.js";
-import { generateLlmsTxt, generateLlmsFullTxt } from "./renderer/llms.js";
-import {
-  assembleSite,
-  buildSiteConfig,
-  collectDocsPagesByTab,
-  createMinimalSpec,
-  enforceChangelogDiagnostics,
-  enforceGodocDiagnostics,
-  enforceRustdocDiagnostics,
-} from "./site-assembly.js";
+import { buildSourceySite, writeSourceySite } from "./site.js";
+import { createMinimalSpec } from "./site-assembly.js";
 
 // ---------------------------------------------------------------------------
 // Build options
@@ -76,6 +62,7 @@ export interface SiteBuildOptions {
   skipWrite?: boolean;
   embeddable?: boolean;
   strictChangelog?: boolean;
+  generateOgImages?: boolean;
 }
 
 export interface SiteBuildResult {
@@ -91,148 +78,32 @@ export interface SiteBuildResult {
 export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<SiteBuildResult> {
   const outputDir = resolve(options.outputDir ?? "dist");
   const config = options.config ?? (await loadConfig(options.configDir));
-
-  const assembled = await assembleSite(config);
-  const site = await buildSiteConfig(config);
-  const sitePages = Array.from(assembled.pageMap.values());
-  const navigation = buildSiteNavigation(assembled.siteTabs);
-
-  enforceChangelogDiagnostics(assembled.changelogDiagnostics, options.strictChangelog);
-  enforceGodocDiagnostics(assembled.godocDiagnostics);
-  enforceRustdocDiagnostics(assembled.rustdocDiagnostics);
-
-  const docsPagesByTab = collectDocsPagesByTab(assembled.pageMap, config.tabs);
-  const searchIndex = buildSearchIndex(
-    assembled.specsBySlug,
-    docsPagesByTab,
-    navigation,
-    config.baseUrl || "/",
-    config.search.featured,
-    config.prettyUrls,
-  );
-  const llmsTxt = generateLlmsTxt(sitePages, navigation, site);
-  const llmsFullTxt = generateLlmsFullTxt(sitePages, navigation, site);
-
-  const extraFiles = new Map(assembled.extraFiles);
-  const ogImages = new Map<string, Buffer>();
-
-  if (!config.ogImage) {
-    const { generateOgImage } = await import("./og/generate-og-image.js");
-
-    const CONCURRENCY = 8;
-    for (let i = 0; i < sitePages.length; i += CONCURRENCY) {
-      const batch = sitePages.slice(i, i + CONCURRENCY);
-      await Promise.all(
-        batch.map(async (page) => {
-          const ogMeta = describePageForOg(page, config.name || "API", config.changelog.ogImages);
-          if (!ogMeta) return;
-
-          try {
-            const ogPath = `_og/${page.outputPath.replace(/\.html$/, ".png")}`;
-            const png = await generateOgImage({
-              title: ogMeta.title,
-              description: ogMeta.description,
-              siteName: config.name,
-              theme: config.theme,
-              logo: site.logo?.light,
-            });
-
-            page.ogImagePath = ogPath;
-            ogImages.set(ogPath, png);
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            console.warn(`Sourcey: skipping OG image for ${page.outputPath}: ${message}`);
-          }
-        }),
-      );
-    }
-  } else {
-    const staticOg = config.ogImage;
-    if (
-      staticOg.startsWith("http://") ||
-      staticOg.startsWith("https://") ||
-      staticOg.startsWith("data:")
-    ) {
-      for (const page of sitePages) {
-        page.ogImagePath = staticOg;
-      }
-    } else {
-      const ogPath = `_og/static${extname(staticOg) || ".png"}`;
-      extraFiles.set(ogPath, await readFile(staticOg));
-      for (const page of sitePages) {
-        page.ogImagePath = ogPath;
-      }
-    }
-  }
+  const sourceySite = await buildSourceySite({
+    config,
+    outputDir,
+    strictChangelog: options.strictChangelog,
+    generateOgImages: options.generateOgImages,
+  });
 
   if (!options.skipWrite) {
-    await buildSiteHtml(sitePages, navigation, outputDir, site, {
-      searchIndex,
-      llmsTxt,
-      llmsFullTxt,
-      embeddable: options.embeddable,
-      ogImages,
-      extraFiles,
-    });
+    await writeSourceySite(sourceySite, { embeddable: options.embeddable });
   }
 
   return {
     outputDir,
-    pageCount: sitePages.length,
-    changelogDiagnostics: assembled.changelogDiagnostics,
-    godocDiagnostics: assembled.godocDiagnostics,
-    rustdocDiagnostics: assembled.rustdocDiagnostics,
-    _specs: assembled.specsBySlug,
+    pageCount: sourceySite.pageCount,
+    changelogDiagnostics: sourceySite.changelogDiagnostics,
+    godocDiagnostics: sourceySite.godocDiagnostics,
+    rustdocDiagnostics: sourceySite.rustdocDiagnostics,
+    _specs: sourceySite.specsBySlug,
   };
-}
-
-function describePageForOg(
-  page: SitePage,
-  defaultSiteName: string,
-  changelogPermalinkOg: boolean,
-): { title: string; description?: string } | null {
-  if (page.currentPage.kind === "markdown") {
-    return {
-      title: page.currentPage.markdown.title,
-      description: page.currentPage.markdown.description || undefined,
-    };
-  }
-
-  if (page.currentPage.kind === "changelog") {
-    const changelog = page.currentPage.changelog;
-    if (changelog.permalinkVersionId) {
-      if (!changelogPermalinkOg) return null;
-
-      const version = changelog.changelog.versions.find(
-        (candidate) => candidate.id === changelog.permalinkVersionId,
-      );
-      if (!version) return null;
-
-      return {
-        title: `${version.version ?? "Unreleased"} - ${changelog.title}`,
-        description: version.summary || summarizeVersion(version),
-      };
-    }
-
-    return {
-      title: changelog.title,
-      description: changelog.description || changelog.changelog.description,
-    };
-  }
-
-  return { title: `${defaultSiteName} Reference` };
-}
-
-function summarizeVersion(version: NormalizedChangelogVersion): string | undefined {
-  if (version.summary) return version.summary;
-  const texts = version.sections.flatMap((section) => section.entries.map((entry) => entry.text));
-  const summary = texts.slice(0, 3).join(" ");
-  return summary || undefined;
 }
 
 export { defineConfig } from "./config.js";
 export { doxygen, godoc, markdown, mcp, mkdocs, openapi, rustdoc } from "./adapters/index.js";
 export { resolveInternalLinks } from "./site-assembly.js";
+export { buildSourceySite, collectSourceyWatchPaths, writeSourceySite } from "./site.js";
+export type { SourceySiteArtifacts, SourceySiteOptions, SourceySiteWriteOptions } from "./site.js";
 
 // Re-export types for consumers
 export type {

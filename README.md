@@ -92,6 +92,39 @@ sourcey build api.yaml -o dist/
 
 In CI, the [`sourcey/build-docs`](https://github.com/sourcey/build-docs) GitHub Action runs the build and deploys to GitHub Pages; see [deploying](https://sourcey.com/docs/deploying).
 
+### Astro integration
+
+Astro sites can mount Sourcey directly instead of running a separate docs CI job. The integration reads the same `sourcey.config.ts`, derives Sourcey's public `siteUrl` and `baseUrl` from Astro's `site`/`base` plus `routeBase`, serves docs in Astro dev, and writes docs into Astro's final build output.
+
+```typescript
+// astro.config.ts
+import { defineConfig } from "astro/config";
+import sourcey from "sourcey/astro";
+
+export default defineConfig({
+  site: "https://sourcey.com",
+  integrations: [
+    sourcey({
+      config: "./sourcey.config.ts",
+      routeBase: "/docs",
+    }),
+  ],
+});
+```
+
+You can also share an imported config object when you want one config module to feed both the CLI and Astro:
+
+```typescript
+import { defineConfig } from "astro/config";
+import sourcey from "sourcey/astro";
+import docs from "./sourcey.config";
+
+export default defineConfig({
+  site: "https://sourcey.com",
+  integrations: [sourcey({ config: docs, configDir: ".", routeBase: "/docs" })],
+});
+```
+
 ## Configuration
 
 Create `sourcey.config.ts` in your project root:

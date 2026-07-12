@@ -2,6 +2,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import { resolve, extname } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { normalizeBaseUrl } from "./site-url.js";
+import { contentTypeForPath, outputPathFromRequestPath } from "./renderer/static-files.js";
 
 export interface SourceyPluginOptions {
   /** Additional file paths to watch (specs, markdown) */
@@ -146,58 +147,4 @@ export function sourceyPlugin(options: SourceyPluginOptions): Plugin {
       });
     },
   };
-}
-
-function outputPathFromRequestPath(pathname: string, baseUrl: string): string {
-  let path = pathname;
-  if (baseUrl && path.startsWith(baseUrl)) {
-    path = path.slice(baseUrl.length);
-  }
-  try {
-    path = decodeURIComponent(path);
-  } catch {
-    // Keep the raw path; a malformed escape cannot match generated output.
-  }
-  return path.replace(/^\/+/, "");
-}
-
-function contentTypeForPath(path: string): string {
-  switch (extname(path).toLowerCase()) {
-    case ".css":
-      return "text/css; charset=utf-8";
-    case ".js":
-    case ".mjs":
-      return "text/javascript; charset=utf-8";
-    case ".json":
-      return "application/json; charset=utf-8";
-    case ".svg":
-      return "image/svg+xml";
-    case ".png":
-      return "image/png";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".gif":
-      return "image/gif";
-    case ".webp":
-      return "image/webp";
-    case ".avif":
-      return "image/avif";
-    case ".ico":
-      return "image/x-icon";
-    case ".txt":
-      return "text/plain; charset=utf-8";
-    case ".pdf":
-      return "application/pdf";
-    case ".woff":
-      return "font/woff";
-    case ".woff2":
-      return "font/woff2";
-    case ".mp4":
-      return "video/mp4";
-    case ".webm":
-      return "video/webm";
-    default:
-      return "application/octet-stream";
-  }
 }
