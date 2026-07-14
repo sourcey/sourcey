@@ -71,21 +71,43 @@ export default defineConfig({
 });
 ```
 
+## Remote OpenAPI Specs
+
+`openapi()` accepts URLs as well as local files. This creates a reference tab
+from Xquik's public OpenAPI 3.1 document:
+
+```ts
+import { defineConfig, openapi } from "sourcey";
+
+export default defineConfig({
+  name: "Xquik API",
+  navigation: {
+    tabs: [
+      {
+        tab: "API Reference",
+        slug: "api",
+        source: openapi("https://xquik.com/openapi.json"),
+      },
+    ],
+  },
+});
+```
+
 ## rustdoc()
 
 Native Rust API documentation generated from nightly rustdoc JSON.
 
-- `manifest` — path to `Cargo.toml` (file or directory).
-- `crates` — array of crate names to document; defaults to the manifest's own package.
-- `snapshot` — optional committed `RustdocSpec` v1 snapshot. Required for `mode: "snapshot"`.
-- `mode` — `"auto"` (default), `"live"`, or `"snapshot"`. Auto uses nightly when available, otherwise reads the snapshot.
-- `features` — `{ default?: boolean; list?: string[]; all?: boolean }`. Defaults to `{ default: true }`.
-- `includePrivate` — include `pub(crate)` and private items. Default `false`.
-- `includeHidden` — include `#[doc(hidden)]` items. Default `false`.
-- `target` — target triple to build docs for.
-- `toolchain` — rustup toolchain name. Default `"nightly"`.
-- `sourceBasePath` — repository-relative base for Rust source links.
-- `doctestsIndex` — render a workspace-wide doctests index page. Default `true`.
+- `manifest` - path to `Cargo.toml` (file or directory).
+- `crates` - array of crate names to document; defaults to the manifest's own package.
+- `snapshot` - optional committed `RustdocSpec` v1 snapshot. Required for `mode: "snapshot"`.
+- `mode` - `"auto"` (default), `"live"`, or `"snapshot"`. Auto uses nightly when available, otherwise reads the snapshot.
+- `features` - `{ default?: boolean; list?: string[]; all?: boolean }`. Defaults to `{ default: true }`.
+- `includePrivate` - include `pub(crate)` and private items. Default `false`.
+- `includeHidden` - include `#[doc(hidden)]` items. Default `false`.
+- `target` - target triple to build docs for.
+- `toolchain` - rustup toolchain name. Default `"nightly"`.
+- `sourceBasePath` - repository-relative base for Rust source links.
+- `doctestsIndex` - render a workspace-wide doctests index page. Default `true`.
 
 Snapshot mode lets CI build documentation on stable Rust toolchains. Commit
 a generated `rustdoc.json` alongside your config and CI never needs nightly.
