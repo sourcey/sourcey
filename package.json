@@ -65,7 +65,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.1",
-    "eslint": "^9.0.0",
+    "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.0.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",
