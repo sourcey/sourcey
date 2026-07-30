@@ -48,7 +48,7 @@
     "citty": "^0.1.6",
     "heroicons": "^2.2.0",
     "jiti": "^2.6.1",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.0",
     "marked": "^15.0.0",
     "mcp-parser": "^0.4.0",
     "moxygen": "^2.1.12",
@@ -62,15 +62,15 @@
     "vite": "^8.0.9"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.1",
-    "eslint": "^9.0.0",
+    "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.0.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",
-    "typescript-eslint": "^8.0.0",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.9"
   },
   "keywords": [

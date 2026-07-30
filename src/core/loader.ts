@@ -28,7 +28,9 @@ async function fetchContent(source: string): Promise<string> {
       signal: AbortSignal.timeout(REMOTE_SPEC_TIMEOUT_MS),
     });
     if (!response.ok) {
-      throw new Error(`Failed to fetch spec from ${source}: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch spec from ${source}: ${response.status} ${response.statusText}`,
+      );
     }
     return response.text();
   }
@@ -92,9 +94,7 @@ function detectVersion(raw: Record<string, unknown>): SpecVersion {
     if (raw.openapi.startsWith("3.1")) return "openapi-3.1";
     if (raw.openapi.startsWith("3.")) return "openapi-3.0";
   }
-  throw new Error(
-    'Unable to detect spec version. Expected "swagger": "2.0" or "openapi": "3.x.x"',
-  );
+  throw new Error('Unable to detect spec version. Expected "swagger": "2.0" or "openapi": "3.x.x"');
 }
 
 function isUrl(source: string): boolean {

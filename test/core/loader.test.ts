@@ -65,9 +65,8 @@ describe("loadSpec", () => {
     await loadSpec("https://api.example.com/openapi.json");
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.example.com/openapi.json",
-      { signal: expect.any(AbortSignal) },
-    );
+    expect(fetchMock).toHaveBeenCalledWith("https://api.example.com/openapi.json", {
+      signal: expect.any(AbortSignal),
+    });
   });
 });
