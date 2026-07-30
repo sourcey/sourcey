@@ -1,8 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadSpec } from "../../src/core/loader.js";
 import { resolve } from "node:path";
 
 const FIXTURES = resolve(import.meta.dirname, "../fixtures");
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("loadSpec", () => {
   it("loads a YAML spec file", async () => {
@@ -44,5 +48,26 @@ describe("loadSpec", () => {
   it("resolves absolute path in source", async () => {
     const result = await loadSpec(`${FIXTURES}/cheese.yml`);
     expect(result.source).toBe(resolve(`${FIXTURES}/cheese.yml`));
+  });
+
+  it("sets a timeout when fetching a remote spec", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          openapi: "3.1.0",
+          info: { title: "Remote", version: "1.0.0" },
+          paths: {},
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await loadSpec("https://api.example.com/openapi.json");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.com/openapi.json",
+      { signal: expect.any(AbortSignal) },
+    );
   });
 });
