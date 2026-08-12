@@ -54,7 +54,7 @@
     "moxygen": "^2.1.12",
     "preact": "^10.28.4",
     "preact-render-to-string": "^6.6.6",
-    "sanitize-html": "^2.17.4",
+    "sanitize-html": "2.17.5",
     "satori": "^0.26.0",
     "shiki": "^4.0.2",
     "swagger2openapi": "^7.0.8",
