@@ -71,6 +71,41 @@ export default defineConfig({
 });
 ```
 
+## Remote OpenAPI Specs
+
+`openapi()` accepts HTTP and HTTPS URLs as well as local files. Sourcey fetches
+the document during each build, then includes the generated reference in the
+static output.
+
+This example builds an API reference from Xquik's public OpenAPI document:
+
+```ts
+import { defineConfig, openapi } from "sourcey";
+
+export default defineConfig({
+  name: "Xquik API",
+  navigation: {
+    tabs: [
+      {
+        tab: "API Reference",
+        slug: "api",
+        source: openapi("https://xquik.com/openapi.json"),
+      },
+    ],
+  },
+});
+```
+
+The OpenAPI document is public. Do not put an Xquik API key in the Sourcey
+configuration or generated site. Use a reviewed local copy instead when builds
+must stay pinned to one exact document revision.
+
+See the [Xquik API documentation](https://docs.xquik.com) for authentication
+and workflow guidance.
+
+Xquik is an independent third-party service. Not affiliated with X Corp.
+"Twitter" and "X" are trademarks of X Corp.
+
 ## rustdoc()
 
 Native Rust API documentation generated from nightly rustdoc JSON.

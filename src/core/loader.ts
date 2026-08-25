@@ -3,6 +3,8 @@ import { resolve, extname } from "node:path";
 import yaml from "js-yaml";
 import type { LoadedSpec, SpecFormat, SpecVersion } from "./types.js";
 
+const REMOTE_SPEC_TIMEOUT_MS = 30_000;
+
 /**
  * Load an OpenAPI/Swagger spec from a local file path or URL.
  * Auto-detects JSON vs YAML and Swagger 2.0 vs OpenAPI 3.x.
@@ -22,9 +24,13 @@ export async function loadSpec(source: string): Promise<LoadedSpec> {
  */
 async function fetchContent(source: string): Promise<string> {
   if (isUrl(source)) {
-    const response = await fetch(source);
+    const response = await fetch(source, {
+      signal: AbortSignal.timeout(REMOTE_SPEC_TIMEOUT_MS),
+    });
     if (!response.ok) {
-      throw new Error(`Failed to fetch spec from ${source}: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch spec from ${source}: ${response.status} ${response.statusText}`,
+      );
     }
     return response.text();
   }
@@ -88,9 +94,7 @@ function detectVersion(raw: Record<string, unknown>): SpecVersion {
     if (raw.openapi.startsWith("3.1")) return "openapi-3.1";
     if (raw.openapi.startsWith("3.")) return "openapi-3.0";
   }
-  throw new Error(
-    'Unable to detect spec version. Expected "swagger": "2.0" or "openapi": "3.x.x"',
-  );
+  throw new Error('Unable to detect spec version. Expected "swagger": "2.0" or "openapi": "3.x.x"');
 }
 
 function isUrl(source: string): boolean {
