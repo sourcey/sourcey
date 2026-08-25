@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,6 +23,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - uses: actions/setup-go@v6
+        if: matrix.node-version == 24
         with:
           go-version-file: go/sourcey-godoc/go.mod
           cache: false
@@ -27,5 +32,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run godoc:go:test
+        if: matrix.node-version == 24
       - run: npm run godoc:go:vet
+        if: matrix.node-version == 24
       - run: npm run godoc:packages:test
+        if: matrix.node-version == 24
