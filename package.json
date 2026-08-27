@@ -46,6 +46,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.2",
     "citty": "^0.1.6",
+    "consola": "^3.4.2",
     "heroicons": "^2.2.0",
     "jiti": "^2.6.1",
     "js-yaml": "^4.1.0",
