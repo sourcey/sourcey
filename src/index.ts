@@ -1,8 +1,5 @@
 import { resolve } from "node:path";
-import type {
-  ChangelogDiagnostic,
-  NormalizedSpec,
-} from "./core/types.js";
+import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
 import type { ResolvedConfig } from "./config.js";
 import { loadConfig, configFromSpec } from "./config.js";
 import { buildSourceySite, writeSourceySite } from "./site.js";
@@ -130,6 +127,12 @@ export type {
 } from "./adapters/index.js";
 
 export type {
+  SourceyConfig,
+  ThemeConfig,
+  ThemeName,
+  ThemePreset,
+  ReaderThemeConfig,
+  ReaderLink,
   RustdocConfig,
   ResolvedRustdocConfig,
   RustdocMode,

@@ -2,7 +2,24 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
+## 3.6.6 - 2026-09-23
+
+### Added
+
+- Reader theme for long-form documentation and specifications, with configurable document identity, chapter navigation, status metadata, table of contents, pagination and a responsive masthead.
+- Local-font configuration and Markdown `navTitle` labels, shared by theme consumers.
+
+### Changed
+
+- `theme.name` now selects the complete renderer. The deprecated `theme.preset` key remains a compatibility alias through the 3.x line.
+- Generator attribution reads “Docs by Sourcey” across all themes, with only “Sourcey” linked.
+
+### Fixed
+
+- Restore the standard Sourcey attribution in every theme footer.
+- Astro development serves generated HTML with the document content type.
+- Astro documentation aliases retain the host's base prefix in asset and navigation URLs, including Cloudflare client output.
+- Theme assets preserve their directory structure in clean, dist-only packages. Development and production use the same theme asset registry.
 
 ## 3.6.5 - 2026-07-12
 
@@ -32,7 +49,7 @@ All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepa
 
 ### Changed
 
-- Bumped `moxygen` to 2.1.10, so C++ reference search snippets render the page title and matched text with a cleaner ` - ` separator.
+- Bumped `moxygen` to 2.1.10, so C++ reference search snippets render the page title and matched text with a cleaner `-` separator.
 
 ### Fixed
 

@@ -15,6 +15,7 @@ import {
 import type { MarkdownPreprocessor } from "./core/markdown-loader.js";
 import type { ResolvedTabSource, SourceAdapter } from "./adapters/types.js";
 import { DEFAULT_CODE_SAMPLE_LANGS, SUPPORTED_CODE_SAMPLE_LANGS } from "./utils/code-samples.js";
+import { themeDefinitions, type ThemeName } from "./themes/registry.js";
 
 export type { PrettyUrls } from "./site-url.js";
 
@@ -22,10 +23,49 @@ export type { PrettyUrls } from "./site-url.js";
 // User-facing config types (used in sourcey.config.ts)
 // ---------------------------------------------------------------------------
 
-export type ThemePreset = "default" | "minimal" | "api-first";
+export type { ThemeName } from "./themes/registry.js";
+
+/** @deprecated Use ThemeName. */
+export type ThemePreset = ThemeName;
+
+export interface ReaderLink {
+  /** Optional icon for reader sidebar and aside links. */
+  icon?: "code" | "layers";
+  label: string;
+  href: string;
+  /** Optional supporting line for an aside or pagination link. */
+  description?: string;
+}
+
+/** Editorial chrome for long-form documentation. All fields are optional. */
+export interface ReaderThemeConfig {
+  document?: {
+    label: string;
+    title?: string;
+    version?: string;
+    status?: string;
+    /** Short badge when the full status is longer (for example, Draft). */
+    badge?: string;
+    /** Human-readable publication or revision date; never inferred from build time. */
+    updated?: string;
+  };
+  /** Show the site name beside a mark-only logo. Full wordmarks remain the default. */
+  logoMark?: boolean;
+  /** Host-authored links and note rendered below the chapter navigation. */
+  sidebar?: { links?: ReaderLink[]; note?: string };
+  /** Host-authored links rendered below the generated table of contents. */
+  aside?: { links?: ReaderLink[] };
+  pagination?: { before?: ReaderLink; after?: ReaderLink };
+  footer?: { text?: string; links?: ReaderLink[] };
+  /** Use a host site's search route instead of Sourcey's search dialog. */
+  searchHref?: string;
+}
 
 export interface ThemeConfig {
-  preset?: ThemePreset;
+  /** Selects the complete rendering theme. */
+  name?: ThemeName;
+  /** @deprecated Use `name`. Retained for compatibility through the 3.x line. */
+  preset?: ThemeName;
   colors?: {
     primary: string;
     light?: string;
@@ -34,6 +74,8 @@ export interface ThemeConfig {
   fonts?: {
     sans?: string;
     mono?: string;
+    /** Disable Google Fonts when fonts are supplied through custom CSS. */
+    google?: boolean;
   };
   layout?: {
     sidebar?: string;
@@ -41,6 +83,7 @@ export interface ThemeConfig {
     content?: string;
   };
   css?: string[];
+  reader?: ReaderThemeConfig;
 }
 
 export interface ChangelogConfig {
@@ -324,11 +367,12 @@ export function defineConfig(config: SourceyConfig): SourceyConfig {
 // ---------------------------------------------------------------------------
 
 export interface ResolvedTheme {
-  preset: ThemePreset;
+  name: ThemeName;
   colors: { primary: string; light: string; dark: string };
-  fonts: { sans: string; mono: string; googleFont: string };
+  fonts: { sans: string; mono: string; googleFont: string | false };
   layout: { sidebar: string; toc: string; content: string };
   css: string[];
+  reader?: ReaderThemeConfig;
 }
 
 export interface ResolvedChangelogConfig {
@@ -482,7 +526,7 @@ export function configFromSpec(specPath: string): ResolvedConfig {
     baseUrl: "",
     prettyUrls: false,
     theme: {
-      preset: "default",
+      name: "default",
       colors: { ...DEFAULT_COLORS },
       fonts: {
         sans: `'${DEFAULT_FONT_SANS}', ${SYSTEM_SANS}`,
@@ -560,14 +604,20 @@ function isUrl(source: string): boolean {
   return source.startsWith("http://") || source.startsWith("https://");
 }
 
-const VALID_PRESETS: ThemePreset[] = ["default", "minimal", "api-first"];
+const VALID_THEMES = Object.keys(themeDefinitions) as ThemeName[];
 
 function resolveTheme(raw: SourceyConfig, configDir: string): ResolvedTheme {
-  const preset = raw.theme?.preset ?? "default";
-  if (!VALID_PRESETS.includes(preset)) {
+  if (raw.theme?.name && raw.theme?.preset && raw.theme.name !== raw.theme.preset) {
     throw new Error(
-      `Invalid theme preset "${preset}". Must be one of: ${VALID_PRESETS.join(", ")}`,
+      `Conflicting theme names: theme.name is "${raw.theme.name}" but deprecated theme.preset is "${raw.theme.preset}"`,
     );
+  }
+  const name = raw.theme?.name ?? raw.theme?.preset ?? "default";
+  if (!VALID_THEMES.includes(name)) {
+    throw new Error(`Invalid theme "${name}". Must be one of: ${VALID_THEMES.join(", ")}`);
+  }
+  if (raw.theme?.reader && name !== "reader") {
+    throw new Error('theme.reader options require theme.name to be "reader"');
   }
 
   const rawColors = raw.theme?.colors;
@@ -584,18 +634,20 @@ function resolveTheme(raw: SourceyConfig, configDir: string): ResolvedTheme {
   const fonts = {
     sans: `'${sansName}', ${SYSTEM_SANS}`,
     mono: monoName ? `'${monoName}', ${SYSTEM_MONO}` : SYSTEM_MONO,
-    googleFont: sansName,
+    googleFont: raw.theme?.fonts?.google === false ? (false as const) : sansName,
   };
 
+  const defaults =
+    name === "reader" ? { sidebar: "245px", toc: "220px", content: "850px" } : DEFAULT_LAYOUT;
   const layout = {
-    sidebar: raw.theme?.layout?.sidebar ?? DEFAULT_LAYOUT.sidebar,
-    toc: raw.theme?.layout?.toc ?? DEFAULT_LAYOUT.toc,
-    content: raw.theme?.layout?.content ?? DEFAULT_LAYOUT.content,
+    sidebar: raw.theme?.layout?.sidebar ?? defaults.sidebar,
+    toc: raw.theme?.layout?.toc ?? defaults.toc,
+    content: raw.theme?.layout?.content ?? defaults.content,
   };
 
   const css = (raw.theme?.css ?? []).map((p) => resolve(configDir, p));
 
-  return { preset, colors, fonts, layout, css };
+  return { name, colors, fonts, layout, css, reader: raw.theme?.reader };
 }
 
 function resolveLogo(logo: SourceyConfig["logo"], configDir: string): ResolvedConfig["logo"] {

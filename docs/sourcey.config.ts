@@ -3,7 +3,7 @@ import { defineConfig, markdown } from "sourcey";
 export default defineConfig({
   name: "Sourcey",
   theme: {
-    preset: "default",
+    name: "default",
     colors: {
       primary: "#0f766e",
     },

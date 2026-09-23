@@ -26,6 +26,8 @@ export interface MarkdownPage {
   title: string;
   /** Page description from frontmatter */
   description: string;
+  /** Short navigation label, independent of the article title. */
+  navTitle?: string;
   /** URL slug for this page (derived from filename) */
   slug: string;
   /** Rendered HTML body */
@@ -78,6 +80,7 @@ interface Frontmatter {
   title?: string;
   description?: string;
   order?: number;
+  navTitle?: string;
   layout?: string;
   [key: string]: unknown;
 }
@@ -1317,6 +1320,7 @@ function loadMarkdownPageFromBody(
   const sourcePath = relative(process.cwd(), filePath);
   return {
     kind: "markdown",
+    navTitle: typeof meta.navTitle === "string" ? meta.navTitle : undefined,
     title,
     description,
     slug,

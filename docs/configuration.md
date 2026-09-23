@@ -100,7 +100,74 @@ public link while generated pages still show `Defined in path:line`.
 
 ## Themes
 
-Sourcey ships `default`, `minimal`, and `api-first` presets. Theme settings let you set brand colours, fonts, layout, and extra CSS without giving up a deterministic static build.
+Sourcey ships `default`, `minimal`, `api-first`, and `reader` themes. Select the complete renderer with `theme.name`; shared theme settings let you set brand colours, fonts, layout, and extra CSS without giving up a deterministic static build. The deprecated `theme.preset` key remains accepted through the 3.x line for compatibility.
+
+### Reader
+
+`reader` is a light, three-column editorial theme for specifications and long-form documentation. It has a dark masthead, grouped chapter navigation, a page table of contents, previous/next links, and a compact chapter selector on mobile. Its configuration contains project content; the theme contains no project names or protocol assumptions.
+
+```ts
+export default defineConfig({
+  name: "Example standards",
+  theme: {
+    name: "reader",
+    fonts: { sans: "Your Local Font", google: false },
+    css: ["./fonts.css", "./brand.css"],
+    reader: {
+      logoMark: true,
+      document: {
+        label: "Protocol",
+        title: "Interaction specification",
+        version: "Draft",
+        status: "Working draft",
+        badge: "Draft",
+        updated: "22 September 2026",
+      },
+      sidebar: {
+        links: [{ label: "Examples", href: "/examples/", icon: "code" }],
+        note: "A shared interaction contract.",
+      },
+      aside: {
+        links: [
+          {
+            label: "Try the example",
+            description: "See the interaction in action.",
+            href: "/examples/",
+            icon: "code",
+          },
+        ],
+      },
+      pagination: {
+        after: { label: "Contribute", href: "/contribute/" },
+      },
+      footer: {
+        text: "Example standards",
+        links: [{ label: "Edit this specification", href: "/contribute/" }],
+      },
+      searchHref: "/search/",
+    },
+  },
+  navigation: {
+    tabs: [
+      {
+        tab: "Specification",
+        slug: "",
+        groups: [{ group: "Start", pages: ["index", "authorization"] }],
+      },
+    ],
+  },
+});
+```
+
+All `reader` settings are optional. `logoMark` displays the configured site name next to a mark-only logo; leave it off for a full wordmark. `document.updated` is authored publication metadata, never the build date. `sidebar.links`, `sidebar.note`, `aside.links`, and `footer.links` are host-authored arrays; the theme does not supply project content for those areas. `pagination.before` and `pagination.after` provide destinations at the beginning and end of a chapter sequence. Omit `searchHref` to use Sourcey's built-in search. The reader footer includes Sourcey's standard “Docs by Sourcey” attribution. Without JavaScript, ordinary chapter and site links remain available.
+
+Set `navTitle` in Markdown frontmatter when the sidebar needs a shorter label than the article title. This works with every theme. Use `index.md` for the landing page and `prettyUrls: "slash"` for directory URLs.
+
+With `fonts.google: false`, define your own `@font-face` in the configured CSS and serve the font files with your host. Reader layout widths use `theme.layout.sidebar`, `toc`, and `content`; brand CSS can adjust `--ink`, `--paper`, `--lime`, `--blue`, `--blue-ink`, and `--font`. Reader brand CSS loads after theme styles. Existing themes retain their styling and cascade.
+
+The CLI, development server and `sourcey/astro` select assets through the same built-in theme registry. Theme layouts share Sourcey's Markdown, navigation, content widgets, search index and URL logic. Reader's own browser entry supplies its navigation and copy controls; it does not load the default theme's dark-mode or drawer behaviour.
+
+For Astro, mount the same config using `sourcey/astro`; no separate docs prebuild or committed `public/docs` directory is needed. Cloudflare adapter builds write the generated documentation into Astro's client assets directory, including the Astro base prefix. The no-slash alias preserves that prefix in its CSS, JavaScript, search and chapter URLs.
 
 ## Code Samples
 

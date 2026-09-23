@@ -3,7 +3,7 @@ import { defineConfig, mcp } from "sourcey";
 export default defineConfig({
   name: "Nitrosend MCP",
   theme: {
-    preset: "default",
+    name: "default",
     colors: { primary: "#6366f1" },
   },
   navigation: {

@@ -32,7 +32,7 @@ npx sourcey init
 - **Rust and rustdoc**: native API documentation from nightly rustdoc JSON, with doctests as a first-class extracted view. URL-encoded parametric impl anchors for deep-link parity with doc.rust-lang.org. Snapshot mode lets CI build on stable Rust toolchains. Aggregated doctests index across the workspace
 - **Context exports**: auto-generate llms.txt and llms-full.txt alongside your HTML as alternate views of the same documentation graph
 - **TypeScript config**: `sourcey.config.ts` with `defineConfig()` autocomplete; theme, navbar, CTA buttons, footer
-- **Theme presets**: default (sidebar + TOC), minimal (single column), api-first (Stripe-style three column); colors, fonts, layout dimensions, and custom CSS on top
+- **Themes**: default (sidebar + TOC), minimal (single column), api-first (three column), and reader (editorial specification); colors, fonts, layout dimensions, and custom CSS on top
 - **Vite dev server**: SSR hot reload on every component and CSS change; spec and markdown changes trigger instant refresh
 - **Dark mode**: semantic design tokens, light/dark logo variants, localStorage persistence
 - **Client-side search**: instant fuzzy search across all pages and API operations; Cmd+K
@@ -177,11 +177,11 @@ Guides support rich components in standard markdown:
 
 ### Theme
 
-All visual configuration lives under `theme`. Colors, fonts, layout dimensions, and a preset that controls page structure:
+All visual configuration lives under `theme`. `theme.name` selects the complete renderer; colors, fonts, layout dimensions, and custom CSS apply on top:
 
 ```typescript
 theme: {
-  preset: "api-first",
+  name: "api-first",
   colors: { primary: "#f59e0b", light: "#fbbf24", dark: "#d97706" },
   fonts: { sans: "'Lexend', sans-serif", mono: "'Fira Code', monospace" },
   layout: { sidebar: "16rem", content: "48rem" },
@@ -189,7 +189,7 @@ theme: {
 }
 ```
 
-Presets control layout structure: `"default"` (sidebar + TOC), `"minimal"` (single centered column), `"api-first"` (three-column with persistent code panels). Everything else applies on top.
+Themes control the complete layout structure: `"default"` (sidebar + TOC), `"minimal"` (single centered column), `"api-first"` (three-column with persistent code panels), and `"reader"` (editorial specification reader). Shared brand settings apply on top. Theme-specific options are only interpreted by the selected theme.
 
 ## CLI
 

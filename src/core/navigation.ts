@@ -144,7 +144,7 @@ export function buildNavFromPages(
         const page = pagesByPath.get(rp.slug);
         if (!page) continue;
         items.push({
-          label: rp.label ?? page.title,
+          label: rp.label ?? (page.kind === "markdown" ? page.navTitle : undefined) ?? page.title,
           href: navHref(pageOutputPath(tab.slug, page.slug, prettyUrls), prettyUrls),
           id: page.slug,
         });

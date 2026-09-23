@@ -27,14 +27,18 @@ interface OperationProps {
  */
 export function Operation({ operation: op, serverUrl }: OperationProps) {
   const site = useContext(SiteContext);
-  const apiFirst = site.theme.preset === "api-first";
+  const apiFirst = site.theme.name === "api-first";
   const id = `operation-${htmlId(op.path)}-${htmlId(op.method)}`;
   const hasParams = op.parameters.length > 0;
   const hasBody = !!op.requestBody;
   const mcp = op.mcpExtras;
 
   return (
-    <div id={id} class="py-8 border-t border-[rgb(var(--color-gray-100))] dark:border-[rgb(var(--color-gray-800))]" data-traverse-target={id}>
+    <div
+      id={id}
+      class="py-8 border-t border-[rgb(var(--color-gray-100))] dark:border-[rgb(var(--color-gray-800))]"
+      data-traverse-target={id}
+    >
       {/* Operation title */}
       <header class="mb-6">
         {op.summary && (
@@ -59,9 +63,7 @@ export function Operation({ operation: op, serverUrl }: OperationProps) {
       <div class={`flex flex-col ${apiFirst ? "lg:flex-row" : "xl:flex-row"} gap-8`}>
         {/* Left: content column */}
         <div class="flex-1 min-w-0">
-          {op.description && (
-            <Markdown content={op.description} class="mb-6 max-w-none" />
-          )}
+          {op.description && <Markdown content={op.description} class="mb-6 max-w-none" />}
 
           {hasBody && (
             <div class="mt-6">
@@ -92,8 +94,15 @@ export function Operation({ operation: op, serverUrl }: OperationProps) {
         </div>
 
         {/* Right: sticky code panel */}
-        <aside class={`hidden ${apiFirst ? "lg:block" : "xl:block"} w-[28rem] shrink-0 sticky self-start overflow-y-auto space-y-4`} style="top: calc(var(--header-height) + 2.5rem); max-height: calc(100vh - var(--header-height) - 5rem)">
-          <CodeSamplesExamples operation={op} serverUrl={serverUrl} codeSampleLangs={site.codeSamples} />
+        <aside
+          class={`hidden ${apiFirst ? "lg:block" : "xl:block"} w-[28rem] shrink-0 sticky self-start overflow-y-auto space-y-4`}
+          style="top: calc(var(--header-height) + 2.5rem); max-height: calc(100vh - var(--header-height) - 5rem)"
+        >
+          <CodeSamplesExamples
+            operation={op}
+            serverUrl={serverUrl}
+            codeSampleLangs={site.codeSamples}
+          />
           {hasBody && <RequestBodyExample body={op.requestBody!} />}
           {mcp ? (
             <McpReturnsExample schema={mcp.outputSchema} />
@@ -105,7 +114,11 @@ export function Operation({ operation: op, serverUrl }: OperationProps) {
 
       {/* Mobile: code examples shown inline below content */}
       <div class={`${apiFirst ? "lg:hidden" : "xl:hidden"} mt-8 space-y-4`}>
-        <CodeSamplesExamples operation={op} serverUrl={serverUrl} codeSampleLangs={site.codeSamples} />
+        <CodeSamplesExamples
+          operation={op}
+          serverUrl={serverUrl}
+          codeSampleLangs={site.codeSamples}
+        />
         {hasBody && <RequestBodyExample body={op.requestBody!} />}
         {mcp ? (
           <McpReturnsExample schema={mcp.outputSchema} />

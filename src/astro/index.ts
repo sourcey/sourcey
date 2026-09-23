@@ -162,6 +162,7 @@ export default function sourceyAstro(options: SourceyAstroOptions = {}): AstroIn
           outputRoot: fileURLToPath(dir),
           outputDir,
           routeBase: preparedSourcey.routeBase,
+          publicBase: preparedSourcey.config.baseUrl,
         });
         logger.info(
           `Sourcey: wrote ${sourceySite.pageCount} page${sourceySite.pageCount === 1 ? "" : "s"}`,
@@ -179,9 +180,7 @@ export async function prepareAstroSourcey(
   const rootDir = fileURLToPath(astroConfig.root);
   const { config, configPath } = await loadSourceyConfigForAstro(options, rootDir);
   const routeBase = normalizeRouteBase(options.routeBase ?? (config.baseUrl || "/docs"));
-  const baseUrl = normalizeBaseUrl(
-    options.baseUrl ?? joinBasePaths(astroConfig.base, routeBase),
-  );
+  const baseUrl = normalizeBaseUrl(options.baseUrl ?? joinBasePaths(astroConfig.base, routeBase));
   const siteUrl =
     options.siteUrl === false
       ? undefined
@@ -283,7 +282,10 @@ function sourceyAstroDevPlugin(options: {
             const err = error instanceof Error ? error : new Error(String(error));
             server.ssrFixStacktrace(err);
             logger.error(`Sourcey: ${err.message}`);
-            server.ws.send({ type: "error", err: { message: err.message, stack: err.stack ?? "" } });
+            server.ws.send({
+              type: "error",
+              err: { message: err.message, stack: err.stack ?? "" },
+            });
           });
       });
 
@@ -291,11 +293,7 @@ function sourceyAstroDevPlugin(options: {
         const url = req.url ?? "/";
         const pathname = url.split("?", 1)[0] ?? "/";
 
-        if (
-          url.startsWith("/@") ||
-          url.startsWith("/__vite") ||
-          url.startsWith("/node_modules/")
-        ) {
+        if (url.startsWith("/@") || url.startsWith("/__vite") || url.startsWith("/node_modules/")) {
           return next();
         }
 
@@ -327,7 +325,9 @@ function sourceyAstroDevPlugin(options: {
             "Content-Type": "text/html; charset=utf-8",
             "Cache-Control": "no-cache",
           });
-          res.end(`<!DOCTYPE html><html><head><script type="module" src="/@vite/client"></script></head><body></body></html>`);
+          res.end(
+            `<!DOCTYPE html><html><head><script type="module" src="/@vite/client"></script></head><body></body></html>`,
+          );
         }
       });
     },
@@ -392,6 +392,7 @@ async function writeAstroRouteAlias(options: {
   outputRoot: string;
   outputDir: string;
   routeBase: string;
+  publicBase: string;
 }): Promise<void> {
   if (options.routeBase === "/") return;
 
@@ -404,7 +405,7 @@ async function writeAstroRouteAlias(options: {
   const aliasPath = resolve(options.outputRoot, `${route}.html`);
   const html = await readFile(indexPath, "utf-8");
   await mkdir(dirname(aliasPath), { recursive: true });
-  await writeFile(aliasPath, renderAstroRouteAlias(html, options.routeBase));
+  await writeFile(aliasPath, renderAstroRouteAlias(html, options.publicBase));
 }
 
 function renderAstroRouteAlias(html: string, routeBase: string): string {
@@ -443,7 +444,7 @@ function phaseGenerateOgImages(
   phase: boolean | { generateOgImages?: boolean } | undefined,
   defaultEnabled: boolean,
 ): boolean {
-  return typeof phase === "object" ? phase.generateOgImages ?? defaultEnabled : defaultEnabled;
+  return typeof phase === "object" ? (phase.generateOgImages ?? defaultEnabled) : defaultEnabled;
 }
 
 function shouldRebuildForChange(file: string, watchPaths: string[]): boolean {

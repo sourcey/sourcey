@@ -29,7 +29,7 @@ export function App({ spec, options, navigation, currentPage, site }: AppProps) 
   ) : (
     <html lang="en">
       <Head />
-      <body id="sourcey">
+      <body id="sourcey" data-sourcey-theme={site.theme.name}>
         <Page />
         <script src={`${options.assetBase}sourcey.js`} defer />
       </body>
@@ -41,9 +41,7 @@ export function App({ spec, options, navigation, currentPage, site }: AppProps) 
       <SpecContext.Provider value={spec}>
         <OptionsContext.Provider value={options}>
           <NavigationContext.Provider value={navigation}>
-            <PageContext.Provider value={currentPage}>
-              {content}
-            </PageContext.Provider>
+            <PageContext.Provider value={currentPage}>{content}</PageContext.Provider>
           </NavigationContext.Provider>
         </OptionsContext.Provider>
       </SpecContext.Provider>

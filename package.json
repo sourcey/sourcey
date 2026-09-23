@@ -1,6 +1,6 @@
 {
   "name": "sourcey",
-  "version": "3.6.5",
+  "version": "3.6.6",
   "description": "Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown. Static HTML you own.",
   "type": "module",
   "engines": {
@@ -24,7 +24,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && cp -r src/themes dist/ && cp src/client/*.js dist/client/ && cp -r src/og/fonts dist/og/ && rm -rf dist/core/sourcey-godoc dist/core/godoc-introspect && mkdir -p dist/core/sourcey-godoc && cp -R go/sourcey-godoc/go.mod go/sourcey-godoc/doc.go go/sourcey-godoc/cmd dist/core/sourcey-godoc/ && rm -rf dist/core/sourcey-rustdoc && mkdir -p dist/core/sourcey-rustdoc && cp -R rust/sourcey-rustdoc/Cargo.toml rust/sourcey-rustdoc/Cargo.lock rust/sourcey-rustdoc/README.md rust/sourcey-rustdoc/src rust/sourcey-rustdoc/tests dist/core/sourcey-rustdoc/",
+    "build": "rm -rf dist && tsc && node scripts/copy-theme-assets.mjs && cp src/client/*.js dist/client/ && cp -r src/og/fonts dist/og/ && rm -rf dist/core/sourcey-godoc dist/core/godoc-introspect && mkdir -p dist/core/sourcey-godoc && cp -R go/sourcey-godoc/go.mod go/sourcey-godoc/doc.go go/sourcey-godoc/cmd dist/core/sourcey-godoc/ && rm -rf dist/core/sourcey-rustdoc && mkdir -p dist/core/sourcey-rustdoc && cp -R rust/sourcey-rustdoc/Cargo.toml rust/sourcey-rustdoc/Cargo.lock rust/sourcey-rustdoc/README.md rust/sourcey-rustdoc/src rust/sourcey-rustdoc/tests dist/core/sourcey-rustdoc/",
     "watch": "npm run build && tsc --watch --preserveWatchOutput",
     "pretest": "npm run build",
     "test": "vitest run",

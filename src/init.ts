@@ -112,13 +112,13 @@ export const init = defineCommand({
 
     if (typeof name === "symbol") process.exit(0);
 
-    // -- Theme preset --
-    const preset = (await consola.prompt("Theme preset:", {
+    // -- Theme --
+    const theme = (await consola.prompt("Theme:", {
       type: "select",
       options: ["default", "minimal", "api-first"],
     })) as string;
 
-    if (typeof preset === "symbol") process.exit(0);
+    if (typeof theme === "symbol") process.exit(0);
 
     // -- Detected sources --
     let addOpenAPI: string | null = null;
@@ -232,7 +232,7 @@ export const init = defineCommand({
 export default defineConfig({
   name: "${name}",
   theme: {
-    preset: "${preset}",
+    name: "${theme}",
   },
   navigation: {
     tabs: [

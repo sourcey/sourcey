@@ -11,9 +11,7 @@ const FIXTURES = resolve(import.meta.dirname, "../fixtures");
 async function readAllHtml(dir: string): Promise<string> {
   const entries = await readdir(dir, { recursive: true });
   const html = await Promise.all(
-    entries
-      .filter((e) => e.endsWith(".html"))
-      .map((e) => readFile(resolve(dir, e), "utf-8")),
+    entries.filter((e) => e.endsWith(".html")).map((e) => readFile(resolve(dir, e), "utf-8")),
   );
   return html.join("\n");
 }
@@ -100,9 +98,7 @@ describe("buildDocs (integration)", () => {
   });
 
   it("rejects missing spec file", async () => {
-    await expect(
-      buildDocs({ specSource: "/nonexistent/spec.yml" }),
-    ).rejects.toThrow();
+    await expect(buildDocs({ specSource: "/nonexistent/spec.yml" })).rejects.toThrow();
   });
 
   it("renders HTML output to disk", async () => {
@@ -119,6 +115,9 @@ describe("buildDocs (integration)", () => {
       const indexHtml = await readFile(resolve(outputDir, "index.html"), "utf-8");
       expect(indexHtml).toContain("<!DOCTYPE html>");
       expect(indexHtml).not.toContain("Redirecting");
+      expect(indexHtml).toContain("Docs by");
+      expect(indexHtml).toMatch(/Docs by\s*<a[^>]+>Sourcey<\/a>/);
+      expect(indexHtml).not.toContain("sourcey-logo.png");
 
       const apiHtml = await readFile(resolve(outputDir, "api.html"), "utf-8");
       expect(apiHtml).toContain("<!DOCTYPE html>");
@@ -251,7 +250,9 @@ describe("buildDocs (integration)", () => {
         outputDir,
       });
 
-      const searchIndex = JSON.parse(await readFile(resolve(outputDir, "search-index.json"), "utf-8")) as Array<{
+      const searchIndex = JSON.parse(
+        await readFile(resolve(outputDir, "search-index.json"), "utf-8"),
+      ) as Array<{
         title: string;
         content: string;
         url: string;
@@ -260,18 +261,22 @@ describe("buildDocs (integration)", () => {
       }>;
 
       expect(searchIndex.length).toBeGreaterThan(0);
-      expect(searchIndex).toContainEqual(expect.objectContaining({
-        title: "Welcome to Mixed Docs",
-        url: "/reference/introduction.html",
-        tab: "Documentation",
-        category: "Pages",
-      }));
-      expect(searchIndex).toContainEqual(expect.objectContaining({
-        title: "Why it exists",
-        url: "/reference/introduction.html#why-it-exists",
-        tab: "Documentation",
-        category: "Sections",
-      }));
+      expect(searchIndex).toContainEqual(
+        expect.objectContaining({
+          title: "Welcome to Mixed Docs",
+          url: "/reference/introduction.html",
+          tab: "Documentation",
+          category: "Pages",
+        }),
+      );
+      expect(searchIndex).toContainEqual(
+        expect.objectContaining({
+          title: "Why it exists",
+          url: "/reference/introduction.html#why-it-exists",
+          tab: "Documentation",
+          category: "Sections",
+        }),
+      );
 
       const llmsFull = await readFile(resolve(outputDir, "llms-full.txt"), "utf-8");
       expect(llmsFull).toContain("### Welcome to Mixed Docs");
@@ -284,8 +289,12 @@ describe("buildDocs (integration)", () => {
       expect(sitemap).toContain("<loc>https://docs.example.com/reference/api.html</loc>");
 
       const introductionHtml = await readFile(resolve(outputDir, "introduction.html"), "utf-8");
-      expect(introductionHtml).toContain('rel="canonical" href="https://docs.example.com/reference/introduction.html"');
-      expect(introductionHtml).toContain('property="og:url" content="https://docs.example.com/reference/introduction.html"');
+      expect(introductionHtml).toContain(
+        'rel="canonical" href="https://docs.example.com/reference/introduction.html"',
+      );
+      expect(introductionHtml).toContain(
+        'property="og:url" content="https://docs.example.com/reference/introduction.html"',
+      );
     } finally {
       await rm(outputDir, { recursive: true, force: true });
     }
@@ -307,24 +316,38 @@ describe("buildDocs (integration)", () => {
       expect(changelogHtml).toContain("1.2.0");
       expect(changelogHtml).toContain('id="1-2-0"');
       expect(changelogHtml).toContain('href="introduction.html"');
-      expect(changelogHtml).toContain('property="og:image" content="https://docs.example.com/reference/_og/changelog.png"');
-      expect(changelogHtml).toContain('rel="canonical" href="https://docs.example.com/reference/changelog.html"');
+      expect(changelogHtml).toContain(
+        'property="og:image" content="https://docs.example.com/reference/_og/changelog.png"',
+      );
+      expect(changelogHtml).toContain(
+        'rel="canonical" href="https://docs.example.com/reference/changelog.html"',
+      );
 
       const permalinkHtml = await readFile(resolve(outputDir, "changelog/1-2-0.html"), "utf-8");
       expect(permalinkHtml).toContain("1.2.0");
       expect(permalinkHtml).toContain("Added root feed generation");
       expect(permalinkHtml).toContain('href="../introduction.html"');
-      expect(permalinkHtml).toContain('property="og:image" content="https://docs.example.com/reference/_og/changelog/1-2-0.png"');
-      expect(permalinkHtml).toContain('rel="canonical" href="https://docs.example.com/reference/changelog/1-2-0.html"');
+      expect(permalinkHtml).toContain(
+        'property="og:image" content="https://docs.example.com/reference/_og/changelog/1-2-0.png"',
+      );
+      expect(permalinkHtml).toContain(
+        'rel="canonical" href="https://docs.example.com/reference/changelog/1-2-0.html"',
+      );
 
       const introHtml = await readFile(resolve(outputDir, "introduction.html"), "utf-8");
-      expect(introHtml).toContain('rel="alternate" type="application/atom+xml" href="https://docs.example.com/reference/feed.xml"');
-      expect(introHtml).toContain('rel="alternate" type="application/rss+xml" href="https://docs.example.com/reference/feed.rss"');
+      expect(introHtml).toContain(
+        'rel="alternate" type="application/atom+xml" href="https://docs.example.com/reference/feed.xml"',
+      );
+      expect(introHtml).toContain(
+        'rel="alternate" type="application/rss+xml" href="https://docs.example.com/reference/feed.rss"',
+      );
 
       const atom = await readFile(resolve(outputDir, "feed.xml"), "utf-8");
       expect(atom).toContain("<feed");
       expect(atom).toContain("1.2.0");
-      expect(atom).toContain('<link rel="self" href="https://docs.example.com/reference/feed.xml" />');
+      expect(atom).toContain(
+        '<link rel="self" href="https://docs.example.com/reference/feed.xml" />',
+      );
       expect(atom).toContain('<link href="https://docs.example.com/reference/changelog.html" />');
 
       const rss = await readFile(resolve(outputDir, "feed.rss"), "utf-8");
@@ -337,7 +360,7 @@ describe("buildDocs (integration)", () => {
       expect(llms).toContain("### 1.2.0 (2026-04-20)");
 
       const searchIndex = await readFile(resolve(outputDir, "search-index.json"), "utf-8");
-      expect(searchIndex).toContain("\"category\":\"Releases\"");
+      expect(searchIndex).toContain('"category":"Releases"');
       expect(searchIndex).toContain("1.2.0");
       expect(searchIndex).toContain("/reference/changelog.html#1-2-0");
 
@@ -367,8 +390,8 @@ describe("buildDocs (integration)", () => {
       expect(llms).toContain("(/introduction/)");
 
       const searchIndex = await readFile(resolve(outputDir, "search-index.json"), "utf-8");
-      expect(searchIndex).toContain("\"url\":\"/introduction/\"");
-      expect(searchIndex).not.toContain(".html\"");
+      expect(searchIndex).toContain('"url":"/introduction/"');
+      expect(searchIndex).not.toContain('.html"');
 
       expect(existsSync(resolve(outputDir, "_redirects"))).toBe(false);
     } finally {
@@ -421,9 +444,9 @@ describe("buildDocs (integration)", () => {
       expect(llms).toContain("(/introduction)");
 
       const searchIndex = await readFile(resolve(outputDir, "search-index.json"), "utf-8");
-      expect(searchIndex).toContain("\"url\":\"/introduction\"");
-      expect(searchIndex).toContain("\"url\":\"/api#");
-      expect(searchIndex).not.toContain(".html\"");
+      expect(searchIndex).toContain('"url":"/introduction"');
+      expect(searchIndex).toContain('"url":"/api#');
+      expect(searchIndex).not.toContain('.html"');
 
       expect(existsSync(resolve(outputDir, "_redirects"))).toBe(false);
     } finally {

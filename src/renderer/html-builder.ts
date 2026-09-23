@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile, access, rm } from "node:fs/promises";
+import { mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as viteBuild } from "vite";
@@ -11,34 +11,11 @@ import type { SiteNavigation } from "../core/navigation.js";
 import { withActivePage } from "../core/navigation.js";
 import { isAbsoluteHttpUrl, toAbsoluteUrl, toPublicPath } from "../site-url.js";
 import { escapeHtml as escapeXml } from "../utils/html.js";
+import { resolveThemeAssets } from "../themes/assets.js";
+import type { ThemeName } from "../config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "../..");
-
-async function exists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Resolve client entry and CSS paths. Works from both source tree (dev) and
- * published npm package (dist-only) by checking which paths exist.
- */
-async function resolveAssetPaths(): Promise<{ clientEntry: string; sourceyCssPath: string }> {
-  const srcClient = resolve(projectRoot, "src/client/index.ts");
-  const distClient = resolve(projectRoot, "dist/client/index.js");
-  const srcCss = resolve(projectRoot, "src/themes/default/sourcey.css");
-  const distCss = resolve(projectRoot, "dist/themes/default/sourcey.css");
-
-  const clientEntry = (await exists(srcClient)) ? srcClient : distClient;
-  const sourceyCssPath = (await exists(srcCss)) ? srcCss : distCss;
-
-  return { clientEntry, sourceyCssPath };
-}
 
 export interface BuildOutput {
   htmlPath: string;
@@ -127,7 +104,7 @@ export async function buildSite(
     await writeFile(resolve(resolvedDir, "index.html"), html, "utf-8");
   }
 
-  await buildAssets(resolvedDir);
+  await buildAssets(resolvedDir, site.theme.name);
 
   if (options?.searchIndex) {
     await writeFile(resolve(resolvedDir, "search-index.json"), options.searchIndex, "utf-8");
@@ -201,8 +178,8 @@ function resolveRenderHref(pathOrUrl: string, assetBase: string, site: SiteConfi
  * Build client JS + Tailwind CSS via Vite.
  * Same plugins as the dev server — preact() + tailwindcss().
  */
-async function buildAssets(outputDir: string): Promise<void> {
-  const { clientEntry, sourceyCssPath } = await resolveAssetPaths();
+async function buildAssets(outputDir: string, theme: ThemeName): Promise<void> {
+  const { clientEntry, sourceyCssPaths } = resolveThemeAssets(theme);
 
   await viteBuild({
     root: projectRoot,
@@ -229,7 +206,9 @@ async function buildAssets(outputDir: string): Promise<void> {
   });
 
   // Append component CSS
-  const componentCSS = await readFile(sourceyCssPath, "utf-8");
+  const componentCSS = (
+    await Promise.all(sourceyCssPaths.map((path) => readFile(path, "utf-8")))
+  ).join("\n");
   const builtCSS = await readFile(resolve(outputDir, "sourcey.css"), "utf-8").catch(() => "");
   await writeFile(resolve(outputDir, "sourcey.css"), builtCSS + "\n" + componentCSS, "utf-8");
 }

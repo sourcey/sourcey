@@ -41,11 +41,15 @@ export function requestPathMatchesBase(pathname: string, baseUrl: string): boole
   if (!normalizedBase) return true;
 
   const bareBase = normalizedBase.slice(0, -1);
-  return pathname === bareBase || pathname === normalizedBase || pathname.startsWith(normalizedBase);
+  return (
+    pathname === bareBase || pathname === normalizedBase || pathname.startsWith(normalizedBase)
+  );
 }
 
 export function contentTypeForPath(path: string): string {
   switch (extname(path).toLowerCase()) {
+    case ".html":
+      return "text/html; charset=utf-8";
     case ".css":
       return "text/css; charset=utf-8";
     case ".js":

@@ -41,7 +41,7 @@ const defaultSite: SiteConfig = {
   siteUrl: undefined,
   baseUrl: "",
   theme: {
-    preset: "default",
+    name: "default",
     colors: { primary: "99 102 241", light: "129 140 248", dark: "79 70 229" },
     fonts: {
       sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
@@ -138,7 +138,11 @@ function createDocsNavigation(): SiteNavigation {
           {
             label: "Guides",
             items: [
-              { label: "Previous", href: "documentation/guides/previous.html", id: "guides/previous" },
+              {
+                label: "Previous",
+                href: "documentation/guides/previous.html",
+                id: "guides/previous",
+              },
               { label: "Current", href: "documentation/guides/current.html", id: "guides/current" },
               { label: "Next", href: "documentation/guides/next.html", id: "guides/next" },
             ],
@@ -386,7 +390,9 @@ describe("renderPage (spec)", () => {
       { kind: "markdown", markdown: createMarkdownPage({ editPath: "guides/current.md" }) },
       site,
     );
-    expect(markdownHtml).toContain("https://github.com/sourcey/example/edit/main/docs/guides/current.md");
+    expect(markdownHtml).toContain(
+      "https://github.com/sourcey/example/edit/main/docs/guides/current.md",
+    );
 
     const generatedHtml = renderPage(
       spec,
@@ -401,8 +407,12 @@ describe("renderPage (spec)", () => {
       },
       site,
     );
-    expect(generatedHtml).toContain("https://github.com/sourcey/example/edit/main/internal/app/build/build.go");
-    expect(generatedHtml).not.toContain("https://github.com/sourcey/example/edit/main/docs/internal/app/build/build.go");
+    expect(generatedHtml).toContain(
+      "https://github.com/sourcey/example/edit/main/internal/app/build/build.go",
+    );
+    expect(generatedHtml).not.toContain(
+      "https://github.com/sourcey/example/edit/main/docs/internal/app/build/build.go",
+    );
   });
 
   it("renders changelog pages through the structured changelog component", () => {
@@ -418,7 +428,9 @@ describe("renderPage (spec)", () => {
           groups: [
             {
               label: "Guides",
-              items: [{ label: "Changelog", href: "documentation/changelog.html", id: "changelog" }],
+              items: [
+                { label: "Changelog", href: "documentation/changelog.html", id: "changelog" },
+              ],
             },
           ],
         },
@@ -450,7 +462,9 @@ describe("renderPage (spec)", () => {
           groups: [
             {
               label: "Guides",
-              items: [{ label: "Changelog", href: "documentation/changelog.html", id: "changelog" }],
+              items: [
+                { label: "Changelog", href: "documentation/changelog.html", id: "changelog" },
+              ],
             },
           ],
         },
@@ -481,10 +495,18 @@ describe("renderPage (spec)", () => {
       baseUrl: "/reference/",
     });
 
-    expect(html).toContain('rel="canonical" href="https://docs.example.com/reference/changelog.html"');
-    expect(html).toContain('property="og:url" content="https://docs.example.com/reference/changelog.html"');
-    expect(html).toContain('property="og:image" content="https://docs.example.com/reference/_og/changelog.png"');
-    expect(html).toContain('rel="alternate" type="application/atom+xml" href="https://docs.example.com/reference/feed.xml"');
+    expect(html).toContain(
+      'rel="canonical" href="https://docs.example.com/reference/changelog.html"',
+    );
+    expect(html).toContain(
+      'property="og:url" content="https://docs.example.com/reference/changelog.html"',
+    );
+    expect(html).toContain(
+      'property="og:image" content="https://docs.example.com/reference/_og/changelog.png"',
+    );
+    expect(html).toContain(
+      'rel="alternate" type="application/atom+xml" href="https://docs.example.com/reference/feed.xml"',
+    );
   });
 
   it("does not duplicate the site name in markdown page titles", () => {

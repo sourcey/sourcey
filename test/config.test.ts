@@ -26,11 +26,39 @@ function baseConfig(extra: Partial<SourceyConfig> = {}): SourceyConfig {
 }
 
 describe("resolveConfigFromRaw – validation", () => {
-  it("rejects invalid theme presets", async () => {
+  it("rejects invalid theme names", async () => {
     await withTempDir(async (dir) => {
       await expect(
-        resolveConfigFromRaw(baseConfig({ theme: { preset: "missing" as never } }), dir),
-      ).rejects.toThrow(/Invalid theme preset/);
+        resolveConfigFromRaw(baseConfig({ theme: { name: "missing" as never } }), dir),
+      ).rejects.toThrow(/Invalid theme/);
+    });
+  });
+
+  it("accepts the deprecated theme.preset alias", async () => {
+    await withTempDir(async (dir) => {
+      const config = await resolveConfigFromRaw(baseConfig({ theme: { preset: "minimal" } }), dir);
+      expect(config.theme.name).toBe("minimal");
+    });
+  });
+
+  it("rejects conflicting theme name and preset values", async () => {
+    await withTempDir(async (dir) => {
+      await expect(
+        resolveConfigFromRaw(baseConfig({ theme: { name: "reader", preset: "minimal" } }), dir),
+      ).rejects.toThrow(/Conflicting theme names/);
+    });
+  });
+
+  it("rejects reader options on another theme", async () => {
+    await withTempDir(async (dir) => {
+      await expect(
+        resolveConfigFromRaw(
+          baseConfig({
+            theme: { name: "default", reader: { document: { label: "Protocol" } } },
+          }),
+          dir,
+        ),
+      ).rejects.toThrow(/theme\.reader options require theme\.name/);
     });
   });
 

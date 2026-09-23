@@ -5,6 +5,14 @@ description: Recent Sourcey releases.
 
 # Changelog
 
+## 3.6.6
+
+Sourcey 3.6.6 adds the `reader` theme for specifications and long-form documentation, makes `theme.name` the canonical renderer selector, standardizes “Docs by Sourcey” attribution across every theme, and hardens Astro and Cloudflare hosting behavior. The deprecated `theme.preset` key remains accepted through the 3.x line.
+
+## 3.6.5
+
+Sourcey 3.6.5 added the `sourcey/astro` integration so Astro sites can mount generated documentation directly in development and production builds.
+
 ## 3.6.4
 
 Sourcey 3.6.4 makes OpenAPI tag introductions reachable from the sidebar, with tag headings in the navigation now linking to their `#tag-name` section, and lets operation descriptions fill the content column instead of confining to the default prose measure when an example or code panel sits alongside them.
@@ -15,7 +23,7 @@ Sourcey 3.6.3 renders author-provided OpenAPI examples. Named `examples` and a s
 
 ## 3.6.2
 
-Sourcey 3.6.2 fixed Rust re-export (`use` item) rendering so re-exports show their real name and a `pub use` signature instead of an empty placeholder across the sidebar, page outline, and search, and bumped moxygen to 2.1.10 for cleaner ` - ` separators in C++ reference search snippets.
+Sourcey 3.6.2 fixed Rust re-export (`use` item) rendering so re-exports show their real name and a `pub use` signature instead of an empty placeholder across the sidebar, page outline, and search, and bumped moxygen to 2.1.10 for cleaner `-` separators in C++ reference search snippets.
 
 ## 3.6.1
 

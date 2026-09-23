@@ -7,7 +7,7 @@ description: What Sourcey has shipped and what is still planned.
 
 ## Shipped
 
-Sourcey already ships MCP reference, Doxygen support, godoc and rustdoc adapters, MkDocs import, built-in markdown components, changelog feeds, llms.txt generation, dark mode, client-side search, theme presets, and reproducible Docker and Nix packaging.
+Sourcey already ships MCP reference, Doxygen support, godoc and rustdoc adapters, MkDocs import, built-in markdown components, changelog feeds, llms.txt generation, dark mode, client-side search, built-in themes, and reproducible Docker and Nix packaging.
 
 ## Planned
 

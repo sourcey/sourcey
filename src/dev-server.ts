@@ -1,3 +1,4 @@
+import { resolveThemeAssets } from "./themes/assets.js";
 import { createServer as createViteServer, type InlineConfig } from "vite";
 import { resolve, dirname, extname, basename, relative } from "node:path";
 import { access } from "node:fs/promises";
@@ -163,15 +164,6 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
 
   const projectRoot = resolve(__dirname, "..");
   const hasSrc = await exists(resolve(projectRoot, "src/client/index.ts"));
-  const tailwindCssPath = resolve(
-    projectRoot,
-    hasSrc ? "src/themes/default/main.css" : "dist/themes/default/main.css",
-  );
-  const sourceyCssPath = resolve(
-    projectRoot,
-    hasSrc ? "src/themes/default/sourcey.css" : "dist/themes/default/sourcey.css",
-  );
-  const clientEntry = resolve(projectRoot, hasSrc ? "src/client/index.ts" : "dist/client/index.js");
   const ssrRendererPath = resolve(
     projectRoot,
     hasSrc ? "src/renderer/static-renderer.ts" : "dist/renderer/static-renderer.js",
@@ -270,7 +262,12 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
       if (!tab || tab.source.kind !== "doxygen") return;
 
       log(`rebuilding doxygen tab "${tab.label}"`);
-      const { pages, navTab } = await loadDoxygenTab(tab.source.config, tab.slug, tab.label, config.titleSeparator);
+      const { pages, navTab } = await loadDoxygenTab(
+        tab.source.config,
+        tab.slug,
+        tab.label,
+        config.titleSeparator,
+      );
       if (cache !== snapshot) return;
 
       for (const [key, page] of data.pageMap) {
@@ -326,16 +323,11 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
       if (!tab || tab.source.kind !== "rustdoc") return;
 
       log(`rebuilding rustdoc tab "${tab.label}"`);
-      const { pages, navTab } = await loadRustdocTab(
-        tab.source.config,
-        tab.slug,
-        tab.label,
-        {
-          repo: config.repo,
-          editBranch: config.editBranch,
-          editBasePath: tab.source.config.sourceBasePath,
-        },
-      );
+      const { pages, navTab } = await loadRustdocTab(tab.source.config, tab.slug, tab.label, {
+        repo: config.repo,
+        editBranch: config.editBranch,
+        editBasePath: tab.source.config.sourceBasePath,
+      });
       if (cache !== snapshot) return;
 
       for (const [key, page] of data.pageMap) {
@@ -460,9 +452,15 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
 
     let html = renderPage(pageData.spec, renderOptions, activeNav, pageData.currentPage, site);
 
+    const {
+      foundationCss: tailwindCssPath,
+      sourceyCssPaths,
+      clientEntry,
+    } = resolveThemeAssets(config.theme.name);
+
     html = html.replace(
       /<link rel="stylesheet" href="[^"]*sourcey\.css"\s*\/?>/,
-      `<link rel="stylesheet" href="/@fs${tailwindCssPath}" />\n<link rel="stylesheet" href="/@fs${sourceyCssPath}?direct" />`,
+      `<link rel="stylesheet" href="/@fs${tailwindCssPath}" />\n${sourceyCssPaths.map((path) => `<link rel="stylesheet" href="/@fs${path}?direct" />`).join("\n")}`,
     );
     html = html.replace(
       /<script src="[^"]*sourcey\.js"[^>]*><\/script>/,
