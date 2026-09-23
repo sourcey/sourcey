@@ -95,7 +95,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           cache: npm
 
       - uses: actions/download-artifact@v8
@@ -105,14 +104,9 @@ jobs:
 
       - name: Publish to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -eu
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "NPM_TOKEN secret is required to publish to npm" >&2
-            exit 1
-          fi
           if npm view "sourcey@${VERSION}" version >/dev/null 2>&1; then
             echo "sourcey@${VERSION} already exists on npm; skipping publish"
             exit 0
