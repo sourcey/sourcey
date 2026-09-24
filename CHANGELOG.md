@@ -2,6 +2,12 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.6.8 - 2026-09-24
+
+### Fixed
+
+- Make the complete “Docs by Sourcey” attribution one link with normal word spacing in every theme.
+
 ## 3.6.7 - 2026-09-24
 
 ### Fixed

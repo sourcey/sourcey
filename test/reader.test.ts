@@ -106,8 +106,8 @@ describe("reader theme", () => {
     expect(index).toContain('id="search-dialog"');
     expect(index).toContain("data-reader-fallback");
     expect(index).toContain('href="https://sourcey.com"');
-    expect(index).toContain("Docs by");
-    expect(index).toMatch(/Docs by\s*<a[^>]+>\s*Sourcey\s*<svg/);
+    expect(index).toMatch(/<a[^>]+href="https:\/\/sourcey\.com"[^>]*>\s*Docs by Sourcey\s*<svg/);
+    expect(index).not.toMatch(/Docs by\s*<a/);
     expect(index).not.toContain("sourcey-logo.png");
     expect(index).toContain("Owned by the host configuration.");
     expect(index).toContain("Run the workflow");
