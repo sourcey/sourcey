@@ -2,6 +2,13 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.6.7 - 2026-09-24
+
+### Fixed
+
+- Align the reader masthead, sidebar and document frame to one responsive horizontal grid.
+- Update YAML and HTML parsing dependencies to patched releases.
+
 ## 3.6.6 - 2026-09-23
 
 ### Added
