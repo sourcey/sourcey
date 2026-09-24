@@ -1,0 +1,25 @@
+# Sourcey
+
+> Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, and Markdown.
+
+## Docs
+
+- [Introduction](/sourcey/introduction.html): Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, and Markdown.
+- [Install](/sourcey/install.html): Every supported install path for Sourcey. npm, Homebrew, Docker, and Nix for the main CLI. Go, Homebrew, and Scoop for the standalone Go docs generator.
+- [Configuration](/sourcey/configuration.html): Set up Sourcey with TypeScript config, page groups, and reference tabs.
+- [Roadmap](/sourcey/roadmap.html): What Sourcey has shipped and what is still planned.
+- [Changelog](/sourcey/changelog.html): Recent Sourcey releases.
+
+## Changelog
+
+### 3.6.4
+
+### 3.6.3
+
+### 3.6.2
+
+### 3.6.1
+
+### 3.6.0
+
+### 3.5.0
