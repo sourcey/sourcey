@@ -13,6 +13,7 @@ import type {
   MarkdownPage,
 } from "../../core/markdown-loader.js";
 import { Markdown } from "../ui/Markdown.js";
+import { joinHref } from "../../site-url.js";
 import { Header } from "./Header.js";
 import { Sidebar } from "./Sidebar.js";
 import { TableOfContents } from "./TableOfContents.js";
@@ -176,7 +177,7 @@ function PageNavigation() {
   return (
     <nav class="mt-12 flex items-stretch justify-between gap-4">
       {prev ? (
-        <a href={`${base}${prev.href}`} class={linkClass}>
+        <a href={joinHref(base, prev.href)} class={linkClass}>
           <span class={labelClass}>← Previous</span>
           <span class={titleClass}>{prev.label}</span>
         </a>
@@ -184,7 +185,7 @@ function PageNavigation() {
         <span />
       )}
       {next ? (
-        <a href={`${base}${next.href}`} class={`${linkClass} text-right ml-auto`}>
+        <a href={joinHref(base, next.href)} class={`${linkClass} text-right ml-auto`}>
           <span class={labelClass}>Next →</span>
           <span class={titleClass}>{next.label}</span>
         </a>

@@ -42,8 +42,9 @@
     }
   });
   var select = root.querySelector("#chapter-select");
+  var chapters = root.querySelectorAll(".reader-chapter-fallback a");
   select.addEventListener("change", function () {
-    window.location.href = select.value;
+    window.location.href = chapters[select.selectedIndex].href;
   });
   var copy = root.querySelector("[data-copy-page]");
   if (copy)

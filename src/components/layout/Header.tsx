@@ -3,6 +3,7 @@ import { NavigationContext, OptionsContext, SiteContext } from "../../renderer/c
 import { SocialIcon, socialLabels } from "../ui/SocialIcon.js";
 import { Logo } from "../ui/Logo.js";
 import type { SiteNavigation } from "../../core/navigation.js";
+import { joinHref } from "../../site-url.js";
 
 function SearchIcon() {
   return (
@@ -87,7 +88,7 @@ export function Header() {
   const site = useContext(SiteContext);
 
   const base = options.assetBase;
-  const logoHref = site.logo?.href ?? `${base}${nav.tabs[0]?.href ?? ""}`;
+  const logoHref = site.logo?.href ?? joinHref(base, nav.tabs[0]?.href ?? "");
 
   return (
     <div id="navbar" class="z-30 fixed lg:sticky top-0 w-full">
@@ -193,7 +194,7 @@ export function Header() {
               return (
                 <a
                   key={tab.slug}
-                  href={`${base}${tab.href}`}
+                  href={joinHref(base, tab.href)}
                   class={`group relative h-full gap-2 flex items-center font-medium cursor-pointer transition-colors ${
                     isActive
                       ? "text-[rgb(var(--color-gray-800))] dark:text-[rgb(var(--color-gray-200))] [text-shadow:-0.2px_0_0_currentColor,0.2px_0_0_currentColor]"

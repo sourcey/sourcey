@@ -127,4 +127,39 @@ describe("reader theme", () => {
     );
     expect(await readFile(join(dir, "output/llms.txt"), "utf8")).toContain("Authorization");
   });
+
+  it("links a strip-mode root under a base without a trailing slash, and navigates chapters through links", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sourcey-reader-strip-"));
+    directories.push(dir);
+    await writeFile(join(dir, "index.md"), "---\ntitle: Overview\n---\n\n[Continue](./authorization.md)\n");
+    await writeFile(join(dir, "authorization.md"), "---\ntitle: Authorization\n---\n\n[Back](./index.md)\n");
+    const config = await resolveConfigFromRaw(
+      {
+        name: "Example standards",
+        baseUrl: "/specification/",
+        prettyUrls: "strip",
+        theme: { name: "reader", fonts: { google: false } },
+        navigation: {
+          tabs: [{ tab: "Specification", slug: "", groups: [{ group: "Start", pages: ["index", "authorization"] }] }],
+        },
+      },
+      dir,
+    );
+    await writeSourceySite(
+      await buildSourceySite({ config, outputDir: join(dir, "output"), generateOgImages: false }),
+    );
+    for (const page of ["index.html", "authorization.html"]) {
+      const html = await readFile(join(dir, "output", page), "utf8");
+      expect(html, page).toContain('href="/specification"');
+      expect(html, page).not.toMatch(/href="(?:\.\/|\.\.\/|\/specification\/)(?:#[^"]*)?"/);
+      const options = [...html.matchAll(/<option\b([^>]*)>([^<]*)<\/option>/g)];
+      const links = html
+        .match(/class="reader-chapter-fallback"[\s\S]*?<\/nav>/)![0]
+        .matchAll(/<a href="[^"]+">([^<]*)<\/a>/g);
+      expect(options.map(([, attributes]) => attributes), page).not.toContainEqual(
+        expect.stringContaining("value="),
+      );
+      expect(options.map(([, , label]) => label), page).toEqual([...links].map(([, label]) => label));
+    }
+  });
 });

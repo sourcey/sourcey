@@ -23,7 +23,7 @@ import type {
 } from "./core/types.js";
 import type { SitePage } from "./renderer/html-builder.js";
 import type { SiteConfig } from "./renderer/context.js";
-import { toPublicUrl } from "./site-url.js";
+import { joinHref, toPrettyLink, toPublicUrl, type LinkStyle } from "./site-url.js";
 
 export interface SiteAssembly {
   siteTabs: SiteTab[];
@@ -181,7 +181,7 @@ export async function assembleSite(config: ResolvedConfig): Promise<SiteAssembly
     addPermalinkPages(pageMap, config.prettyUrls);
   }
 
-  normalizeNavigationHrefs(siteTabs, config.prettyUrls);
+  normalizeNavigationHrefs(siteTabs, config);
   const sitePages = Array.from(pageMap.values());
   resolveInternalLinks(sitePages, config);
   const extraFiles = attachChangelogFeeds(sitePages, config);
@@ -295,12 +295,12 @@ export function rebuildMarkdownTabNavigation(
   if (idx !== -1) siteTabs[idx] = navTab;
 }
 
-function normalizeNavigationHrefs(siteTabs: SiteTab[], prettyUrls: PrettyUrls): void {
+function normalizeNavigationHrefs(siteTabs: SiteTab[], links: LinkStyle): void {
   for (const tab of siteTabs) {
-    tab.href = toPrettyLink(tab.href, prettyUrls);
+    tab.href = toPrettyLink(tab.href, links);
     for (const group of tab.groups) {
       for (const item of group.items) {
-        item.href = toPrettyLink(item.href, prettyUrls);
+        item.href = toPrettyLink(item.href, links);
       }
     }
   }
@@ -408,7 +408,6 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
   const repoBase = config.repo?.replace(/\/$/, "");
   const branch = config.editBranch;
   const sourceBase = repoBase && branch ? `${repoBase}/tree/${branch}` : undefined;
-  const prettyUrls = config.prettyUrls;
 
   for (const page of pages) {
     const docsSourcePath = getDocsSourcePath(page);
@@ -421,7 +420,7 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
         docsSourcePath,
         pathMap,
         sourceBase,
-        prettyUrls,
+        config,
       );
       page.currentPage.markdown.html = rewriteHtmlLinks(
         page.currentPage.markdown.html,
@@ -429,7 +428,7 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
         docsSourcePath,
         pathMap,
         sourceBase,
-        prettyUrls,
+        config,
       );
       continue;
     }
@@ -445,7 +444,7 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
           docsSourcePath,
           pathMap,
           sourceBase,
-          prettyUrls,
+          config,
         );
       }
 
@@ -457,7 +456,7 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
             docsSourcePath,
             pathMap,
             sourceBase,
-            prettyUrls,
+            config,
           );
           entry.links = entry.links.map((link) => ({
             ...link,
@@ -468,7 +467,7 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
                 docsSourcePath,
                 pathMap,
                 sourceBase,
-                prettyUrls,
+                config,
               ) ?? link.href,
           }));
         }
@@ -729,7 +728,7 @@ function rewriteHtmlLinks(
   docsSourcePath: string,
   pathMap: Map<string, string>,
   sourceBase: string | undefined,
-  prettyUrls: PrettyUrls,
+  links: LinkStyle,
 ): string {
   return html.replace(/\b(href|src)="([^"]+)"/g, (match, attr: string, href: string) => {
     const resolved = resolveInternalHref(
@@ -738,7 +737,7 @@ function rewriteHtmlLinks(
       docsSourcePath,
       pathMap,
       sourceBase,
-      prettyUrls,
+      links,
     );
     return resolved ? `${attr}="${resolved}"` : match;
   });
@@ -750,7 +749,7 @@ function rewriteMarkdownLinks(
   docsSourcePath: string,
   pathMap: Map<string, string>,
   sourceBase: string | undefined,
-  prettyUrls: PrettyUrls,
+  links: LinkStyle,
 ): string {
   return markdown.replace(
     /\[((?:`[^`]*`|[^\]])+)\]\(([^)]+)\)/g,
@@ -761,7 +760,7 @@ function rewriteMarkdownLinks(
         docsSourcePath,
         pathMap,
         sourceBase,
-        prettyUrls,
+        links,
       );
       return resolved ? `[${label}](${resolved})` : match;
     },
@@ -774,7 +773,7 @@ function resolveInternalHref(
   docsSourcePath: string,
   pathMap: Map<string, string>,
   sourceBase: string | undefined,
-  prettyUrls: PrettyUrls,
+  links: LinkStyle,
 ): string | null {
   if (
     href.startsWith("http://") ||
@@ -825,7 +824,7 @@ function resolveInternalHref(
   }
 
   if (target) {
-    return `${toRoot}${toPrettyLink(target, prettyUrls)}${hashSuffix}`;
+    return `${joinHref(toRoot, toPrettyLink(target, links))}${hashSuffix}`;
   }
 
   if (sourceBase && href.includes("../") && docsSourcePath) {
@@ -845,23 +844,4 @@ function decodeHrefPath(path: string): string {
   } catch {
     return path;
   }
-}
-
-/**
- * Rewrite an on-disk output path into the relative href that a user visits.
- * - `"slash"`: trims trailing `index.html`, leaves a directory-style `foo/`.
- * - `"strip"`: trims both `index.html` and the trailing slash, so the browser sees `foo`.
- * - `false`: returns the path unchanged.
- */
-function toPrettyLink(target: string, prettyUrls: PrettyUrls): string {
-  if (!prettyUrls) return target;
-  if (target === "index.html") return "";
-  if (target.endsWith("/index.html")) {
-    const withSlash = target.slice(0, -"index.html".length);
-    return prettyUrls === "strip" ? withSlash.slice(0, -1) : withSlash;
-  }
-  if (prettyUrls === "strip" && target.endsWith(".html")) {
-    return target.slice(0, -".html".length);
-  }
-  return target;
 }

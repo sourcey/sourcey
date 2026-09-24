@@ -167,7 +167,7 @@ With `fonts.google: false`, define your own `@font-face` in the configured CSS a
 
 The CLI, development server and `sourcey/astro` select assets through the same built-in theme registry. Theme layouts share Sourcey's Markdown, navigation, content widgets, search index and URL logic. Reader's own browser entry supplies its navigation and copy controls; it does not load the default theme's dark-mode or drawer behaviour.
 
-For Astro, mount the same config using `sourcey/astro`; no separate docs prebuild or committed `public/docs` directory is needed. Cloudflare adapter builds write the generated documentation into Astro's client assets directory, including the Astro base prefix. The no-slash alias preserves that prefix in its CSS, JavaScript, search and chapter URLs.
+For Astro, mount the same config using `sourcey/astro`; no separate docs prebuild or committed `public/docs` directory is needed. Cloudflare adapter builds write the generated documentation into Astro's client assets directory, including the Astro base prefix. The no-slash alias preserves that prefix in its CSS, JavaScript, search and chapter URLs. With `prettyUrls: "strip"`, every page links the landing page by its public path, such as `/docs`, without a trailing slash.
 
 ## Code Samples
 

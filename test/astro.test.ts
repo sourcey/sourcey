@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -102,6 +102,44 @@ describe("sourcey/astro", () => {
       expect(alias).not.toContain('href="/docs/');
       const index = JSON.parse(await readFile(resolve(client, "docs/search-index.json"), "utf8"));
       expect(index[0].url).toMatch(/^\/project\/docs\//);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("links a strip-mode reader alias to its route without a trailing slash", async () => {
+    const root = resolve(outputDir, "reader-strip");
+    const client = resolve(root, "client");
+    await mkdir(client, { recursive: true });
+    await writeFile(resolve(root, "index.md"), "---\ntitle: Overview\n---\n\nThe contract.\n");
+    await writeFile(resolve(root, "authorization.md"), "---\ntitle: Authorization\n---\n\nPermission.\n");
+    const integration = sourceyAstro({
+      configDir: root,
+      config: defineConfig({
+        name: "Reader",
+        theme: { name: "reader", fonts: { google: false } },
+        navigation: {
+          tabs: [{ tab: "Docs", slug: "", groups: [{ group: "Start", pages: ["index", "authorization"] }] }],
+        },
+      }),
+      routeBase: "/docs",
+      prettyUrls: "strip",
+      build: { generateOgImages: false },
+    });
+    try {
+      await integration.hooks["astro:config:setup"]!({
+        command: "build",
+        config: { root: dirUrl(root), base: "/project", site: "https://example.org" },
+        logger,
+        addWatchFile() {},
+        updateConfig() {},
+      });
+      await integration.hooks["astro:build:done"]!({ dir: dirUrl(client), logger });
+      const alias = await readFile(resolve(client, "docs.html"), "utf8");
+      expect(alias).toContain('href="/project/docs"');
+      expect(alias).toContain('href="/project/docs/authorization"');
+      expect(alias).not.toMatch(/href="\/project\/docs\/(?:#[^"]*)?"/);
+      expect(alias).not.toMatch(/<option[^>]*\bvalue=/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

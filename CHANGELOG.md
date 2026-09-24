@@ -2,6 +2,13 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.6.9 - 2026-09-25
+
+### Fixed
+
+- Link the landing page of a `prettyUrls: "strip"` site under a base path by its public path, so no page or alias links it with a trailing slash.
+- Navigate the reader chapter menu through its chapter links, so hosts that re-base those links, including the Astro no-slash alias, keep chapter selection working.
+
 ## 3.6.8 - 2026-09-24
 
 ### Fixed

@@ -64,6 +64,41 @@ export function toPublicPath(outputPath: string, baseUrl = "", prettyUrls: Prett
   return `${prefix}${cleanOutputPath}`;
 }
 
+/** How pages address each other: the pretty-URL mode and the public base path. */
+export type LinkStyle = Readonly<{ prettyUrls: PrettyUrls; baseUrl: string }>;
+
+/**
+ * Rewrite an output path into the target pages link it by, relative to the
+ * site base.
+ * - `"slash"`: trims trailing `index.html`, leaves a directory-style `foo/`.
+ * - `"strip"`: trims both `index.html` and the trailing slash, so the browser
+ *   sees `foo`. Under a base path the site root is the one page outside the
+ *   base directory, so it is linked by its public path.
+ * - `false`: returns the path unchanged.
+ */
+export function toPrettyLink(target: string, { prettyUrls, baseUrl }: LinkStyle): string {
+  if (!prettyUrls) return target;
+  if (!target || target === "index.html") {
+    return prettyUrls === "strip" && normalizeBaseUrl(baseUrl)
+      ? toPublicPath(target, baseUrl, prettyUrls)
+      : "";
+  }
+  if (target.endsWith("/index.html")) {
+    const withSlash = target.slice(0, -"index.html".length);
+    return prettyUrls === "strip" ? withSlash.slice(0, -1) : withSlash;
+  }
+  if (prettyUrls === "strip" && target.endsWith(".html")) {
+    return target.slice(0, -".html".length);
+  }
+  return target;
+}
+
+/** Resolve a link target against the linking page's base; public paths stand alone. */
+export function joinHref(base: string, target: string): string {
+  if (target.startsWith("/")) return target;
+  return `${base}${target}` || "./";
+}
+
 export function toAbsoluteUrl(publicPath: string, siteUrl?: string): string {
   if (!siteUrl) return publicPath;
 

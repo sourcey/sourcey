@@ -3,6 +3,7 @@ import { NavigationContext, OptionsContext, SiteContext } from "../../renderer/c
 import { SocialIcon, socialLabels } from "../ui/SocialIcon.js";
 import { Logo } from "../ui/Logo.js";
 import type { SiteNavGroup } from "../../core/navigation.js";
+import { joinHref } from "../../site-url.js";
 
 /**
  * Colored method indicator for API sidebar items.
@@ -59,7 +60,7 @@ function NavGroups({ groups, activePageSlug, base }: {
         <div key={group.label} class={gi > 0 ? "mt-6 lg:mt-8" : ""}>
           {group.label && (group.href ? (
             <a
-              href={`${base}${group.href}`}
+              href={joinHref(base, group.href)}
               class={`nav-group-label nav-group-link${group.id === activePageSlug ? " active" : ""}`}
             >
               {group.label}
@@ -73,7 +74,7 @@ function NavGroups({ groups, activePageSlug, base }: {
               return (
                 <li key={item.id}>
                   <a
-                    href={`${base}${item.href}`}
+                    href={joinHref(base, item.href)}
                     class={`nav-link${isActive ? " active" : ""}`}
                   >
                     {item.method && <MethodPill method={item.method} />}
@@ -114,7 +115,7 @@ export function Sidebar() {
   const { links } = site.navbar;
   const primaryAction = site.navbar.primary;
   const groups = activeTab.groups;
-  const logoHref = site.logo?.href ?? `${base}${nav.tabs[0]?.href ?? ""}`;
+  const logoHref = site.logo?.href ?? joinHref(base, nav.tabs[0]?.href ?? "");
 
   return (
     <>
@@ -164,7 +165,7 @@ export function Sidebar() {
                 {nav.tabs.map((tab) => (
                   <li key={tab.slug}>
                     <a
-                      href={`${base}${tab.href}`}
+                      href={joinHref(base, tab.href)}
                       class={`drawer-dropdown-item${tab.slug === nav.activeTabSlug ? " active" : ""}`}
                     >
                       {tab.label}

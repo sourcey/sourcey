@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { normalizeBaseUrl, normalizeSiteUrl, stripBaseUrl, toPublicPath, toPublicUrl } from "../src/site-url.js";
+import {
+  joinHref,
+  normalizeBaseUrl,
+  normalizeSiteUrl,
+  stripBaseUrl,
+  toPrettyLink,
+  toPublicPath,
+  toPublicUrl,
+} from "../src/site-url.js";
 
 describe("site-url helpers", () => {
   it("normalizes public base paths consistently", () => {
@@ -29,6 +37,26 @@ describe("site-url helpers", () => {
     expect(toPublicPath("index.html", "", "strip")).toBe("/");
     expect(toPublicUrl("docs/intro.html", "https://docs.example.com", "", "strip"))
       .toBe("https://docs.example.com/docs/intro");
+  });
+
+  it("links pages relative to the site base, and the strip-mode root under a base by its public path", () => {
+    const strip = { prettyUrls: "strip", baseUrl: "/specification/" } as const;
+    expect(toPrettyLink("profile.html", strip)).toBe("profile");
+    expect(toPrettyLink("guide/index.html", strip)).toBe("guide");
+    expect(toPrettyLink("index.html", strip)).toBe("/specification");
+    expect(toPrettyLink("", strip)).toBe("/specification");
+    expect(toPrettyLink("index.html", { prettyUrls: "strip", baseUrl: "" })).toBe("");
+    expect(toPrettyLink("index.html", { prettyUrls: "slash", baseUrl: "/specification/" })).toBe("");
+    expect(toPrettyLink("guide/index.html", { prettyUrls: "slash", baseUrl: "" })).toBe("guide/");
+    expect(toPrettyLink("index.html", { prettyUrls: false, baseUrl: "/specification/" })).toBe("index.html");
+  });
+
+  it("joins link targets onto a page's base without leaving an empty href", () => {
+    expect(joinHref("../", "profile")).toBe("../profile");
+    expect(joinHref("/specification/", "profile")).toBe("/specification/profile");
+    expect(joinHref("../", "/specification")).toBe("/specification");
+    expect(joinHref("../", "")).toBe("../");
+    expect(joinHref("", "")).toBe("./");
   });
 
   it("strips the configured baseUrl for dev routing", () => {

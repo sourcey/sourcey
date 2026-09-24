@@ -9,6 +9,7 @@ import {
 import { SearchDialog } from "./SearchDialog.js";
 import type { ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
+import { joinHref } from "../../site-url.js";
 
 function Icon({ name = "arrow", size = 20 }: { name?: string; size?: number }) {
   const paths: Record<string, string[]> = {
@@ -70,7 +71,13 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
   const next = items[index + 1];
   const label = document?.label ?? tab?.label ?? site.name;
   const edition = [label, document?.version].filter(Boolean).join(" ");
-  const href = (path: string) => `${base}${path}` || "./";
+  const href = (path: string) => joinHref(base, path);
+  // The chapter menu and its fallback links list the same chapters in order;
+  // the menu navigates through the links, whose addresses hosts may re-base.
+  const chapters = nav.tabs.map((section) => ({
+    section,
+    items: section.groups.flatMap((group) => group.items),
+  }));
   const activeHref = href(items[index]?.href ?? tab?.href ?? "");
   const home = safeUrl(site.logo?.href ?? href(nav.tabs[0]?.href ?? "")) ?? "/";
   const searchHref = settings.searchHref ? safeUrl(settings.searchHref) : null;
@@ -251,34 +258,27 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
             data-reader-enhancement
             hidden
           >
-            {nav.tabs.map((section) => (
+            {chapters.map(({ section, items: sectionItems }) => (
               <optgroup label={section.label}>
-                {section.groups
-                  .flatMap((group) => group.items)
-                  .map((item) => (
-                    <option
-                      value={href(item.href)}
-                      selected={
-                        section.slug === nav.activeTabSlug && item.id === nav.activePageSlug
-                      }
-                    >
-                      {item.label}
-                    </option>
-                  ))}
+                {sectionItems.map((item) => (
+                  <option
+                    selected={section.slug === nav.activeTabSlug && item.id === nav.activePageSlug}
+                  >
+                    {item.label}
+                  </option>
+                ))}
               </optgroup>
             ))}
           </select>
           <details class="reader-chapter-fallback" data-reader-fallback>
             <summary>Chapters</summary>
             <nav>
-              {nav.tabs.map((section) => (
+              {chapters.map(({ section, items: sectionItems }) => (
                 <>
-                  {nav.tabs.length > 1 && <strong>{section.label}</strong>}
-                  {section.groups
-                    .flatMap((group) => group.items)
-                    .map((item) => (
-                      <a href={href(item.href)}>{item.label}</a>
-                    ))}
+                  {chapters.length > 1 && <strong>{section.label}</strong>}
+                  {sectionItems.map((item) => (
+                    <a href={href(item.href)}>{item.label}</a>
+                  ))}
                 </>
               ))}
             </nav>
