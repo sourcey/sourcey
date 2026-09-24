@@ -133,6 +133,23 @@ jobs:
             echo "Skipping Docker publish: DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are not configured."
           fi
 
+      # npm acknowledges a publish before the version is installable, and the
+      # image installs the release from npm.
+      - name: Wait for the npm release
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          for _ in $(seq 1 60); do
+            if npm view "sourcey@${VERSION}" version >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "sourcey@${VERSION} was not installable from npm after 10 minutes" >&2
+          exit 1
+
       - uses: actions/checkout@v7
         if: steps.gate.outputs.publish == 'true'
 
