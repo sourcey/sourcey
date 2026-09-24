@@ -1,0 +1,69 @@
+name: commit-conventions
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: commit-conventions-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  conventions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require conventional, unattributed titles, commits, and branch names
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        run: |
+          set -euo pipefail
+          conventional='^(feat|fix|perf|refactor|chore|docs|test|ci|build|style|revert|content|data)(\([^)]+\))?!?: [^[:space:]]'
+          merge='^Merge (pull request #[0-9]+ from |branch |remote-tracking branch )'
+          attribution='^co-authored-by:.*(claude|codex|anthropic|openai|chatgpt)|generated with \[?(claude|codex)|chatgpt\.com/codex|^\[(codex|claude)\]'
+          failed=0
+          fail() { echo "::error::$1"; failed=1; }
+
+          check_message() {
+            local sha=$1 message=$2 subject title
+            subject=${message%%$'\n'*}
+            if grep -Eq "$merge" <<<"$subject"; then
+              title=$(sed -n '3p' <<<"$message")
+              [ -z "$title" ] || grep -Eq "$conventional" <<<"$title" \
+                || fail "Merge ${sha:0:10} carries a non-conventional title: $title"
+            else
+              grep -Eq "$conventional" <<<"$subject" \
+                || fail "Commit ${sha:0:10} is not a conventional commit: $subject"
+            fi
+            ! grep -Eiq "$attribution" <<<"$message" || fail "Commit ${sha:0:10} attributes an AI tool"
+          }
+
+          if [ "$EVENT" = pull_request ]; then
+            grep -Eq "$conventional" <<<"$TITLE" || fail "PR title is not a conventional commit: $TITLE"
+            ! grep -Eiq '^(codex|claude)[/-]' <<<"$HEAD_REF" || fail "Branch name attributes an AI tool: $HEAD_REF"
+            ! grep -Eiq "$attribution" <<<"$TITLE" || fail "PR title attributes an AI tool"
+            # Bot bodies quote upstream release notes, which may carry third-party trailers.
+            [ "$AUTHOR_TYPE" = Bot ] || ! grep -Eiq "$attribution" <<<"$BODY" || fail "PR body attributes an AI tool"
+            commits=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" \
+              --jq '.[] | [.sha, (.commit.message | @base64)] | @tsv')
+          else
+            commits=$(jq -r '.commits[] | [.id, (.message | @base64)] | @tsv' "$GITHUB_EVENT_PATH")
+          fi
+
+          while IFS=$'\t' read -r sha encoded; do
+            [ -n "$sha" ] || continue
+            check_message "$sha" "$(base64 -d <<<"$encoded")"
+          done <<<"$commits"
+          exit "$failed"
