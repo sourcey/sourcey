@@ -84,17 +84,17 @@ jobs:
             --generate-notes \
             --verify-tag
 
+      - uses: actions/checkout@v7
+        with:
+          repository: sourcey/homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: .stage/homebrew-tap
+
       - name: Publish Homebrew formula
         env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ github.ref_name }}
         run: |
           set -eu
-          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
-            echo "Skipping Homebrew publish: HOMEBREW_TAP_TOKEN is not configured."
-            exit 0
-          fi
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/sourcey/homebrew-tap.git" .stage/homebrew-tap
           mkdir -p .stage/homebrew-tap/Formula
           cp .stage/sourcey-godoc-package-managers/homebrew/Formula/sourcey-godoc.rb .stage/homebrew-tap/Formula/sourcey-godoc.rb
           git -C .stage/homebrew-tap config user.name "github-actions[bot]"

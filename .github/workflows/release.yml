@@ -113,8 +113,30 @@ jobs:
           fi
           npm publish ".stage/release/sourcey-${VERSION}.tgz" --provenance --access public
 
-  publish-docker:
+  # npm acknowledges a publish before the version is installable. The image and
+  # the Homebrew formula both install the release from npm.
+  npm-available:
     needs: [validate, publish-npm]
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+      - name: Wait for the npm release
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          for _ in $(seq 1 60); do
+            if npm view "sourcey@${VERSION}" version >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "sourcey@${VERSION} was not installable from npm after 10 minutes" >&2
+          exit 1
+
+  publish-docker:
+    needs: [validate, npm-available]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -132,23 +154,6 @@ jobs:
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "Skipping Docker publish: DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are not configured."
           fi
-
-      # npm acknowledges a publish before the version is installable, and the
-      # image installs the release from npm.
-      - name: Wait for the npm release
-        if: steps.gate.outputs.publish == 'true'
-        env:
-          VERSION: ${{ needs.validate.outputs.version }}
-        run: |
-          set -eu
-          for _ in $(seq 1 60); do
-            if npm view "sourcey@${VERSION}" version >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "sourcey@${VERSION} was not installable from npm after 10 minutes" >&2
-          exit 1
 
       - uses: actions/checkout@v7
         if: steps.gate.outputs.publish == 'true'
@@ -182,3 +187,43 @@ jobs:
             SOURCEY_VERSION=${{ needs.validate.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  publish-homebrew:
+    needs: [validate, npm-available]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: sourcey/homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: homebrew-tap
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: sourcey-npm-package
+          path: .stage/release
+
+      # npm serves the published tarball byte for byte, so the validated
+      # package's digest is the formula's checksum.
+      - name: Point the formula at the release
+        working-directory: homebrew-tap
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          url="https://registry.npmjs.org/sourcey/-/sourcey-${VERSION}.tgz"
+          sha256=$(sha256sum "../.stage/release/sourcey-${VERSION}.tgz" | cut -d' ' -f1)
+          sed -i -E "s|^  url \".*\"$|  url \"${url}\"|; s|^  sha256 \".*\"$|  sha256 \"${sha256}\"|" Formula/sourcey.rb
+          grep -qF "url \"${url}\"" Formula/sourcey.rb
+          grep -qF "sha256 \"${sha256}\"" Formula/sourcey.rb
+          if git diff --quiet; then
+            echo "The formula already installs sourcey ${VERSION}."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "sourcey ${VERSION}"
+          git push
