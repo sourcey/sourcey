@@ -81,6 +81,34 @@ describe("loadMarkdownPage", { timeout: 30_000 }, () => {
     expect(page.html).not.toContain("<Tab title=");
   });
 
+  it("restores code containing dollar signs exactly, never as replacement patterns", async () => {
+    await withTempDir(async (dir) => {
+      const file = join(dir, "dollars.md");
+      await writeFile(
+        file,
+        [
+          "## Anchors",
+          "",
+          "`^` and `$` anchor the value; `$&`, `$'` and `$$` stay literal.",
+          "",
+          "```js",
+          "const tail = /x$`/;",
+          "```",
+          "",
+          "## After",
+        ].join("\n"),
+      );
+      const page = await loadMarkdownPage(file, "dollars");
+
+      expect(page.headings.map((heading) => heading.id)).toEqual(["anchors", "after"]);
+      expect(page.html.match(/id="anchors"/g)?.length).toBe(1);
+      for (const literal of ["<code>$</code>", "<code>$&amp;</code>", "<code>$'</code>", "<code>$$</code>"]) {
+        expect(page.html).toContain(literal);
+      }
+      expect(page.html.replace(/<[^>]+>/g, "")).toContain("/x$`/");
+    });
+  });
+
   it("falls back to visible markdown when directive containers are malformed", async () => {
     const page = await loadMarkdownPage(
       resolve(FIXTURE_DIR, "malformed-directive-fallback.md"),

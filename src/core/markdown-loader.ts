@@ -168,9 +168,11 @@ function protectFencedCodeBlocks(input: string): { text: string; blocks: string[
   return { text: output.join("\n"), blocks };
 }
 
+// Restores take the saved text through a function, so a `$` in it is never read as
+// a replacement pattern such as $` or $&.
 function restoreFencedCodeBlocks(input: string, blocks: string[]): string {
   return blocks.reduce(
-    (text, block, index) => text.replaceAll(`${FENCED_BLOCK_TOKEN}${index}@@`, block),
+    (text, block, index) => text.replaceAll(`${FENCED_BLOCK_TOKEN}${index}@@`, () => block),
     input,
   );
 }
@@ -216,7 +218,7 @@ function protectInlineCodeSpans(input: string): { text: string; spans: string[] 
 
 function restoreInlineCodeSpans(input: string, spans: string[]): string {
   return spans.reduce(
-    (text, span, index) => text.replaceAll(`${INLINE_CODE_TOKEN}${index}@@`, span),
+    (text, span, index) => text.replaceAll(`${INLINE_CODE_TOKEN}${index}@@`, () => span),
     input,
   );
 }

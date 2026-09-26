@@ -2,6 +2,12 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.6.10 - 2026-09-26
+
+### Fixed
+
+- Restore inline code and fenced blocks exactly when they contain a dollar sign, so code such as `` `$` `` no longer repeats the preceding page content.
+
 ## 3.6.9 - 2026-09-25
 
 ### Fixed
