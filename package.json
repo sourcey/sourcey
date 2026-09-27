@@ -4,7 +4,7 @@
   "description": "Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown. Static HTML you own.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19"
   },
   "bin": {
     "sourcey": "dist/cli.js"
@@ -40,38 +40,39 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^13.0.5",
-    "@preact/preset-vite": "^2.10.4",
+    "@apidevtools/json-schema-ref-parser": "^16.0.3",
+    "@preact/preset-vite": "^2.10.6",
     "@resvg/resvg-js": "^2.6.2",
-    "@tailwindcss/typography": "^0.5.19",
-    "@tailwindcss/vite": "^4.2.2",
-    "citty": "^0.1.6",
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
+    "citty": "^0.2.2",
+    "consola": "^3.4.2",
     "heroicons": "^2.2.0",
-    "jiti": "^2.6.1",
-    "js-yaml": "^4.3.2",
-    "marked": "^15.0.0",
-    "mcp-parser": "^0.4.0",
-    "moxygen": "^2.1.12",
-    "preact": "^10.28.4",
-    "preact-render-to-string": "^6.6.6",
+    "jiti": "^2.7.0",
+    "js-yaml": "^5.4.2",
+    "marked": "^18.0.14",
+    "mcp-parser": "^0.4.2",
+    "moxygen": "^2.1.19",
+    "preact": "^10.29.8",
+    "preact-render-to-string": "^6.7.0",
     "sanitize-html": "^2.17.7",
-    "satori": "^0.26.0",
-    "shiki": "^4.0.2",
+    "satori": "^0.33.5",
+    "shiki": "^4.4.3",
     "swagger2openapi": "^7.0.8",
-    "tailwindcss": "^4.2.2",
-    "vite": "^8.0.9"
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.19.15",
+    "@types/node": "^26.6.3",
     "@types/sanitize-html": "^2.16.1",
-    "eslint": "^9.0.0",
-    "eslint-config-prettier": "^10.0.0",
-    "prettier": "^3.4.0",
-    "typescript": "^5.7.0",
-    "typescript-eslint": "^8.0.0",
-    "vitest": "^4.1.11"
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.2"
   },
   "keywords": [
     "openapi",
@@ -107,5 +108,8 @@
   "bugs": {
     "url": "https://github.com/sourcey/sourcey/issues"
   },
-  "homepage": "https://sourcey.com"
+  "homepage": "https://sourcey.com",
+  "overrides": {
+    "fflate": "^0.7.5"
+  }
 }
