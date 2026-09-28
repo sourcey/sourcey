@@ -1,0 +1,73 @@
+# Sourcey
+
+Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, and Markdown.
+
+## Docs
+
+### Introduction
+
+Path: `/sourcey/introduction.html`
+
+Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, and Markdown.
+
+Sourcey Sourcey turns OpenAPI specs, MCP snapshots, Doxygen XML, Go packages, Rust crates, MkDocs sites, and Markdown guides into a static documentation site you can ship anywhere. The build stays local. The output is plain HTML. The project keeps control of its own docs instead of renting a hosted authoring stack. What it covers OpenAPI 2.0 through 3.2, including modern features like QUERY operations and $self -aware multi-document references MCP server reference with tools, resources, prompts, annotations, and connection guidance Doxygen-backed C and C++ API docs without a multi-tool Sphinx pipeline Native Go and Rust API docs through godoc and rustdoc adapters MkDocs imports, Markdown guides, components, search, llms.txt, and static deployment Why teams pick it Sourcey keeps the docs surface simple: commit the source files, run the build, deploy the generated site. There is no dashboard, no per-seat docs editor, and no vendor page runtime in the chain.
+
+### Install
+
+Path: `/sourcey/install.html`
+
+Every supported install path for Sourcey. npm, Homebrew, Docker, and Nix for the main CLI. Go, Homebrew, and Scoop for the standalone Go docs generator.
+
+Sourcey ships through every channel JavaScript, native, and container ecosystems use. Pick the one your project already lives in. Sourcey CLI The full Sourcey binary handles OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, and Markdown sources. npm Requires Node 20 or later. Copy npm install -g sourcey sourcey init For one-shot use without a global install: Copy npx sourcey init Homebrew Works on macOS and Linuxbrew. Copy brew tap sourcey/tap brew install sourcey sourcey init The formula installs Sourcey through Node under the hood, so it depends on node . If you already have Node, the npm path is a smaller install. Docker The official sourcey/sourcey image runs every CLI command. The image's WORKDIR is /docs and its ENTRYPOINT is sourcey , so the first argument after the image name becomes the subcommand. Initialize a new project (interactive): Copy docker run --rm -it -v " $PWD ":/docs sourcey/sourcey init Build: Copy docker run --rm -v " $PWD ":/docs sourcey/sourcey build Run the dev server. The container needs --host 0.0.0.0 so the dev server binds outside the loopback interface, and -p 4400:4400 to forward the port to the host: Copy docker run --rm -p 4400:4400 -v " $PWD ":/docs sourcey/sourcey dev --host 0.0.0.0 On Linux, files written by the container are owned by root by default. Pass --user "$(id -u):$(id -g)" to keep them owned by your user. On Windows PowerShell, use ${PWD} instead of "$PWD" . Nix Requires a Nix install with flakes enabled. One-shot run: Copy nix run github:sourcey/sourcey Persistent install: Copy nix profile install github:sourcey/sourcey sourcey init Standalone Go docs generator For Go-only consumers without a JavaScript toolchain, sourcey-godoc ships as a separate native binary. It produces static Go docs sites or portable godoc.json snapshots; no Sourcey npm package required. Go Copy go install github.com/sourcey/sourcey/go/sourcey-godoc/cmd/sourcey-godoc@latest Homebrew Copy brew tap sourcey/tap brew install sourcey-godoc Scoop (Windows) Copy scoop bucket add sourcey https://github.com/sourcey/scoop-bucket scoop install sourcey-godoc Local development To work on Sourcey itself: Copy git clone https://github.com/sourcey/sourcey.git cd sourcey npm install npm run build && npm test
+
+### Configuration
+
+Path: `/sourcey/configuration.html`
+
+Set up Sourcey with TypeScript config, page groups, and reference tabs.
+
+Sourcey reads sourcey.config.ts from your project and keeps the structure explicit. Each tab has one source , usually created with markdown() , mkdocs() , openapi() , mcp() , doxygen() , godoc() , or rustdoc() . Copy import { defineConfig , doxygen , godoc , markdown , mcp , mkdocs , openapi , rustdoc } from "sourcey" ; export default defineConfig ({ name: "My API" , navigation: { tabs: [ { tab: "Docs" , slug: "" , source: markdown ({ groups: [ { group: "Getting Started" , pages: [ "introduction" , "quickstart" ], }, ], }), }, { tab: "MkDocs" , source: mkdocs ( "./mkdocs.yml" ), }, { tab: "API Reference" , slug: "api" , source: openapi ( "./openapi.yaml" ), }, { tab: "MCP Reference" , slug: "mcp" , source: mcp ( "./mcp.json" ), }, { tab: "C++ Reference" , slug: "cpp" , source: doxygen ({ xml: "./build/doxygen/xml" , language: "cpp" , index: "rich" , sourceUrl: [ { prefix: "third_party/private/" }, { prefix: "" , url: "https://github.com/acme/project/blob/main/{fullPath}" }, ], }), }, { tab: "Rust API" , slug: "rust-api" , source: rustdoc ({ manifest: "../crates/Cargo.toml" , crates: [ "my-crate" , "my-other-crate" ], snapshot: "./snapshots/rustdoc.json" , mode: "auto" , features: { list: [ "full" ] }, sourceBasePath: "crates" , doctestsIndex: true , }), }, ], } , }) ; rustdoc() Native Rust API documentation generated from nightly rustdoc JSON. manifest — path to Cargo.toml (file or directory). crates — array of crate names to document; defaults to the manifest's own package. snapshot — optional committed RustdocSpec v1 snapshot. Required for mode: "snapshot" . mode — "auto" (default), "live" , or "snapshot" . Auto uses nightly when available, otherwise reads the snapshot. features — { default?: boolean; list?: string[]; all?: boolean } . Defaults to { default: true } . includePrivate — include pub(crate) and private items. Default false . includeHidden — include #[doc(hidden)] items. Default false . target — target triple to build docs for. toolchain — rustup toolchain name. Default "nightly" . sourceBasePath — repository-relative base for Rust source links. doctestsIndex — render a workspace-wide doctests index page. Default true . Snapshot mode lets CI build documentation on stable Rust toolchains. Commit a generated rustdoc.json alongside your config and CI never needs nightly. See the rustdoc adapter guide for the full snapshot lifecycle and rendering details. doxygen().sourceUrl accepts a base URL string, a resolver function, or a route map. Route maps use longest-prefix matching. {path} expands to the path after the matched prefix, {fullPath} expands to the original Doxygen path, and {line} expands to the source line. A route without url suppresses the public link while generated pages still show Defined in path:line . Themes Sourcey ships default , minimal , and api-first presets. Theme settings let you set brand colours, fonts, layout, and extra CSS without giving up a deterministic static build. Code Samples OpenAPI tabs generate cURL, JavaScript, and Python examples by default. Set codeSamples when you want a different picker order or more languages: Copy export default defineConfig ({ codeSamples: [ "curl" , "go" , "javascript" , "typescript" , "python" , "ruby" , "java" , "php" , "rust" , "csharp" , ] , navigation: { tabs: [{ tab: "API Reference" , source: openapi ( "./openapi.yaml" ) }], } , }) ; Supported values are curl , javascript , typescript , python , go , ruby , java , php , rust , and csharp . Build flow Copy sourcey build sourcey dev build produces the static site. dev runs the Vite-backed preview server with config and content reloads.
+
+### Roadmap
+
+Path: `/sourcey/roadmap.html`
+
+What Sourcey has shipped and what is still planned.
+
+Shipped Sourcey already ships MCP reference, Doxygen support, godoc and rustdoc adapters, MkDocs import, built-in markdown components, changelog feeds, llms.txt generation, dark mode, client-side search, theme presets, and reproducible Docker and Nix packaging. Planned The next major product work is focused on documentation experience and ecosystem reach: multi-version docs with a version switcher incremental builds i18n an API playground a VS Code extension and publishable theme packages For the full running detail, keep ROADMAP.md as the source of truth in the repo root.
+
+### Changelog
+
+Path: `/sourcey/changelog.html`
+
+Recent Sourcey releases.
+
+#### 3.6.4
+
+Sourcey 3.6.4 makes OpenAPI tag introductions reachable from the sidebar, with tag headings in the navigation now linking to their `#tag-name` section, and lets operation descriptions fill the content column instead of confining to the default prose measure when an example or code panel sits alongside them.
+
+
+#### 3.6.3
+
+Sourcey 3.6.3 renders author-provided OpenAPI examples. Named `examples` and a single `example` on responses and request bodies now take priority over the schema-generated shape, every media type is shown rather than only the first, and a switcher moves between multiple examples.
+
+
+#### 3.6.2
+
+Sourcey 3.6.2 fixed Rust re-export (`use` item) rendering so re-exports show their real name and a `pub use` signature instead of an empty placeholder across the sidebar, page outline, and search, and bumped moxygen to 2.1.10 for cleaner ` - ` separators in C++ reference search snippets.
+
+
+#### 3.6.1
+
+Sourcey 3.6.1 added the native rustdoc adapter with nightly live extraction, snapshot mode for stable CI hosts, rustdoc-style deep links, doctest extraction, and workspace-level Rust API pages.
+
+
+#### 3.6.0
+
+Sourcey 3.6.0 made source adapters the primary tab configuration shape (`source: markdown(...)`, `mkdocs(...)`, `openapi(...)`, `mcp(...)`, `doxygen(...)`, and `godoc(...)`), added MkDocs import for existing `mkdocs.yml` sites, and upgraded generated C++ references with member search, route-mapped source links, examples, modern signatures, inherited members, and relationship sections.
+
+
+#### 3.5.0
+
+Sourcey 3.5.0 shipped OpenAPI 3.2 support, `$self`-aware reference resolution for multi-document descriptions, and the new `prettyUrls` output modes for cleaner hosted paths. It also refreshed the generated OG image template for better readability in link previews.
+
