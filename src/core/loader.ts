@@ -1,6 +1,6 @@
 import { readFile, access } from "node:fs/promises";
 import { resolve, extname } from "node:path";
-import yaml from "js-yaml";
+import { load, YAMLException } from "js-yaml";
 import type { LoadedSpec, SpecFormat, SpecVersion } from "./types.js";
 
 /**
@@ -63,13 +63,13 @@ function parseContent(content: string, format: SpecFormat): Record<string, unkno
   }
 
   try {
-    const parsed = yaml.load(content);
+    const parsed = load(content);
     if (typeof parsed !== "object" || parsed === null) {
       throw new Error("YAML spec must be an object");
     }
     return parsed as Record<string, unknown>;
   } catch (e) {
-    if (e instanceof yaml.YAMLException) {
+    if (e instanceof YAMLException) {
       throw new Error(`Failed to parse YAML spec: ${e.message}`, { cause: e });
     }
     throw e;
