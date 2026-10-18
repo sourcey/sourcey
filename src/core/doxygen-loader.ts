@@ -135,24 +135,35 @@ export function polishGeneratedDoxygenHtml(
   if (description) {
     const firstSection = out.search(/<h[2-6][\s>]/);
     const head = firstSection === -1 ? out : out.slice(0, firstSection);
-    const repeated = head.match(/<p>((?:(?!<\/p>)[\s\S])*)<\/p>\n?/g)?.find((p) => plainText(p) === description);
+    const repeated = head
+      .match(/<p>((?:(?!<\/p>)[\s\S])*)<\/p>\n?/g)
+      ?.find((p) => plainText(p) === description);
     if (repeated) out = out.replace(repeated, "");
   }
 
   out = out.replace(
     /<blockquote>\n<p>(<strong>[^<]+:<\/strong>[\s\S]*?)<\/p>\n<\/blockquote>/g,
     (match, body: string) => {
-      const rows = [...body.matchAll(/<strong>([^<]+):<\/strong>\s*([\s\S]*?)(?=\n?<strong>[^<]+:<\/strong>|$)/g)];
+      const rows = [
+        ...body.matchAll(
+          /<strong>([^<]+):<\/strong>\s*([\s\S]*?)(?=\n?<strong>[^<]+:<\/strong>|$)/g,
+        ),
+      ];
       if (!rows.length) return match;
       return (
         '<dl class="api-relations">' +
-        rows.map(([, label, value]) => `<div><dt>${label}</dt><dd>${value.trim()}</dd></div>`).join("") +
+        rows
+          .map(([, label, value]) => `<div><dt>${label}</dt><dd>${value.trim()}</dd></div>`)
+          .join("") +
         "</dl>"
       );
     },
   );
 
-  out = out.replace(/<p>((?:<a [^>]*>)?Defined in [^<]+(?:<\/a>)?)<\/p>/g, '<p class="api-defined-in">$1</p>');
+  out = out.replace(
+    /<p>((?:<a [^>]*>)?Defined in [^<]+(?:<\/a>)?)<\/p>/g,
+    '<p class="api-defined-in">$1</p>',
+  );
 
   out = out.replace(/<p>((?:<code>[^<]+<\/code> ?)+)<\/p>/g, (match, codes: string) => {
     const labels = [...codes.matchAll(/<code>([^<]+)<\/code>/g)].map(([, label]) => label);
@@ -210,6 +221,7 @@ export async function loadDoxygenTab(
       description,
       slug: page.slug,
       html,
+      markdown,
       headings,
       sourcePath: `api/${page.slug}.md`,
       editPath: page.kind === "group" ? `api/${page.slug}.md` : null,
@@ -240,13 +252,11 @@ export async function loadDoxygenTab(
 
     groups.push({
       label,
-      items: sorted.map(
-        (p): SiteNavItem => ({
-          label: p.kind === "group" ? "Overview" : p.title,
-          href: `${tabSlug}/${p.slug}.html`,
-          id: p.slug,
-        }),
-      ),
+      items: sorted.map((p): SiteNavItem => ({
+        label: p.kind === "group" ? "Overview" : p.title,
+        href: `${tabSlug}/${p.slug}.html`,
+        id: p.slug,
+      })),
     });
   }
 
@@ -264,6 +274,12 @@ export async function loadDoxygenTab(
       description: "",
       slug: indexSlug,
       html: indexHtml,
+      markdown: [...pages.values()]
+        .map(
+          (page) =>
+            `- [${page.title}](${page.slug}.html)${page.description ? `: ${page.description}` : ""}`,
+        )
+        .join("\n"),
       headings: indexHeadings,
       sourcePath: `api/${indexSlug}.md`,
       editPath: null,

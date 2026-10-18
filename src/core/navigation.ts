@@ -3,7 +3,7 @@ import { tagNavigationLabel } from "./tag-utils.js";
 import { pageOutputPath, tabIndexOutputPath } from "../config.js";
 import type { ResolvedTab } from "../config.js";
 import type { DocsPage } from "./markdown-loader.js";
-import { htmlId } from "../utils/html-id.js";
+import { htmlId, operationAnchor, definitionAnchor } from "../utils/html-id.js";
 import { toPublicPath, type PrettyUrls } from "../site-url.js";
 
 /**
@@ -93,8 +93,8 @@ export function buildNavFromSpec(
     const tagId = `tag-${htmlId(tag.name)}`;
     const items: SiteNavItem[] = tag.operations.map((op) => ({
       label: op.summary ?? `${op.method.toUpperCase()} ${op.path}`,
-      href: `${basePath}#operation-${htmlId(op.path)}-${htmlId(op.method)}`,
-      id: `operation-${htmlId(op.path)}-${htmlId(op.method)}`,
+      href: `${basePath}#${operationAnchor(op)}`,
+      id: operationAnchor(op),
       method: op.method,
     }));
     if (!items.length) continue;
@@ -111,8 +111,8 @@ export function buildNavFromSpec(
   if (schemaNames.length > 0) {
     const items: SiteNavItem[] = schemaNames.map((name) => ({
       label: name,
-      href: `${basePath}#definition-${htmlId(name)}`,
-      id: `definition-${htmlId(name)}`,
+      href: `${basePath}#${definitionAnchor(name)}`,
+      id: definitionAnchor(name),
     }));
     groups.push({ label: "Models", items });
   }

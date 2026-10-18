@@ -15,6 +15,8 @@ export interface SourceyPluginOptions {
   searchIndex?: () => Promise<string>;
   /** Optional: serve generated/copied files that do not go through Vite's static handler. */
   extraFile?: (outputPath: string) => Promise<string | Buffer | undefined>;
+  extraFileType?: (outputPath: string) => Promise<string | undefined>;
+  responseHeaders?: (pathname: string) => Promise<Record<string, string> | undefined>;
 }
 
 /**
@@ -23,7 +25,8 @@ export interface SourceyPluginOptions {
  * - Watches spec and markdown files; triggers full reload on change
  */
 export function sourceyPlugin(options: SourceyPluginOptions): Plugin {
-  const { watchPaths, baseUrl, render, searchIndex, extraFile } = options;
+  const { watchPaths, baseUrl, render, searchIndex, extraFile, extraFileType, responseHeaders } =
+    options;
   const watchSet = new Set(watchPaths.map((p) => resolve(p)));
 
   return {
@@ -60,91 +63,103 @@ export function sourceyPlugin(options: SourceyPluginOptions): Plugin {
       // Return a post middleware (runs after Vite internals)
       // We use pre-middleware instead by calling server.middlewares.use directly
       // This runs BEFORE Vite's static file handler
-      server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-        const url = req.url ?? "/";
-        const pathname = url.split("?", 1)[0] ?? "/";
-        const currentBaseUrl = normalizeBaseUrl(baseUrl?.());
-        const baseSearchPath = currentBaseUrl ? `${currentBaseUrl}search-index.json` : "/search-index.json";
+      server.middlewares.use(
+        async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          const url = req.url ?? "/";
+          const pathname = url.split("?", 1)[0] ?? "/";
+          const currentBaseUrl = normalizeBaseUrl(baseUrl?.());
+          const baseSearchPath = currentBaseUrl
+            ? `${currentBaseUrl}search-index.json`
+            : "/search-index.json";
 
-        // Let Vite handle its own requests
-        if (
-          url.startsWith("/@") ||
-          url.startsWith("/__vite") ||
-          url.startsWith("/node_modules/") ||
-          url === "/favicon.ico"
-        ) {
-          return next();
-        }
-
-        // Serve search index on demand
-        if (searchIndex && (pathname === "/search-index.json" || pathname === baseSearchPath)) {
-          try {
-            const json = await searchIndex();
-            res.writeHead(200, {
-              "Content-Type": "application/json",
-              "Cache-Control": "no-cache",
-            });
-            res.end(json);
-            return;
-          } catch {
+          // Let Vite handle its own requests
+          if (
+            url.startsWith("/@") ||
+            url.startsWith("/__vite") ||
+            url.startsWith("/node_modules/") ||
+            url === "/favicon.ico"
+          ) {
             return next();
           }
-        }
 
-        if (extraFile) {
-          try {
-            const outputPath = outputPathFromRequestPath(pathname, currentBaseUrl);
-            const data = outputPath ? await extraFile(outputPath) : undefined;
-            if (data !== undefined) {
+          // Serve search index on demand
+          if (searchIndex && (pathname === "/search-index.json" || pathname === baseSearchPath)) {
+            try {
+              const json = await searchIndex();
               res.writeHead(200, {
-                "Content-Type": contentTypeForPath(outputPath),
+                "Content-Type": "application/json",
                 "Cache-Control": "no-cache",
               });
-              res.end(data);
+              res.end(json);
               return;
+            } catch {
+              return next();
             }
-          } catch {
-            return next();
-          }
-        }
-
-        // Only handle HTML page requests (no extension, or .html)
-        const ext = extname(url);
-        if (ext && ext !== ".html") {
-          return next();
-        }
-
-        try {
-          let html = await render(url);
-          if (!html) {
-            return next();
           }
 
-          // Let Vite transform the HTML (injects HMR client script)
-          html = await server.transformIndexHtml(url, html);
+          if (extraFile) {
+            try {
+              const outputPath = outputPathFromRequestPath(pathname, currentBaseUrl);
+              const data = outputPath ? await extraFile(outputPath) : undefined;
+              if (data !== undefined) {
+                res.writeHead(200, {
+                  "Content-Type":
+                    (await extraFileType?.(outputPath)) ?? contentTypeForPath(outputPath),
+                  "Cache-Control": "no-cache",
+                  ...(await responseHeaders?.(pathname)),
+                });
+                res.end(data);
+                return;
+              }
+            } catch {
+              return next();
+            }
+          }
 
-          res.writeHead(200, {
-            "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control": "no-cache",
-          });
-          res.end(html);
-        } catch (e) {
-          server.ssrFixStacktrace(e as Error);
-          const err = e as Error;
-          console.error(`  SSR error for ${url}:`, err.message);
+          // Only handle HTML page requests (no extension, or .html)
+          const ext = extname(url);
+          if (ext && ext !== ".html") {
+            return next();
+          }
 
-          // Send error to Vite's native overlay via websocket
-          server.ws.send({ type: "error", err: { message: err.message, stack: err.stack ?? "" } });
+          try {
+            let html = await render(url);
+            if (!html) {
+              return next();
+            }
 
-          // Return a minimal page with just the HMR client so
-          // the error overlay renders and livereload can recover.
-          res.writeHead(500, {
-            "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control": "no-cache",
-          });
-          res.end(`<!DOCTYPE html><html><head><script type="module" src="/@vite/client"></script></head><body></body></html>`);
-        }
-      });
+            // Let Vite transform the HTML (injects HMR client script)
+            html = await server.transformIndexHtml(url, html);
+
+            res.writeHead(200, {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": "no-cache",
+              ...(await responseHeaders?.(pathname)),
+            });
+            res.end(html);
+          } catch (e) {
+            server.ssrFixStacktrace(e as Error);
+            const err = e as Error;
+            console.error(`  SSR error for ${url}:`, err.message);
+
+            // Send error to Vite's native overlay via websocket
+            server.ws.send({
+              type: "error",
+              err: { message: err.message, stack: err.stack ?? "" },
+            });
+
+            // Return a minimal page with just the HMR client so
+            // the error overlay renders and livereload can recover.
+            res.writeHead(500, {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": "no-cache",
+            });
+            res.end(
+              `<!DOCTYPE html><html><head><script type="module" src="/@vite/client"></script></head><body></body></html>`,
+            );
+          }
+        },
+      );
     },
   };
 }

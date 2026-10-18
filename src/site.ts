@@ -11,7 +11,7 @@ import type { SiteNavigation } from "./core/navigation.js";
 import type { SiteConfig } from "./renderer/context.js";
 import { buildSite as buildSiteHtml } from "./renderer/html-builder.js";
 import type { SitePage } from "./renderer/html-builder.js";
-import { generateLlmsFullTxt, generateLlmsTxt } from "./renderer/llms.js";
+import { generateExports } from "./exports/index.js";
 import {
   assembleSite,
   buildSiteConfig,
@@ -40,6 +40,8 @@ export interface SourceySiteArtifacts {
   llmsTxt: string;
   llmsFullTxt: string;
   extraFiles: Map<string, string | Buffer>;
+  mediaTypes: Map<string, string>;
+  responseHeaders: Map<string, Record<string, string>>;
   ogImages: Map<string, Buffer>;
   changelogDiagnostics: ChangelogDiagnostic[];
   godocDiagnostics: GodocLoaderDiagnostic[];
@@ -77,10 +79,10 @@ export async function buildSourceySite(
     config.search.featured,
     config.prettyUrls,
   );
-  const llmsTxt = generateLlmsTxt(pages, navigation, site);
-  const llmsFullTxt = generateLlmsFullTxt(pages, navigation, site);
+  const exports = generateExports(assembled, pages, navigation, site, config);
 
   const extraFiles = new Map(assembled.extraFiles);
+  for (const [path, body] of exports.files) extraFiles.set(path, body);
   const ogImages = new Map<string, Buffer>();
 
   if (options.generateOgImages !== false) {
@@ -95,8 +97,10 @@ export async function buildSourceySite(
     pages,
     pageCount: pages.length,
     searchIndex,
-    llmsTxt,
-    llmsFullTxt,
+    llmsTxt: exports.llmsTxt,
+    llmsFullTxt: exports.llmsFullTxt,
+    mediaTypes: exports.mediaTypes,
+    responseHeaders: exports.responseHeaders,
     extraFiles,
     ogImages,
     changelogDiagnostics: assembled.changelogDiagnostics,
@@ -112,8 +116,6 @@ export async function writeSourceySite(
 ): Promise<void> {
   await buildSiteHtml(site.pages, site.navigation, site.outputDir, site.site, {
     searchIndex: site.searchIndex,
-    llmsTxt: site.llmsTxt,
-    llmsFullTxt: site.llmsFullTxt,
     embeddable: options.embeddable,
     landingPage: options.landingPage,
     ogImages: site.ogImages,
@@ -121,10 +123,7 @@ export async function writeSourceySite(
   });
 }
 
-export function collectSourceyWatchPaths(
-  config: ResolvedConfig,
-  configPath?: string,
-): string[] {
+export function collectSourceyWatchPaths(config: ResolvedConfig, configPath?: string): string[] {
   const paths = new Set<string>();
   if (configPath) paths.add(resolve(configPath));
 

@@ -2,6 +2,9 @@ import { defineConfig, markdown } from "sourcey";
 
 export default defineConfig({
   name: "Sourcey",
+  siteUrl: "https://sourcey.com",
+  baseUrl: "/docs",
+  discovery: { ard: true },
   theme: {
     name: "default",
     colors: {
@@ -17,7 +20,7 @@ export default defineConfig({
           groups: [
             {
               group: "Start Here",
-              pages: ["introduction", "install", "configuration"],
+              pages: ["introduction", "install", "configuration", "machine-readable"],
             },
             {
               group: "Project",

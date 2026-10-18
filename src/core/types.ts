@@ -73,8 +73,19 @@ export interface NormalizedTag {
 
 // ── Operations ─────────────────────────────────────────────────────
 
-export type HttpMethod = "get" | "post" | "put" | "delete" | "patch" | "options" | "head" | "trace"
-  | "query" | "tool" | "resource" | "prompt";
+export type HttpMethod =
+  | "get"
+  | "post"
+  | "put"
+  | "delete"
+  | "patch"
+  | "options"
+  | "head"
+  | "trace"
+  | "query"
+  | "tool"
+  | "resource"
+  | "prompt";
 
 export interface NormalizedOperation {
   operationId?: string;
@@ -304,13 +315,7 @@ export interface CodeSample {
 export type ChangelogFormat = "keepachangelog" | "conventional" | "loose";
 
 export type ChangelogChangeType =
-  | "added"
-  | "changed"
-  | "fixed"
-  | "removed"
-  | "deprecated"
-  | "security"
-  | "other";
+  "added" | "changed" | "fixed" | "removed" | "deprecated" | "security" | "other";
 
 export type ChangelogDiagnosticSeverity = "error" | "warning" | "info";
 
@@ -390,6 +395,8 @@ export interface LoadedSpec {
 }
 
 export interface ParsedSpec {
+  /** Public bundle, produced only when explicitly requested, before dereferencing. */
+  publicDocument?: Record<string, unknown>;
   /** Fully dereferenced OpenAPI 3.x document */
   document: OpenApiDocument;
   /** Original source path/URL */

@@ -5,6 +5,7 @@ import type { ChangelogPage, MarkdownPage } from "../core/markdown-loader.js";
 import type { NavbarLink, PrettyUrls, ResolvedChangelogConfig, ResolvedTheme } from "../config.js";
 
 export interface AlternateLink {
+  rel?: "alternate" | "describedby" | "ard" | "api-catalog";
   href: string;
   type: string;
   title?: string;

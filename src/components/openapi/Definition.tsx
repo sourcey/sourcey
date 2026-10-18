@@ -1,5 +1,5 @@
 import type { NormalizedSchema } from "../../core/types.js";
-import { htmlId } from "../../utils/html-id.js";
+import { definitionAnchor } from "../../utils/html-id.js";
 import { SchemaView } from "../schema/SchemaView.js";
 import { ExampleView } from "../schema/ExampleView.js";
 
@@ -12,7 +12,7 @@ interface DefinitionProps {
  * Schema definition with single-column content + sticky example panel.
  */
 export function Definition({ name, schema }: DefinitionProps) {
-  const id = `definition-${htmlId(name)}`;
+  const id = definitionAnchor(name);
 
   return (
     <div id={id} class="py-8 border-t border-[rgb(var(--color-gray-100))] dark:border-[rgb(var(--color-gray-800))]" data-traverse-target={id}>

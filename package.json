@@ -1,6 +1,6 @@
 {
   "name": "sourcey",
-  "version": "3.7.0",
+  "version": "3.7.1",
   "description": "Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown. Static HTML you own.",
   "type": "module",
   "engines": {
@@ -13,6 +13,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./documents": {
+      "types": "./dist/exports/document-index.d.ts",
+      "import": "./dist/exports/document-index.js"
     },
     "./astro": {
       "types": "./dist/astro/index.d.ts",
@@ -29,6 +33,7 @@
     "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:docs-mcp": "node scripts/test-docs-mcp.mjs",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

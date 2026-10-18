@@ -30,5 +30,6 @@ export async function convertToOpenApi3(parsed: ParsedSpec): Promise<ParsedSpec>
   return {
     document: result as ParsedSpec["document"],
     source: parsed.source,
+    publicDocument: parsed.publicDocument,
   };
 }

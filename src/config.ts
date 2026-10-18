@@ -13,6 +13,14 @@ import {
   rustdoc as rustdocSource,
 } from "./adapters/index.js";
 import type { MarkdownPreprocessor } from "./core/markdown-loader.js";
+import {
+  resolveDiscovery,
+  resolveExports,
+  type DiscoveryConfig,
+  type ExportsConfig,
+  type ResolvedDiscovery,
+  type ResolvedExports,
+} from "./exports/config.js";
 import type { ResolvedTabSource, SourceAdapter } from "./adapters/types.js";
 import { DEFAULT_CODE_SAMPLE_LANGS, SUPPORTED_CODE_SAMPLE_LANGS } from "./utils/code-samples.js";
 import { themeDefinitions, type ThemeName } from "./themes/registry.js";
@@ -98,6 +106,10 @@ export interface ChangelogConfig {
 }
 
 export interface SourceyConfig {
+  /** Static machine-readable documentation outputs. */
+  exports?: false | ExportsConfig;
+  /** Discovery manifests and explicitly configured service descriptors. Off by default. */
+  discovery?: false | DiscoveryConfig;
   name?: string;
   /**
    * Separator inserted between the page title and the site name in `<title>`/OG
@@ -176,9 +188,7 @@ export interface DoxygenSourceUrlRoute {
 }
 
 export type DoxygenSourceUrlResolver =
-  | string
-  | DoxygenSourceUrlRoute[]
-  | ((input: DoxygenSourceUrlInput) => string | undefined);
+  string | DoxygenSourceUrlRoute[] | ((input: DoxygenSourceUrlInput) => string | undefined);
 
 export interface DoxygenConfig {
   /** Path to Doxygen XML output directory */
@@ -383,6 +393,8 @@ export interface ResolvedChangelogConfig {
 }
 
 export interface ResolvedConfig {
+  exports: ResolvedExports;
+  discovery: ResolvedDiscovery;
   name: string;
   titleSeparator: string;
   siteUrl?: string;
@@ -525,6 +537,8 @@ export async function loadConfig(configOrDir?: string): Promise<ResolvedConfig> 
 export function configFromSpec(specPath: string): ResolvedConfig {
   const absSpec = resolve(specPath);
   return {
+    exports: resolveExports(undefined),
+    discovery: resolveDiscovery(undefined),
     name: "API Reference",
     titleSeparator: " - ",
     siteUrl: undefined,
@@ -571,6 +585,12 @@ export async function resolveConfigFromRaw(
   const changelog = resolveChangelog(raw.changelog);
 
   return {
+    exports: resolveExports(raw.exports),
+    discovery: resolveDiscovery(
+      raw.discovery,
+      normalizeSiteUrl(raw.siteUrl),
+      normalizeBaseUrl(raw.baseUrl),
+    ),
     name: raw.name ?? "",
     titleSeparator: raw.titleSeparator ?? " - ",
     siteUrl: normalizeSiteUrl(raw.siteUrl),

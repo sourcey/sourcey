@@ -11,6 +11,7 @@ import type {
   GodocSnapshot,
 } from "./godoc-types.js";
 import { GODOC_SCHEMA_VERSION } from "./godoc-types.js";
+import { godocMarkdown } from "./godoc-markdown.js";
 import { runIntrospector, GodocIntrospectorError } from "./godoc-introspector.js";
 import {
   renderCodeBlock,
@@ -192,6 +193,7 @@ function buildResult(
       hideLede: Boolean(pkg.synopsis),
       slug,
       html,
+      markdown: godocMarkdown(pkg),
       headings,
       sourcePath: `godoc/${slug}.md`,
       editPath: packageEditPath(pkg),
@@ -212,6 +214,12 @@ function buildResult(
     description: spec.modulePath,
     slug: indexSlug,
     html: indexHtml,
+    markdown: filteredPackages
+      .map(
+        (pkg) =>
+          `- [${pkg.importPath}](${packageSlug(pkg.importPath, spec.modulePath)}.html): ${pkg.synopsis}`,
+      )
+      .join("\n"),
     headings: [],
     sourcePath: `godoc/${indexSlug}.md`,
     editPath: null,
@@ -229,13 +237,11 @@ function buildResult(
     const items = groups.get(key)!.sort((a, b) => a.label.localeCompare(b.label));
     navGroups.push({
       label: key,
-      items: items.map(
-        (entry): SiteNavItem => ({
-          label: entry.label,
-          href: `${tabSlug}/${entry.slug}.html`,
-          id: entry.slug,
-        }),
-      ),
+      items: items.map((entry): SiteNavItem => ({
+        label: entry.label,
+        href: `${tabSlug}/${entry.slug}.html`,
+        id: entry.slug,
+      })),
     });
   }
 

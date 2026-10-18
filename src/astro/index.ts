@@ -1,3 +1,4 @@
+import { resolveDiscovery } from "../exports/config.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
@@ -198,6 +199,7 @@ export async function prepareAstroSourcey(
     baseUrl,
     siteUrl,
     prettyUrls: options.prettyUrls ?? config.prettyUrls,
+    discovery: resolveDiscovery(config.discovery, siteUrl, baseUrl),
   };
 
   const outputRoute = routeBase === "/" ? "" : `${routeBase.replace(/^\/+|\/+$/g, "")}/`;
@@ -246,6 +248,8 @@ function sourceyAstroDevPlugin(options: {
   const { prepared, logger } = options;
   let buildPromise: Promise<void> | null = null;
   let built = false;
+  let mediaTypes = new Map<string, string>();
+  let responseHeaders = new Map<string, Record<string, string>>();
 
   async function rebuild(): Promise<void> {
     buildPromise ??= (async () => {
@@ -256,6 +260,8 @@ function sourceyAstroDevPlugin(options: {
         generateOgImages: options.generateOgImages,
       });
       await writeSourceySite(sourceySite, { landingPage: options.landingPage });
+      mediaTypes = sourceySite.mediaTypes;
+      responseHeaders = sourceySite.responseHeaders;
       built = true;
       logger.info(
         `Sourcey: ready at ${displayRoute(prepared.routeBase)} (${sourceySite.pageCount} pages)`,
@@ -320,8 +326,9 @@ function sourceyAstroDevPlugin(options: {
           if (!file) return next();
 
           res.writeHead(200, {
-            "Content-Type": contentTypeForPath(file.outputPath),
+            "Content-Type": mediaTypes.get(file.outputPath) ?? contentTypeForPath(file.outputPath),
             "Cache-Control": "no-cache",
+            ...responseHeaders.get(pathname),
           });
           res.end(file.data);
         } catch (error) {

@@ -1,0 +1,37 @@
+{
+  "name": "sourcey-docs-mcp",
+  "version": "0.1.0",
+  "description": "Read and search a built Sourcey documentation site over MCP.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "bin": {
+    "sourcey-docs-mcp": "cli.js"
+  },
+  "exports": "./server.js",
+  "files": [
+    "cli.js",
+    "server.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "sourcey": "^3.7.1",
+    "zod": "4.6.7"
+  },
+  "license": "AGPL-3.0-only",
+  "author": "Kam Low <oss@0state.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sourcey/sourcey.git",
+    "directory": "packages/docs-mcp"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

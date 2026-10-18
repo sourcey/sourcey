@@ -1,6 +1,6 @@
 import { useContext } from "preact/hooks";
 import type { NormalizedOperation, NormalizedRequestBody } from "../../core/types.js";
-import { htmlId } from "../../utils/html-id.js";
+import { operationAnchor } from "../../utils/html-id.js";
 import { SiteContext } from "../../renderer/context.js";
 import { Markdown } from "../ui/Markdown.js";
 import { DeprecatedBadge } from "../ui/Badge.js";
@@ -30,7 +30,7 @@ interface OperationProps {
 export function Operation({ operation: op, serverUrl }: OperationProps) {
   const site = useContext(SiteContext);
   if (site.theme.name === "api-first") return <SplitOperation operation={op} serverUrl={serverUrl} />;
-  const id = `operation-${htmlId(op.path)}-${htmlId(op.method)}`;
+  const id = operationAnchor(op);
   const hasParams = op.parameters.length > 0;
   const hasBody = !!op.requestBody;
   const mcp = op.mcpExtras;
@@ -141,7 +141,7 @@ export function Operation({ operation: op, serverUrl }: OperationProps) {
  */
 function SplitOperation({ operation: op, serverUrl }: OperationProps) {
   const site = useContext(SiteContext);
-  const id = `operation-${htmlId(op.path)}-${htmlId(op.method)}`;
+  const id = operationAnchor(op);
   const hasParams = op.parameters.length > 0;
   const hasBody = !!op.requestBody;
   const mcp = op.mcpExtras;

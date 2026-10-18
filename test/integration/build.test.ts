@@ -115,7 +115,9 @@ describe("buildDocs (integration)", () => {
       const indexHtml = await readFile(resolve(outputDir, "index.html"), "utf-8");
       expect(indexHtml).toContain("<!DOCTYPE html>");
       expect(indexHtml).not.toContain("Redirecting");
-      expect(indexHtml).toMatch(/<a[^>]+href="https:\/\/sourcey\.com\/docs"[^>]*>Docs by Sourcey<\/a>/);
+      expect(indexHtml).toMatch(
+        /<a[^>]+href="https:\/\/sourcey\.com\/docs"[^>]*>Docs by Sourcey<\/a>/,
+      );
       expect(indexHtml).not.toMatch(/Docs by\s*<a/);
       expect(indexHtml).not.toContain("noreferrer");
       expect(indexHtml).not.toContain("sourcey-logo.png");
@@ -225,7 +227,7 @@ describe("buildDocs (integration)", () => {
 
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
       expect(llms).toContain("# Mixed Docs");
-      expect(llms).toContain("[Welcome to Mixed Docs](/introduction.html)");
+      expect(llms).toContain("[Welcome to Mixed Docs](/introduction.md)");
       expect(llms).toContain("List all pets");
       expect(llms).toContain("nitro_get_status");
 
@@ -357,8 +359,11 @@ describe("buildDocs (integration)", () => {
       expect(rss).toContain("<link>https://docs.example.com/reference/changelog.html</link>");
 
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
-      expect(llms).toContain("## Changelog");
-      expect(llms).toContain("### 1.2.0 (2026-04-20)");
+      expect(llms).toContain("[Changelog]");
+      expect(llms).toContain("changelog.md");
+      expect(await readFile(resolve(outputDir, "llms-full.txt"), "utf-8")).toContain(
+        "1.2.0 (2026-04-20)",
+      );
 
       const searchIndex = await readFile(resolve(outputDir, "search-index.json"), "utf-8");
       expect(searchIndex).toContain('"category":"Releases"');
@@ -388,7 +393,7 @@ describe("buildDocs (integration)", () => {
       expect(sitemap).not.toContain(".html</loc>");
 
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
-      expect(llms).toContain("(/introduction/)");
+      expect(llms).toContain("(/introduction/index.md)");
 
       const searchIndex = await readFile(resolve(outputDir, "search-index.json"), "utf-8");
       expect(searchIndex).toContain('"url":"/introduction/"');
@@ -442,7 +447,7 @@ describe("buildDocs (integration)", () => {
       expect(sitemap).toContain("<loc>/introduction</loc>");
 
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
-      expect(llms).toContain("(/introduction)");
+      expect(llms).toContain("(/introduction.md)");
 
       const searchIndex = await readFile(resolve(outputDir, "search-index.json"), "utf-8");
       expect(searchIndex).toContain('"url":"/introduction"');

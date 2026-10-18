@@ -5,7 +5,7 @@ import { convertToOpenApi3 } from "./core/converter.js";
 import { parseSpec } from "./core/parser.js";
 import { normalizeSpec } from "./core/normalizer.js";
 import { normalizeMcpSpec } from "./core/mcp-normalizer.js";
-import { loadDocsPage, slugFromPath } from "./core/markdown-loader.js";
+import { loadDocsPage, slugFromPath, rewriteMarkdownDestinations } from "./core/markdown-loader.js";
 import { loadDoxygenTab } from "./core/doxygen-loader.js";
 import { loadGodocTab, type GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import { loadRustdocTab, type RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
@@ -26,6 +26,7 @@ import type { SiteConfig } from "./renderer/context.js";
 import { joinHref, toPrettyLink, toPublicUrl, type LinkStyle } from "./site-url.js";
 
 export interface SiteAssembly {
+  publicSpecs: Map<string, Record<string, unknown>>;
   siteTabs: SiteTab[];
   primarySpec: NormalizedSpec;
   specsBySlug: Map<string, NormalizedSpec>;
@@ -37,7 +38,11 @@ export interface SiteAssembly {
 }
 
 export async function assembleSite(config: ResolvedConfig): Promise<SiteAssembly> {
-  const specsBySlug = await loadSpecs(config.tabs);
+  const publicSpecs = new Map<string, Record<string, unknown>>();
+  const specsBySlug = await loadSpecs(
+    config.tabs,
+    config.exports.openapi ? publicSpecs : undefined,
+  );
   const primarySpec = specsBySlug.values().next().value ?? createMinimalSpec();
   const pageMap = new Map<string, SitePage>();
   const siteTabs: SiteTab[] = [];
@@ -64,7 +69,12 @@ export async function assembleSite(config: ResolvedConfig): Promise<SiteAssembly
     }
 
     if (tab.source.kind === "doxygen") {
-      const { pages, navTab } = await loadDoxygenTab(tab.source.config, tab.slug, tab.label, config.titleSeparator);
+      const { pages, navTab } = await loadDoxygenTab(
+        tab.source.config,
+        tab.slug,
+        tab.label,
+        config.titleSeparator,
+      );
 
       for (const [slug, page] of pages) {
         const outputPath = pageOutputPath(tab.slug, slug, config.prettyUrls);
@@ -190,6 +200,7 @@ export async function assembleSite(config: ResolvedConfig): Promise<SiteAssembly
   await attachSourceAssets(extraFiles, config.tabs);
 
   return {
+    publicSpecs,
     siteTabs,
     primarySpec,
     specsBySlug,
@@ -416,6 +427,14 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig):
     if (!docsSourcePath) continue;
 
     if (page.currentPage.kind === "markdown") {
+      page.currentPage.markdown.markdown = rewriteMarkdownLinks(
+        page.currentPage.markdown.markdown,
+        page.outputPath,
+        docsSourcePath,
+        pathMap,
+        sourceBase,
+        config,
+      );
       page.currentPage.markdown.description = rewriteMarkdownLinks(
         page.currentPage.markdown.description,
         page.outputPath,
@@ -591,13 +610,17 @@ function addPermalinkPages(pageMap: Map<string, SitePage>, prettyUrls: PrettyUrl
   }
 }
 
-async function loadSpecs(tabs: ResolvedTab[]): Promise<Map<string, NormalizedSpec>> {
+async function loadSpecs(
+  tabs: ResolvedTab[],
+  publicSpecs?: Map<string, Record<string, unknown>>,
+): Promise<Map<string, NormalizedSpec>> {
   const specsBySlug = new Map<string, NormalizedSpec>();
 
   for (const tab of tabs) {
     if (tab.source.kind === "openapi") {
       const loaded = await loadSpec(tab.source.spec);
-      const parsed = await parseSpec(loaded);
+      const parsed = await parseSpec(loaded, { publishBundle: !!publicSpecs });
+      if (parsed.publicDocument) publicSpecs?.set(tab.slug, parsed.publicDocument);
       const openapi3 = await convertToOpenApi3(parsed);
       specsBySlug.set(tab.slug, normalizeSpec(openapi3));
     } else if (tab.source.kind === "mcp") {
@@ -652,8 +675,7 @@ function isMainChangelogSitePage(
 
 function isSearchableDocsSitePage(page: SitePage): page is SitePage & {
   currentPage:
-    | { kind: "markdown"; markdown: MarkdownPage }
-    | { kind: "changelog"; changelog: ChangelogPage };
+    { kind: "markdown"; markdown: MarkdownPage } | { kind: "changelog"; changelog: ChangelogPage };
 } {
   return page.currentPage.kind === "markdown" || isMainChangelogSitePage(page);
 }
@@ -753,9 +775,7 @@ function rewriteMarkdownLinks(
   sourceBase: string | undefined,
   links: LinkStyle,
 ): string {
-  return markdown.replace(
-    /\[((?:`[^`]*`|[^\]])+)\]\(([^)]+)\)/g,
-    (match, label: string, href: string) => {
+  return rewriteMarkdownDestinations(markdown, (href) => {
       const resolved = resolveInternalHref(
         href,
         outputPath,
@@ -764,9 +784,8 @@ function rewriteMarkdownLinks(
         sourceBase,
         links,
       );
-      return resolved ? `[${label}](${resolved})` : match;
-    },
-  );
+      return resolved ?? href;
+    });
 }
 
 function resolveInternalHref(

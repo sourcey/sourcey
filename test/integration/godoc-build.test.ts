@@ -68,10 +68,18 @@ skipWithoutGo("buildSiteDocs (integration) – godoc tab", () => {
     expect(packagePage).toContain("Widget");
     expect(packagePage).toContain('id="func-New"');
     expect(packagePage.match(/<h1/g)?.length ?? 0).toBe(1);
-    expect(packagePage).toContain("https://github.com/sourcey/example/edit/main/go/basic/widget.go");
-    expect(packagePage).toContain("https://github.com/sourcey/example/blob/main/go/basic/widget.go#L");
-    expect(packagePage).not.toContain("https://github.com/sourcey/example/edit/main/docs/widget.go");
-    expect(packagePage).not.toContain("https://github.com/sourcey/example/blob/main/docs/widget.go#L");
+    expect(packagePage).toContain(
+      "https://github.com/sourcey/example/edit/main/go/basic/widget.go",
+    );
+    expect(packagePage).toContain(
+      "https://github.com/sourcey/example/blob/main/go/basic/widget.go#L",
+    );
+    expect(packagePage).not.toContain(
+      "https://github.com/sourcey/example/edit/main/docs/widget.go",
+    );
+    expect(packagePage).not.toContain(
+      "https://github.com/sourcey/example/blob/main/docs/widget.go#L",
+    );
 
     // Index page lists the package
     const indexPage = await readFile(resolve(OUTPUT_DIR, "go-api.html"), "utf-8");
@@ -85,7 +93,10 @@ skipWithoutGo("buildSiteDocs (integration) – godoc tab", () => {
     // llms.txt links the package page
     const llms = await readFile(resolve(OUTPUT_DIR, "llms.txt"), "utf-8");
     expect(llms).toContain("# Go Docs");
-    expect(llms).toContain("go-api/package-root.html");
+    expect(llms).toContain("go-api/package-root.md");
+    const packageMarkdown = await readFile(resolve(OUTPUT_DIR, "go-api/package-root.md"), "utf-8");
+    expect(packageMarkdown).toContain("```go");
+    expect(packageMarkdown).toContain("func New(name string) *Widget");
 
     // llms-full.txt has the package content
     const llmsFull = await readFile(resolve(OUTPUT_DIR, "llms-full.txt"), "utf-8");
@@ -102,10 +113,23 @@ skipWithoutGo("buildSiteDocs (integration) – godoc tab", () => {
     expect(titles).toContain("type Widget");
     expect(titles).toContain("Widget.Publish");
     expect(titles).toContain("Example New");
-    expect(searchIndex.some((entry) => entry.category === "go function" && entry.content.includes("New constructs a Widget"))).toBe(true);
-    expect(searchIndex.some((entry) => entry.category === "go type" && entry.title === "type Widget")).toBe(true);
-    expect(searchIndex.some((entry) => entry.category === "go method" && entry.title === "Widget.Publish")).toBe(true);
-    expect(searchIndex.some((entry) => entry.category === "go example" && entry.title === "Example New")).toBe(true);
+    expect(
+      searchIndex.some(
+        (entry) =>
+          entry.category === "go function" && entry.content.includes("New constructs a Widget"),
+      ),
+    ).toBe(true);
+    expect(
+      searchIndex.some((entry) => entry.category === "go type" && entry.title === "type Widget"),
+    ).toBe(true);
+    expect(
+      searchIndex.some(
+        (entry) => entry.category === "go method" && entry.title === "Widget.Publish",
+      ),
+    ).toBe(true);
+    expect(
+      searchIndex.some((entry) => entry.category === "go example" && entry.title === "Example New"),
+    ).toBe(true);
   });
 
   it("emits prettyUrls=strip Godoc navigation without html suffixes", async () => {

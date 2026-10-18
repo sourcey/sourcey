@@ -4,7 +4,7 @@ import type { SiteNavigation } from "./navigation.js";
 import type { PrettyUrls } from "../site-url.js";
 import { toPublicPath } from "../site-url.js";
 import { pageOutputPath, tabIndexOutputPath } from "../config.js";
-import { htmlId } from "../utils/html-id.js";
+import { operationAnchor, definitionAnchor } from "../utils/html-id.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,7 +73,7 @@ export function buildSearchIndex(
       entries.push({
         title: op.summary ?? `${op.method.toUpperCase()} ${op.path}`,
         content: op.description?.slice(0, 200) ?? "",
-        url: `${tabBase}#operation-${htmlId(op.path)}-${htmlId(op.method)}`,
+        url: `${tabBase}#${operationAnchor(op)}`,
         method: op.method,
         path: op.path,
         tab: tabLabel,
@@ -86,7 +86,7 @@ export function buildSearchIndex(
       entries.push({
         title: name,
         content: spec.schemas[name].description?.slice(0, 200) ?? "",
-        url: `${tabBase}#definition-${htmlId(name)}`,
+        url: `${tabBase}#${definitionAnchor(name)}`,
         tab: tabLabel,
         category: "Models",
       });

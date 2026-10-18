@@ -31,6 +31,8 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:docs-mcp
+        if: matrix.node-version == 24
       - run: npm run godoc:go:test
         if: matrix.node-version == 24
       - run: npm run godoc:go:vet

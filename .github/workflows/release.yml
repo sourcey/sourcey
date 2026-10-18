@@ -50,6 +50,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run test:docs-mcp
       - run: npm run godoc:go:test
       - run: npm run godoc:go:vet
       - run: npm run godoc:packages:test

@@ -1,0 +1,42 @@
+name: Docs MCP release
+
+on:
+  push:
+    tags: ["docs-mcp/v*.*.*"]
+
+concurrency:
+  group: docs-mcp-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Verify version
+        working-directory: packages/docs-mcp
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node -e 'if (process.env.RELEASE_TAG !== "docs-mcp/v" + require("./package.json").version) process.exit(1)'
+      - name: Install and test
+        working-directory: packages/docs-mcp
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+      - name: Pack the verified package
+        working-directory: packages/docs-mcp
+        run: npm pack --ignore-scripts
+      - name: Publish
+        working-directory: packages/docs-mcp
+        run: npm publish sourcey-docs-mcp-*.tgz --provenance --access public
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" packages/docs-mcp/sourcey-docs-mcp-*.tgz --generate-notes

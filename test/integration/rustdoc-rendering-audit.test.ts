@@ -73,6 +73,17 @@ async function concatenatedHtml(): Promise<string> {
 }
 
 describe("rustdoc rendering audit", () => {
+  it("retains native signatures, method docs and runnable examples in readable Markdown", async () => {
+    const result = await loadResult();
+    const markdown = result.pages.get("pkg-basic-basic")!.markdown;
+    expect(markdown).toContain("```rust");
+    expect(markdown).toContain("fn greet(name: &str) -> String");
+    expect(markdown).toContain("fn publish(self: &mut Self)");
+    expect(markdown).toContain("Mark the widget as published.");
+    expect(markdown).toContain("w.publish();");
+    expect(markdown).not.toContain('class="shiki');
+  });
+
   it("hits every must-have DOM element from the rendering catalog", async () => {
     const html = await concatenatedHtml();
     for (const check of baseChecks) {

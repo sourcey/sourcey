@@ -14,6 +14,7 @@ import {
   itemAnchor,
   itemDisplayName,
   renderModulePage,
+  renderModuleMarkdown,
   type RenderContext,
   type RustItemPage,
   rustItemPages,
@@ -179,6 +180,7 @@ function renderModulePageLoader(
     hideLede: Boolean(description),
     slug,
     html,
+    markdown: renderModuleMarkdown(module, items, ctx),
     headings,
     sourcePath: `rustdoc/${slug}.md`,
     editPath: module.source ? module.source.file : null,
@@ -225,6 +227,12 @@ function renderWorkspaceIndexPage(
     description: `Rust API across ${crates.length} crate${crates.length === 1 ? "" : "s"}.`,
     slug: "index",
     html: `<div class="card-group not-prose" data-cols="${cols}">\n${cards.join("\n")}\n</div>`,
+    markdown: crates
+      .map(
+        (crate) =>
+          `- [${crate.name}](${tabRelativeHref(tab, crateIndexSlug(crate.name))})${crate.version ? ` (${crate.version})` : ""}`,
+      )
+      .join("\n"),
     headings,
     sourcePath: `rustdoc/index.md`,
     searchEntries,
@@ -267,6 +275,12 @@ function renderCrateIndexPage(crate: CrateSpec, tab: RustTab): MarkdownPage {
     html,
     headings,
     sourcePath: `rustdoc/${slug}.md`,
+    markdown: crate.modules
+      .map(
+        (module) =>
+          `- [${module.path.join("::") || crate.name}](${tabRelativeHref(tab, rustModuleSlug(crate.name, module.path))})`,
+      )
+      .join("\n"),
   };
 }
 
@@ -306,6 +320,12 @@ function renderDoctestsIndexPage(
     description: `Aggregated doctests across the workspace.`,
     slug: "doctests",
     html: parts.join("\n"),
+    markdown: doctests
+      .map(
+        ({ item, doctest }) =>
+          `## ${item.path.join("::")}\n\n\`\`\`rust\n${doctest.display_code}\n\`\`\``,
+      )
+      .join("\n\n"),
     headings,
     sourcePath: `rustdoc/doctests.md`,
     searchEntries,
@@ -358,7 +378,9 @@ function signatureForItem(item: Item): string | null {
     case "proc_macro":
       return `#[${item.inner.macro_kind === "derive" ? "derive" : "proc_macro"}] ${item.name ?? ""}`;
     case "use":
-      return item.inner.is_glob ? `pub use ${item.inner.source}::*;` : `pub use ${item.inner.source};`;
+      return item.inner.is_glob
+        ? `pub use ${item.inner.source}::*;`
+        : `pub use ${item.inner.source};`;
     default:
       return item.name ? item.path.join("::") : null;
   }
@@ -492,6 +514,7 @@ function emptyIndexPage(slug: string, title: string, message: string): MarkdownP
     description: message,
     slug: "index",
     html: `<section class="rust-empty"><p>${escapeHtml(message)}</p></section>`,
+    markdown: message,
     headings: [],
     sourcePath: `rustdoc/${slug}.md`,
   };

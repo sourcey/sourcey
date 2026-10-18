@@ -59,6 +59,16 @@ describe("sourcey/astro", () => {
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
       expect(await response.text()).toContain('data-sourcey-theme="reader"');
+      const documents = await fetch(new URL("/docs/documents.json", origin));
+      const index = await documents.json();
+      const intro = index.documents.find(
+        (entry: { title: string }) => entry.title === "Welcome to Mixed Docs",
+      );
+      expect(intro).toBeDefined();
+      const readable = await fetch(new URL(intro.markdown, origin));
+      expect(readable.headers.get("content-type")).toContain("text/markdown");
+      expect(readable.headers.get("link")).toContain('rel="canonical"');
+      expect(await readable.text()).toContain("Welcome to Mixed Docs");
       const css = await fetch(new URL("/docs/sourcey.css", origin));
       expect(css.headers.get("content-type")).toBe("text/css; charset=utf-8");
       expect(await css.text()).toContain(".docs-shell");
@@ -112,14 +122,23 @@ describe("sourcey/astro", () => {
     const client = resolve(root, "client");
     await mkdir(client, { recursive: true });
     await writeFile(resolve(root, "index.md"), "---\ntitle: Overview\n---\n\nThe contract.\n");
-    await writeFile(resolve(root, "authorization.md"), "---\ntitle: Authorization\n---\n\nPermission.\n");
+    await writeFile(
+      resolve(root, "authorization.md"),
+      "---\ntitle: Authorization\n---\n\nPermission.\n",
+    );
     const integration = sourceyAstro({
       configDir: root,
       config: defineConfig({
         name: "Reader",
         theme: { name: "reader", fonts: { google: false } },
         navigation: {
-          tabs: [{ tab: "Docs", slug: "", groups: [{ group: "Start", pages: ["index", "authorization"] }] }],
+          tabs: [
+            {
+              tab: "Docs",
+              slug: "",
+              groups: [{ group: "Start", pages: ["index", "authorization"] }],
+            },
+          ],
         },
       }),
       routeBase: "/docs",
@@ -240,7 +259,9 @@ describe("sourcey/astro", () => {
       const head = rootAlias.slice(0, rootAlias.indexOf("</head>"));
       expect(head).toContain('<script src="/docs/sourcey-theme.js"></script>');
       for (const [, attributes] of rootAlias.matchAll(/<script([^>]*)>(?!<\/script>)/g)) {
-        expect(attributes, "inline executable script").toMatch(/\bsrc=|type="application\/ld\+json"/);
+        expect(attributes, "inline executable script").toMatch(
+          /\bsrc=|type="application\/ld\+json"/,
+        );
       }
       expect(rootAlias).toContain('content="/docs/search-index.json"');
 

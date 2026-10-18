@@ -97,6 +97,8 @@ export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<Sit
 }
 
 export { defineConfig } from "./config.js";
+export type { DiscoveryConfig, DiscoveryResource, ExportsConfig } from "./exports/config.js";
+export type { DocumentationIndex, DocumentationEntry } from "./exports/documents.js";
 export { doxygen, godoc, markdown, mcp, mkdocs, openapi, rustdoc } from "./adapters/index.js";
 export { resolveInternalLinks } from "./site-assembly.js";
 export { buildSourceySite, collectSourceyWatchPaths, writeSourceySite } from "./site.js";

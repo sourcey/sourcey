@@ -25,6 +25,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "modules/base",
             html: '<p><a href="../api/base.md">API Reference</a> <a href="../concepts/runtime-contracts.md">Runtime Contracts</a></p>',
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "modules/base.md",
             editPath: "modules/base.md",
@@ -43,6 +44,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "concepts/runtime-contracts",
             html: "<p>Contracts</p>",
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "concepts/runtime-contracts.md",
             editPath: "concepts/runtime-contracts.md",
@@ -61,6 +63,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "base",
             html: "<p>API reference</p>",
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "api/base.md",
             editPath: "api/base.md",
@@ -75,7 +78,9 @@ describe("resolveInternalLinks", () => {
     resolveInternalLinks(pages, {} as ResolvedConfig);
 
     expect(pages[0].currentPage.markdown?.html).toContain('href="../../api-reference/base.html"');
-    expect(pages[0].currentPage.markdown?.html).toContain('href="../../documentation/concepts/runtime-contracts.html"');
+    expect(pages[0].currentPage.markdown?.html).toContain(
+      'href="../../documentation/concepts/runtime-contracts.html"',
+    );
   });
 
   it("rewrites stale html links to strip pretty URLs when they resolve internally", () => {
@@ -89,6 +94,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "introduction",
             html: '<p><a href="/docs/quickstart.html">Quickstart</a> <a href="missing.html">Missing</a></p>',
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "introduction.md",
             editPath: "introduction.md",
@@ -107,6 +113,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "quickstart",
             html: "<p>Quickstart</p>",
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "quickstart.md",
             editPath: "quickstart.md",
@@ -135,6 +142,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "base",
             html: '<p>See <a href="icy.html#onshutdownsignal">icy</a>.</p>',
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "api/base.md",
             editPath: null,
@@ -153,6 +161,7 @@ describe("resolveInternalLinks", () => {
             description: "",
             slug: "icy",
             html: "<p>icy namespace</p>",
+            markdown: "[Reference](../api/base.md)",
             headings: [],
             sourcePath: "api/icy.md",
             editPath: null,
@@ -166,6 +175,8 @@ describe("resolveInternalLinks", () => {
 
     resolveInternalLinks(pages, { prettyUrls: "strip" } as ResolvedConfig);
 
-    expect(pages[0].currentPage.markdown?.html).toContain('href="../api-reference/icy#onshutdownsignal"');
+    expect(pages[0].currentPage.markdown?.html).toContain(
+      'href="../api-reference/icy#onshutdownsignal"',
+    );
   });
 });

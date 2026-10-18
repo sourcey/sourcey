@@ -2,6 +2,21 @@
 
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 3.7.1 - 2026-10-18
+
+### Added
+
+- Publish a Markdown view of every page, with individual documents for API operations and schemas. `documents.json` links each document to its browser reference and records library symbol locations.
+- Configure static outputs with `exports`. Markdown and the existing context files are enabled by default; public OpenAPI bundles require `exports.openapi: true`.
+- Publish ARD resource manifests and RFC 9727 API catalogs with `discovery`. Support scoped docs, explicitly owned root well-known paths, and authored MCP/A2A descriptor entries.
+- Emit `response-headers.json` for static hosting. CLI and Astro development apply the same content types and discovery headers, including the extensionless API catalog.
+- Add the optional `sourcey-docs-mcp` package for searching and reading a built documentation directory over MCP, including library symbol lookup.
+
+### Fixed
+
+- Preserve readable source content in context exports: code fences, rich guide labels, Go declarations and examples, and native Rust reference. Individual documents and the full export use the same content.
+- Serve generated context and discovery files from the CLI's current development snapshot and invalidate them after source edits.
+
 ## 3.7.0 - 2026-10-18
 
 ### Changed

@@ -12,9 +12,20 @@ import type { LoadedSpec, OpenApiDocument, ParsedSpec } from "./types.js";
  * Uses the document source as the base URI, but honors OpenAPI 3.2's
  * `$self` field when present so relative references resolve canonically.
  */
-export async function parseSpec(loaded: LoadedSpec): Promise<ParsedSpec> {
+export async function parseSpec(
+  loaded: LoadedSpec,
+  options: { publishBundle?: boolean } = {},
+): Promise<ParsedSpec> {
   try {
     const parser = new $RefParser();
+    const resolver = { http: false as const, file: createConfinedFileResolver(loaded) };
+    const publicDocument = options.publishBundle
+      ? ((await new $RefParser().bundle(
+          resolveDocumentUri(loaded),
+          structuredClone(loaded.raw) as never,
+          { resolve: resolver },
+        )) as unknown as Record<string, unknown>)
+      : undefined;
     const dereferenced = await parser.dereference(
       resolveDocumentUri(loaded),
       structuredClone(loaded.raw) as never,
@@ -28,16 +39,14 @@ export async function parseSpec(loaded: LoadedSpec): Promise<ParsedSpec> {
             }
           },
         },
-        resolve: {
-          http: false,
-          file: createConfinedFileResolver(loaded),
-        },
+        resolve: resolver,
       },
     );
 
     return {
       document: dereferenced as unknown as OpenApiDocument,
       source: loaded.source,
+      publicDocument,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -38,6 +38,8 @@ export interface MarkdownPage {
   slug: string;
   /** Rendered HTML body */
   html: string;
+  /** Readable content retained by the owning adapter, before presentation rendering. */
+  markdown: string;
   /** Extracted h2/h3 headings for table of contents */
   headings: PageHeading[];
   /** Original file path (for error messages and dev server watching) */
@@ -178,11 +180,22 @@ function protectFencedCodeBlocks(input: string): { text: string; blocks: string[
 
 // Restores take the saved text through a function, so a `$` in it is never read as
 // a replacement pattern such as $` or $&.
-function restoreFencedCodeBlocks(input: string, blocks: string[]): string {
+function restoreFencedCodeBlocks(input: string, blocks: string[], preserveIndent = false): string {
+  if (preserveIndent) return blocks.reduce((text, block, index) => text.replace(new RegExp(`^([\\t ]*)${FENCED_BLOCK_TOKEN}${index}@@`, "gm"), (_match, indent: string) => indent + dedent(block).split("\n").join(`\n${indent}`)), input);
   return blocks.reduce(
     (text, block, index) => text.replaceAll(`${FENCED_BLOCK_TOKEN}${index}@@`, () => block),
     input,
   );
+}
+
+/** Rewrite prose destinations while keeping examples and inline code byte-for-byte. */
+export function rewriteMarkdownDestinations(markdown: string, rewrite: (href: string) => string): string {
+  const fenced = protectFencedCodeBlocks(markdown);
+  const inline = protectInlineCodeSpans(fenced.text);
+  const links = inline.text
+    .replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (_match, label: string, href: string) => `[${label}](${rewrite(href)})`)
+    .replace(/^(\s*\[[^\]]+\]:\s*)(\S+)/gm, (_match, prefix: string, href: string) => `${prefix}${rewrite(href)}`);
+  return restoreFencedCodeBlocks(restoreInlineCodeSpans(links, inline.spans), fenced.blocks);
 }
 
 function protectInlineCodeSpans(input: string): { text: string; spans: string[] } {
@@ -784,14 +797,51 @@ function renderParsedComponentNode(node: ParsedComponentNode): string {
  * Convert JSX-style components to directive syntax so they go through
  * a single rendering path in preprocessDirectives.
  */
-function preprocessComponents(body: string): string {
+function preprocessComponents(body: string, readable = false): string {
   const { text: fencedText, blocks } = protectFencedCodeBlocks(body);
   activeFenceBlocks = blocks;
   const { text, spans } = protectInlineCodeSpans(fencedText);
   activeInlineSpans = spans;
   const parsed = parseComponentNodes(text);
-  const restoredInline = restoreInlineCodeSpans(renderParsedComponentNodes(parsed.nodes), spans);
-  return restoreFencedCodeBlocks(restoredInline, blocks);
+  const restoredInline = restoreInlineCodeSpans(
+    readable ? readableComponentNodes(parsed.nodes) : renderParsedComponentNodes(parsed.nodes),
+    spans,
+  );
+  return restoreFencedCodeBlocks(restoredInline, blocks, readable);
+}
+
+function readableComponentNodes(nodes: ParsedComponentNode[]): string {
+  return nodes
+    .map((node) => {
+      if (node.kind === "text") return node.value;
+      const body = dedent(readableComponentNodes(node.children)).trim();
+      const title = node.attrs.title || node.name;
+      if (node.name === "Steps") {
+        const steps = collectChildComponents(node.children, "Step");
+        return steps
+          ? `\n\n${steps
+              .map(
+                (step, i) =>
+                  `${i + 1}. **${step.attrs.title || ""}**\n\n${dedent(
+                    readableComponentNodes(step.children),
+                  )
+                    .trim()
+                    .split("\n")
+                    .map((line) => `   ${line}`)
+                    .join("\n")}`,
+              )
+              .join("\n\n")}\n\n`
+          : body;
+      }
+      if (["Steps", "CardGroup", "AccordionGroup", "Tabs", "CodeGroup"].includes(node.name))
+        return `\n\n${body}\n\n`;
+      if (node.name === "Video" || node.name === "Iframe")
+        return `\n\n[${title}](${node.attrs.src || ""})\n\n`;
+      const label =
+        node.name === "Card" && node.attrs.href ? `[${title}](${node.attrs.href})` : title;
+      return `\n\n**${label}**\n\n${body}\n\n`;
+    })
+    .join("");
 }
 
 // ---------------------------------------------------------------------------
@@ -840,6 +890,16 @@ function closesFence(line: string, fence: { char: string; length: number }): boo
     match[1].length >= fence.length &&
     !match[2].trim()
   );
+}
+
+/** Each document ends at EOF; close its open fence before concatenating another document. */
+export function closeMarkdownFence(markdown: string): string {
+  let fence: {char: string; length: number} | null = null;
+  for (const line of markdown.split("\n")) {
+    if (fence) { if (closesFence(line, fence)) fence = null; }
+    else fence = isFenceStart(line);
+  }
+  return fence ? `${markdown.trimEnd()}\n${fence.char.repeat(fence.length)}\n` : markdown;
 }
 
 /** Build tabbed UI HTML (shared by :::tabs and :::code-group). */
@@ -1169,7 +1229,7 @@ ${body}
  * matches a specific `:::type` opener so closing `:::` markers
  * from other directive types cannot collide.
  */
-function preprocessDirectives(body: string): string {
+function preprocessDirectives(body: string, readable = false): string {
   const lines = body.split("\n");
   const out: string[] = [];
   let i = 0;
@@ -1198,7 +1258,7 @@ function preprocessDirectives(body: string): string {
       continue;
     }
 
-    if (start.type === "accordion") {
+    if (!readable && start.type === "accordion") {
       const accordions: string[] = [];
       let nextLine = i;
 
@@ -1236,11 +1296,33 @@ function preprocessDirectives(body: string): string {
       continue;
     }
 
-    out.push(renderDirectiveBlock(start.type, start.meta, block.content));
+    out.push(
+      readable
+        ? readableDirective(start.type, start.meta, block.content)
+        : renderDirectiveBlock(start.type, start.meta, block.content),
+    );
     i = block.nextLine;
   }
 
   return out.join("\n");
+}
+
+function readableDirective(type: SupportedDirective, meta: string, content: string): string {
+  const body = (value: string) => preprocessDirectives(value, true).trim();
+  if (type === "steps" || type === "code-group") return `\n\n${body(content)}\n\n`;
+  if (type === "tabs" || type === "card-group") {
+    return `\n\n${splitChildren(content, type === "tabs" ? "tab" : "card")
+      .map((child) => {
+        const title = child.attrs.title || "";
+        return `**${child.attrs.href ? `[${title}](${child.attrs.href})` : title}**\n\n${body(child.body)}`;
+      })
+      .join("\n\n")}\n\n`;
+  }
+  const title =
+    type === "accordion"
+      ? parseAttrs(meta.match(/^\{([^}]*)\}$/)?.[1] ?? "").title || "Details"
+      : meta || type;
+  return `\n\n**${title}**\n\n${body(content)}\n\n`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1349,6 +1431,10 @@ function loadMarkdownPageFromBody(
     ...(hideLede ? { hideLede } : {}),
     slug,
     html: cleanHtml,
+    markdown: preprocessDirectives(preprocessComponents(sourcePreprocessed, true), true).replace(
+      /^::(?:video|iframe)\[([^\]]+)\].*$/gm,
+      "[Embedded content]($1)",
+    ),
     headings,
     sourcePath,
     editPath: sourcePath,
@@ -1357,7 +1443,10 @@ function loadMarkdownPageFromBody(
 }
 
 function visibleText(html: string): string {
-  return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizeMarkdownDescription(description: unknown, markdown: string): string {

@@ -108,7 +108,7 @@ export function Head() {
       {options.alternateLinks?.map((link) => (
         <link
           key={`${link.type}-${link.href}`}
-          rel="alternate"
+          rel={link.rel ?? "alternate"}
           type={link.type}
           href={link.href}
           title={link.title}

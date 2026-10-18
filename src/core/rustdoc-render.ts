@@ -30,6 +30,7 @@ import type {
   Stability,
 } from "./rustdoc-types.js";
 import { RUSTDOC_DIAGNOSTIC_CODES } from "./rustdoc-types.js";
+import { fencedCode } from "../exports/markdown.js";
 
 export interface RenderContext {
   crate: CrateSpec;
@@ -266,7 +267,12 @@ function typePathHref(
     // An item this crate does not render gets no link rather than a guessed one.
     return candidate ? itemPageHref(candidate, ctx) : null;
   }
-  return externalItemHref(target.path[0] ?? "", target.html_root_url, target.path, target.item_kind);
+  return externalItemHref(
+    target.path[0] ?? "",
+    target.html_root_url,
+    target.path,
+    target.item_kind,
+  );
 }
 
 /** The page a crate module renders on. A module path starts with the crate's root module. */
@@ -1016,6 +1022,47 @@ export function renderModulePage(
     html: parts.join("\n"),
     sidebarSections: sidebar,
   };
+}
+
+/** Serialize the same native items without parsing the HTML presentation. */
+export function renderModuleMarkdown(
+  module: ModuleSpec,
+  items: Item[],
+  ctx: RenderContext,
+): string {
+  const seen = new Set<string>();
+  const render = (item: Item): string => {
+    if (seen.has(item.id)) return "";
+    seen.add(item.id);
+    const signature =
+      item.inner.kind === "function" ? item.inner.signature.display : fallbackSignatureText(item);
+    const children = [...memberItemIds(item), ...collectOwnImplIds(item)];
+    if (item.inner.kind === "impl" || item.inner.kind === "trait")
+      children.push(...item.inner.items);
+    return [
+      `<a id="${item.inner.kind === "function" ? ctx.itemPages.get(item.id)?.anchor || itemAnchor(item) : itemAnchor(item)}"></a>`,
+      `## ${
+        item.inner.kind === "impl"
+          ? `impl ${item.inner.trait_path ? `${item.inner.trait_path.display} for ` : ""}${item.inner.for_type.display}`
+          : itemDisplayName(item) || itemAnchor(item)
+      }`,
+      signature ? fencedCode(signature, "rust") : "",
+      item.docs_markdown || "",
+      ...Object.entries(item.links).flatMap(([label, target]) => {
+        const href = linkTargetHref(target, ctx);
+        return href ? [`[${label.replace(/^`(.+)`$/, "$1")}]: ${href}`] : [];
+      }),
+      ...children
+        .map((id) => ctx.itemsById.get(id))
+        .filter((child): child is Item => !!child)
+        .map(render),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  };
+  return [module.docs_markdown, ...[...groupItemsForRendering(items).values()].flat().map(render)]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 const GROUP_ORDER = [

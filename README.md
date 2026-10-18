@@ -30,7 +30,9 @@ npx sourcey init
 - **C++ and Doxygen**: feed Doxygen XML output, get modern searchable API docs with exact member search, source links, templates, qualifiers, examples, inherited members, and relationship sections. No new parser, no four-tool Breathe/Exhale/Sphinx pipeline
 - **Go and godoc**: native package documentation extracted from Go source via the toolchain. Render Go modules as Sourcey tabs, generate standalone static Go docs sites, or commit `godoc.json` snapshots for JS-only docs hosts. No Doxygen detour
 - **Rust and rustdoc**: native API documentation from nightly rustdoc JSON, with doctests as a first-class extracted view. URL-encoded parametric impl anchors for deep-link parity with doc.rust-lang.org. Snapshot mode lets CI build on stable Rust toolchains. Aggregated doctests index across the workspace
-- **Context exports**: auto-generate llms.txt and llms-full.txt alongside your HTML as alternate views of the same documentation graph
+- **Readable reference for agents**: Markdown for pages, API operations and schemas, plus `documents.json`, `llms.txt` and `llms-full.txt`. Code examples retain their formatting
+- **API and agent discovery**: opt into public OpenAPI bundles, ARD manifests and RFC 9727 API catalogs. Mounted docs keep the host's root manifest under its owner's control. [Configuration](docs/machine-readable.md)
+- **Docs over MCP**: the optional [`sourcey-docs-mcp`](packages/docs-mcp) package searches and reads a built documentation directory. Its SDK stays out of the generator and browser bundle
 - **TypeScript config**: `sourcey.config.ts` with `defineConfig()` autocomplete; theme, navbar, CTA buttons, footer
 - **Themes**: default (sidebar + TOC), minimal (single column), api-first (full width, with examples beside each API operation), and reader (editorial specification); colors, fonts, layout dimensions, and custom CSS on top
 - **Vite dev server**: SSR hot reload on every component and CSS change; spec and markdown changes trigger instant refresh
@@ -47,7 +49,7 @@ The full Sourcey binary handles OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, a
 
 | Path     | Command                                        | Requires          |
 | -------- | ---------------------------------------------- | ----------------- |
-| npm      | `npm install -g sourcey`                       | Node 20+          |
+| npm      | `npm install -g sourcey`                       | Node 22.19+       |
 | Homebrew | `brew tap sourcey/tap && brew install sourcey` | macOS / Linuxbrew |
 | Docker   | `docker run -v "$PWD":/docs sourcey/sourcey`   | Docker            |
 | Nix      | `nix run github:sourcey/sourcey`               | Nix (flakes)      |

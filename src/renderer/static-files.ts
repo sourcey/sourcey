@@ -57,6 +57,11 @@ export function contentTypeForPath(path: string): string {
       return "text/javascript; charset=utf-8";
     case ".json":
       return "application/json; charset=utf-8";
+    case ".md":
+      return "text/markdown; charset=utf-8";
+    case ".yaml":
+    case ".yml":
+      return "application/yaml; charset=utf-8";
     case ".svg":
       return "image/svg+xml";
     case ".png":

@@ -29,6 +29,7 @@ import {
 } from "./site-assembly.js";
 import { stripBaseUrl } from "./site-url.js";
 import { sourceyPlugin } from "./vite-plugin.js";
+import { generateExports, type GeneratedExports } from "./exports/index.js";
 import tailwindcss from "@tailwindcss/vite";
 import preact from "@preact/preset-vite";
 
@@ -175,6 +176,7 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
   );
 
   interface CachedSite {
+    exports?: GeneratedExports;
     data: Awaited<ReturnType<typeof assembleSite>>;
     siteConfig: SiteConfig;
   }
@@ -357,12 +359,13 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
     } else if (content.kind === "openapi") {
       log(`reparsing spec ${shortPath(content.specPath)}`);
       const loaded = await loadSpec(content.specPath);
-      const parsed = await parseSpec(loaded);
+      const parsed = await parseSpec(loaded, { publishBundle: config.exports.openapi });
       const openapi3 = await convertToOpenApi3(parsed);
       const spec = normalizeSpec(openapi3);
       if (cache !== snapshot) return;
 
       data.specsBySlug.set(content.tabSlug, spec);
+      if (parsed.publicDocument) data.publicSpecs.set(content.tabSlug, parsed.publicDocument);
 
       const pageKey = tabIndexOutputPath(content.tabSlug, config.prettyUrls);
       const existing = data.pageMap.get(pageKey);
@@ -404,6 +407,7 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
     }
 
     resolveInternalLinks(Array.from(data.pageMap.values()), config);
+    snapshot.exports = undefined;
 
     const ms = Math.round(performance.now() - start);
     log(`updated \x1b[2m(${ms}ms)\x1b[0m`);
@@ -420,6 +424,7 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
     };
 
     const { data, siteConfig: site } = await getCached();
+    await getGeneratedExports();
     const navigation = buildSiteNavigation(data.siteTabs);
 
     const requestPath = stripBaseUrl(new URL(url, "http://sourcey.local").pathname, config.baseUrl);
@@ -501,7 +506,18 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
 
   async function loadExtraFileForDev(outputPath: string): Promise<string | Buffer | undefined> {
     const { data } = await getCached();
-    return data.extraFiles.get(outputPath);
+    return (await getGeneratedExports()).files.get(outputPath) ?? data.extraFiles.get(outputPath);
+  }
+
+  async function getGeneratedExports(): Promise<GeneratedExports> {
+    const snapshot = await getCached();
+    return (snapshot.exports ??= generateExports(
+      snapshot.data,
+      Array.from(snapshot.data.pageMap.values()),
+      buildSiteNavigation(snapshot.data.siteTabs),
+      snapshot.siteConfig,
+      config,
+    ));
   }
 
   const viteConfig: InlineConfig = {
@@ -527,6 +543,8 @@ export async function startDevServer(options: DevServerOptions): Promise<void> {
         render,
         searchIndex: buildSearchIndexForDev,
         extraFile: loadExtraFileForDev,
+        extraFileType: async (path) => (await getGeneratedExports()).mediaTypes.get(path),
+        responseHeaders: async (path) => (await getGeneratedExports()).responseHeaders.get(path),
       }),
     ],
     clearScreen: false,

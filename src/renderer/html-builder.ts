@@ -68,8 +68,6 @@ export async function buildSite(
     embeddable?: boolean;
     landingPage?: boolean;
     searchIndex?: string;
-    llmsTxt?: string;
-    llmsFullTxt?: string;
     ogImages?: Map<string, Buffer>;
     extraFiles?: Map<string, string | Buffer>;
   },
@@ -117,14 +115,6 @@ export async function buildSite(
     await writeFile(resolve(resolvedDir, "search-index.json"), options.searchIndex, "utf-8");
   }
 
-  if (options?.llmsTxt) {
-    await writeFile(resolve(resolvedDir, "llms.txt"), options.llmsTxt, "utf-8");
-  }
-
-  if (options?.llmsFullTxt) {
-    await writeFile(resolve(resolvedDir, "llms-full.txt"), options.llmsFullTxt, "utf-8");
-  }
-
   const urls = pages.map((page) => {
     const publicPath = toPublicPath(page.outputPath, site.baseUrl, site.prettyUrls);
     const loc = site.siteUrl ? toAbsoluteUrl(publicPath, site.siteUrl) : publicPath;
@@ -149,10 +139,20 @@ export async function buildSite(
   }
 
   if (options?.extraFiles) {
-    for (const [path, data] of options.extraFiles) {
-      const fullPath = resolve(resolvedDir, path);
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, data);
+    const files = [...options.extraFiles];
+    const directories = new Map<string, Promise<unknown>>();
+    for (let start = 0; start < files.length; start += 32) {
+      await Promise.all(files.slice(start, start + 32).map(async ([path, data]) => {
+        const fullPath = resolve(resolvedDir, path);
+        const directory = dirname(fullPath);
+        let ready = directories.get(directory);
+        if (!ready) {
+          ready = mkdir(directory, { recursive: true });
+          directories.set(directory, ready);
+        }
+        await ready;
+        await writeFile(fullPath, data);
+      }));
     }
   }
 

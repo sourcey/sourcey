@@ -11,6 +11,7 @@ What's coming for Sourcey. Last updated: June 2026.
 - **Directive components**: `:::note`, `:::warning`, `:::code-group`, `:::steps`, `:::tabs`, `::video`, `::iframe` in plain markdown
 - **Changelog standardisation**: normalise `CHANGELOG.md`, render structured version cards, emit Atom/RSS feeds, include changelog pages in llms.txt
 - **llms.txt generation**: auto-generate llms.txt and llms-full.txt alongside HTML output
+- **Readable documentation and discovery**: per-page, operation and schema Markdown, a document index, public OpenAPI bundles, scoped ARD/API catalogs and an optional docs MCP server
 - **Dark mode**: semantic design tokens, light/dark logo variants
 - **Client-side search**: fuzzy search across all pages and API operations
 - **Theme presets**: default, minimal, api-first layouts
@@ -30,8 +31,7 @@ What's coming for Sourcey. Last updated: June 2026.
 
 ### Agent surface
 
-- **Docs as an MCP server**: serve the built documentation graph (pages, search, symbol lookup) over MCP so agents can query the docs instead of crawling them
-- **Per-page markdown endpoints**: emit a `.md` view beside every HTML page so agents and copy-page-as-markdown tools read the exact source of what humans see
+- **Hosted docs MCP transport**: the separate docs MCP package currently serves local builds over stdio; an authenticated hosted transport can build on the same generated files
 
 ### Ecosystem
 

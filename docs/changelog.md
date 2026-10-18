@@ -5,6 +5,14 @@ description: Recent Sourcey releases.
 
 # Changelog
 
+## 3.7.1
+
+Markdown views now accompany every page, API operation and schema. Configure public OpenAPI bundles and scoped ARD/API discovery, or query a built directory with the separate `sourcey-docs-mcp` package. Rich guides and native library examples retain their readable content in the exports. See [documentation for agents](machine-readable.md).
+
+## 3.7.0
+
+The `api-first` theme now uses the full width for API and guide pages. C++ references share one declaration card, Go comments use `go/doc/comment`, Rust links preserve native code and resolve across crates, and Markdown imports retain fenced examples and visible heading text. See the [complete release notes](https://github.com/sourcey/sourcey/releases/tag/v3.7.0).
+
 ## 3.6.12
 
 Sourcey 3.6.12 adds `landingPage: false` to `sourcey/astro`, so an Astro page can own the mount root, such as a product page at `/docs`, while Sourcey writes every documentation page beneath it.
