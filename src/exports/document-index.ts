@@ -28,6 +28,7 @@ export function parseDocumentationIndex(value: unknown): DocumentationIndex {
         (key) => typeof entry[key] === "string",
       ) ||
       !["page", "operation", "schema"].includes(entry.kind) ||
+      (entry.searchText !== undefined && typeof entry.searchText !== "string") ||
       seen.has(entry.id)
     )
       throw new Error("Malformed or duplicate document entry.");
@@ -68,7 +69,7 @@ export async function openDocumentation(directory: string) {
     entry,
     order,
     title: entry.title.toLowerCase(),
-    text: `${entry.title} ${entry.description} ${(entry.symbols ?? []).map((symbol) => symbol.name).join(" ")}`.toLowerCase(),
+    text: `${entry.title} ${entry.description} ${entry.searchText ?? ""} ${(entry.symbols ?? []).map((symbol) => symbol.name).join(" ")}`.toLowerCase(),
   }));
   return {
     index,
@@ -92,7 +93,12 @@ export async function openDocumentation(directory: string) {
           return { entry, score, order };
         })
         .filter((match) => match.score > 0)
-        .sort((a, b) => b.score - a.score || a.order - b.order)
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            Number(a.entry.kind === "page") - Number(b.entry.kind === "page") ||
+            a.order - b.order,
+        )
         .slice(0, Math.max(1, Math.min(20, limit)))
         .map((match) => match.entry);
     },

@@ -8,7 +8,7 @@ import { generateLlmsTxt, generateLlmsFullTxt } from "../renderer/llms.js";
 import { collectReadableDocuments, markdownPath, type DocumentationIndex } from "./documents.js";
 import type { DiscoveryResource } from "./config.js";
 import { createHash } from "node:crypto";
-import { compactDescription } from "./markdown.js";
+import { compactDescription, searchTerms } from "./markdown.js";
 
 export interface GeneratedExports {
   files: Map<string, string | Buffer>;
@@ -49,7 +49,10 @@ export function generateExports(
     const index: DocumentationIndex = {
       version: 1,
       name: site.name || documents[0]?.entry.title || "Documentation",
-      documents: documents.map((document) => document.entry),
+      documents: documents.map((document) => ({
+        ...document.entry,
+        searchText: searchTerms(document.content),
+      })),
     };
     put("documents.json", json(index), "application/json; charset=utf-8");
   }

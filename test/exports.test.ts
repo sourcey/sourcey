@@ -8,6 +8,8 @@ import { loadDocsPage } from "../src/core/markdown-loader.js";
 import { contentTypeForPath } from "../src/renderer/static-files.js";
 import { collectReadableDocuments, type DocumentationIndex } from "../src/exports/documents.js";
 import { marked } from "marked";
+import { openDocumentation } from "../src/exports/document-index.js";
+import { writeSourceySite } from "../src/site.js";
 import { closeMarkdownFence } from "../src/core/markdown-loader.js";
 
 const fixture = resolve(import.meta.dirname, "fixtures");
@@ -242,6 +244,46 @@ describe("static documentation exports", () => {
       expect(
         JSON.parse(String(site.extraFiles.get("api/openapi.json"))).paths["/private"],
       ).toBeDefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("finds guide body instructions and parameter constraints without loading Markdown at startup", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sourcey-search-content-"));
+    try {
+      await writeFile(
+        join(dir, "webhooks.md"),
+        "---\ntitle: Webhooks\ndescription: Receive events.\n---\n\nVerify the raw request body before parsing JSON.\n",
+      );
+      const source = await resolveConfigFromRaw(
+        {
+          theme: { fonts: { google: false } },
+          navigation: {
+            tabs: [
+              { tab: "Guides", slug: "", groups: [{ group: "Integration", pages: ["webhooks"] }] },
+              { tab: "API", openapi: join(fixture, "cheese.yml") },
+            ],
+          },
+        },
+        dir,
+      );
+      const built = await buildSourceySite({
+        config: source,
+        outputDir: join(dir, "dist"),
+        generateOgImages: false,
+      });
+      await writeSourceySite(built);
+      const docs = await openDocumentation(join(dir, "dist"));
+      const guide = docs.search("raw body")[0];
+      expect(guide.title).toBe("Webhooks");
+      expect(docs.search("maximum limit")[0].title).toBe("GET /cheeses");
+      expect((await docs.read(guide.id)).text).toContain("before parsing JSON");
+      // Index search still works before a body file is requested; content reads remain confined and lazy.
+      await rm(join(dir, "dist", guide.file));
+      const reopened = await openDocumentation(join(dir, "dist"));
+      expect(reopened.search("raw body")[0].id).toBe(guide.id);
+      await expect(reopened.read(guide.id)).rejects.toThrow();
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

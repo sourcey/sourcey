@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Index compact body terms in `documents.json`, so keyword retrieval finds instructions and constraints beyond page titles and summaries. Prefer individual operations and schemas over an aggregate page when search scores tie. The optional MCP adapter consumes this index without a separate corpus or eager document reads.
+
 All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## 3.7.1 - 2026-10-18

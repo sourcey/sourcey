@@ -20,6 +20,8 @@ export interface DocumentationEntry {
   markdown: string;
   /** Path relative to the generated directory. */
   file: string;
+  /** Compact body terms for keyword retrieval; content remains in the Markdown file. */
+  searchText?: string;
   symbols?: { name: string; anchor?: string; kind: string }[];
 }
 

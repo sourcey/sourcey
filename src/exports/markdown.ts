@@ -16,3 +16,8 @@ export function compactDescription(value: string, limit = 320): string {
     ? paragraph
     : paragraph.slice(0, limit).replace(/\s+\S*$/, "") + "…";
 }
+
+/** Index each body term once; retrieval reads the original document for context. */
+export function searchTerms(content: string): string {
+  return [...new Set(content.toLowerCase().match(/\S+/g) ?? [])].join(" ");
+}
