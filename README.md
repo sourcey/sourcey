@@ -17,7 +17,7 @@ npx sourcey init
 
 ![Sourcey](assets/hero-preview.jpg)
 
-**[Live demo](https://sourcey.com/cheesestore)** · [Documentation](https://sourcey.com/docs) · [GitHub](https://github.com/sourcey/sourcey)
+**[Live demo](https://sourcey.com/cheesestore)** · [Documentation](https://sourcey.com/docs) · [llms.txt](./llms.txt) · [GitHub](https://github.com/sourcey/sourcey)
 
 ## Features
 
