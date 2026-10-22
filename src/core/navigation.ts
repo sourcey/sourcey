@@ -7,12 +7,10 @@ import { operationAnchor, definitionAnchor, tagAnchor } from "./reference-identi
 import { pageOutputPath, tabIndexOutputPath, toPrettyLink, toPublicPath, type LinkStyle, type PrettyUrls } from "../site-url.js";
 
 /**
- * Convert a file output path (e.g. `concepts/index.html`) into the relative
- * href the nav should emit, honouring the `prettyUrls` mode. The Sidebar
- * prepends a `../` depth prefix at render time, so the value returned here
- * must be root-relative *without* a leading slash.
+ * A page's link from its output path, such as `concepts/index.html`, in the
+ * site's pretty-URL form and without a leading slash: the sidebar joins it to
+ * the site's base.
  */
-/** A page's link from its output path, in the site's pretty-URL form. */
 export function navHref(outputPath: string, prettyUrls: PrettyUrls): string {
   return toPublicPath(outputPath, "", prettyUrls).replace(/^\//, "");
 }
