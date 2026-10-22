@@ -1,6 +1,5 @@
 import { access, stat } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { runnerImport } from "vite";
 import { normalizeBaseUrl, normalizeSiteUrl } from "./site-url.js";
 import type { PrettyUrls } from "./site-url.js";
 import {
@@ -682,8 +681,12 @@ export async function loadConfig(configOrDir?: string, host?: Readonly<SiteHostC
   // Native builds default to production; dev selects its mode at startup.
   // An embedding host's established environment always retains ownership.
   process.env.NODE_ENV ??= mode;
+  // Vite reads the config and what it imports, as TypeScript, JSON or any
+  // module Vite reads, and names each file it read for a rebuild to watch.
+  // It loads only here, so a host that passes a resolved config never loads it.
   // JSON is data, exported as one default value. Vite can then skip the
   // JavaScript AST transform for large imported navigation/fragment tables.
+  const { runnerImport } = await import("vite");
   const { module, dependencies } = await runnerImport<{ default: SourceyConfig }>(configPath, { root: dirname(configPath), configFile: false, logLevel: "silent", json: { stringify: true, namedExports: false } });
   const raw = module.default;
 
