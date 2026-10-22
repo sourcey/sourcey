@@ -55,7 +55,7 @@ export function collectSiteDiagnostics(
       if (!target || target.page.contentLocale !== target.page.context.locale ||
         target.page.identity.tab !== page.identity.tab || target.page.identity.kind !== page.identity.kind || target.page.identity.document !== page.identity.document ||
         target.page.context.version.id !== page.context.version.id ||
-        equivalent.lang.toLowerCase() !== (target.page.context.localeConfig.lang ?? target.page.context.locale).toLowerCase() ||
+        equivalent.lang.toLowerCase() !== target.page.context.localeConfig.lang.toLowerCase() ||
         previous !== undefined && previous !== destination.href) {
         warn("hreflang-target", `Language alternate ${equivalent.lang} does not identify one translated equivalent: ${equivalent.href}.`);
       }

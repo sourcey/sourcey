@@ -35,7 +35,10 @@ export interface ResolvedSiteContext {
   scope: string;
   version: VersionItem;
   locale: string;
+  /** The language's settings, resolved: it names its `lang` and `dir`, and holds every message. */
   localeConfig: LocaleConfig & {
+    lang: string;
+    dir: "ltr" | "rtl";
     messages: import("./messages.js").UiMessages & { navigation?: Record<string, string> };
   };
   defaultLocale: string;

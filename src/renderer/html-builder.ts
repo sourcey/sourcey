@@ -1,19 +1,16 @@
 import { createHash } from "node:crypto";
-import { buildAssets } from "./assets.js";
-import { openOutput } from "./writer.js";
-import { safeOutputPath, type RouteTable } from "../core/site-model.js";
-import { english } from "../core/messages.js";
 import { resolve } from "node:path";
-import { renderPage } from "./static-renderer.js";
+import { projectNavigation, type SiteNavigation } from "../core/navigation.js";
+import { referenceOperation } from "../core/reference-identity.js";
+import { safeOutputPath, type RedirectRecord, type RouteTable, type SitePage } from "../core/site-model.js";
+import { artifactBytes, type ArtifactBody } from "../core/source-file.js";
 import type { NormalizedSpec } from "../core/types.js";
-import type { RenderAssetPaths, RenderOptions, SiteConfig } from "./context.js";
-import type { SiteNavigation } from "../core/navigation.js";
-import { projectNavigation } from "../core/navigation.js";
 import { isAbsoluteHttpUrl, toAbsoluteUrl, toPublicPath } from "../site-url.js";
 import { escapeHtml as escapeXml } from "../utils/html.js";
-import type { SitePage } from "../core/site-model.js";
-import { referenceOperation } from "../core/reference-identity.js";
-import { artifactBytes, type ArtifactBody } from "../core/source-file.js";
+import { buildAssets } from "./assets.js";
+import type { RenderAssetPaths, RenderOptions, SiteConfig } from "./context.js";
+import { renderPage } from "./static-renderer.js";
+import { openOutput } from "./writer.js";
 
 /** Snapshot-local artifacts: unchanged HTML is shared across immutable compilations. */
 export type PageRenderCache = Map<string, { key: string; html: Buffer }>;
@@ -82,22 +79,24 @@ export function createRenderOptions(
   // address it answers at: with or without a trailing slash, or as a copy at
   // another address.
   const assetBase = site.baseUrl || "/";
-  const pagePublicPath = page.publicPath ?? toPublicPath(page.outputPath, site.baseUrl, site.prettyUrls);
+  const { canonical, context } = page;
+  if (canonical === undefined) throw new Error(`Rendering a page the site's routes never placed: ${page.outputPath}`);
+  const translated = page.contentLocale === context.locale;
 
   return {
     anchorAliases: page.anchorAliases,
     embeddable: options?.embeddable ?? false,
-    locale: page.context?.localeConfig.lang ?? page.context?.locale,
+    locale: context.localeConfig.lang,
     referenceTargets: page.referenceTargets,
-    sourceRevision: page.context?.version.revision,
+    sourceRevision: context.version.revision,
     componentStyles: [...(page.currentPage.kind === "markdown" ? page.currentPage.markdown.componentStyles ?? [] : []), ...page.stylesheets ?? []],
     contentLocale: page.contentLocale,
     equivalents: page.equivalents?.map(link => ({ ...link, href: site.siteUrl ? toAbsoluteUrl(link.href, site.siteUrl) : link.href })),
     searchIndexes: page.searchIndexes?.map(path => `${assetBase}${path}`),
-    dir: page.context?.localeConfig.dir,
-    messages: page.context?.localeConfig.messages ?? english,
-    noindex: page.status === 404 || page.context?.version.index === false || page.contentLocale !== page.context?.locale,
-    notice: page.contentLocale !== page.context?.locale ? (page.context?.localeConfig.messages?.fallback ?? english.fallback) : page.context?.version.notice || undefined,
+    dir: context.localeConfig.dir,
+    messages: context.localeConfig.messages,
+    noindex: page.status === 404 || context.version.index === false || !translated,
+    notice: translated ? context.version.notice || undefined : context.localeConfig.messages.fallback,
     assetBase,
     assets: options?.assets && {
       ...options.assets,
@@ -108,7 +107,7 @@ export function createRenderOptions(
       search: assetBase + options.assets.search,
       tryIt: options.assets.tryIt && assetBase + options.assets.tryIt,
     },
-    pageUrl: site.siteUrl ? toAbsoluteUrl(page.canonical ?? pagePublicPath, site.siteUrl) : page.canonical ?? pagePublicPath,
+    pageUrl: site.siteUrl ? toAbsoluteUrl(canonical, site.siteUrl) : canonical,
     ogImageUrl: page.ogImagePath ? resolveRenderHref(page.ogImagePath, assetBase, site) : undefined,
     alternateLinks: page.alternateLinks?.map((link) => ({
       ...link,
@@ -118,12 +117,11 @@ export function createRenderOptions(
 }
 
 export interface SiteArtifactOptions {
-  routes?: RouteTable;
+  routes: RouteTable;
   /** Rendered pages kept across compilations; only a rebuilding host keeps one. */
   cache?: PageRenderCache;
   embeddable?: boolean;
   landingPage?: boolean;
-  ogImages?: Map<string, Buffer>;
   /** Social cards still to draw, each just before the page that names it is rendered. */
   cards?: ReadonlyMap<SitePage, () => Promise<Buffer | undefined>>;
   extraFiles?: Map<string, ArtifactBody>;
@@ -135,7 +133,7 @@ const CARDS_AHEAD = 32;
 /** Low-level renderer; SourceySite owns compilation and its artifact inventory. */
 export async function buildSite(
   pages: SitePage[], navigation: SiteNavigation, outputDir: string, site: SiteConfig,
-  options?: SiteArtifactOptions,
+  options: SiteArtifactOptions,
 ): Promise<BuildOutput> {
   await writeSiteArtifacts(outputDir, siteArtifacts(pages, navigation, site, options));
   return { htmlPath: resolve(outputDir, "index.html"), outputDir: resolve(outputDir) };
@@ -144,7 +142,7 @@ export async function buildSite(
 /** Every artifact in memory at once, for a host that serves them. */
 export async function renderSiteArtifacts(
   pages: SitePage[], navigation: SiteNavigation, site: SiteConfig,
-  options?: SiteArtifactOptions,
+  options: SiteArtifactOptions,
 ): Promise<Map<string, string | Buffer>> {
   const files = new Map<string, string | Buffer>();
   for await (const [path, body] of siteArtifacts(pages, navigation, site, options)) files.set(path, await artifactBytes(body));
@@ -181,9 +179,9 @@ export async function writeSiteArtifacts(outputDir: string, artifacts: AsyncIter
  */
 export async function* siteArtifacts(
   pages: SitePage[], navigation: SiteNavigation, site: SiteConfig,
-  options?: SiteArtifactOptions,
+  options: SiteArtifactOptions,
 ): AsyncGenerator<[string, ArtifactBody]> {
-  const cache = options?.cache;
+  const { routes, cache } = options;
   const assets = await buildAssets(site.theme.name, pages.some(page =>
     page.currentPage.kind === "spec" && page.currentPage.tryIt !== false && page.currentPage.spec.operations.some(op => !op.hidden && !op.mcpExtras)));
   const siteDigest = createHash("sha256").update(JSON.stringify(site)).digest("hex");
@@ -200,7 +198,7 @@ export async function* siteArtifacts(
   let ahead = 0;
   for (const page of pages) {
     for (; ahead < pages.length && drawing.size < CARDS_AHEAD; ahead++) {
-      const draw = options?.cards?.get(pages[ahead]);
+      const draw = options.cards?.get(pages[ahead]);
       if (draw) drawing.set(pages[ahead], draw());
     }
     const card = drawing.get(page);
@@ -211,31 +209,33 @@ export async function* siteArtifacts(
       if (png) yield claim(page.ogImagePath!, png);
       else page.ogImagePath = undefined;
     }
-    const optionsForPage = createRenderOptions(page, site, { embeddable: options?.embeddable, assets: assets.paths });
+    const optionsForPage = createRenderOptions(page, site, { embeddable: options.embeddable, assets: assets.paths });
     const activeNav = projectNavigation(page.navigation ?? navigation, page.tabSlug, page.pageSlug);
     yield claim(page.outputPath, renderCached(page, optionsForPage, activeNav, site, siteDigest, cache));
   }
-  for (const alias of options?.landingPage === false ? [] : options?.routes?.aliases ?? []) {
+  for (const alias of options.landingPage === false ? [] : routes.aliases) {
     const page = alias.page;
-    yield claim(alias.outputPath, renderCached(page, createRenderOptions(page, site, { embeddable: options?.embeddable, assets: assets.paths }),
+    yield claim(alias.outputPath, renderCached(page, createRenderOptions(page, site, { embeddable: options.embeddable, assets: assets.paths }),
       projectNavigation(page.navigation ?? navigation, page.tabSlug, page.pageSlug), site, siteDigest, cache, alias.outputPath));
   }
-  const redirects = [...options?.routes?.redirects.values() ?? []].filter(route => route.outputPath);
-  for (const route of redirects) {
-    const target = escapeXml(route.to);
-    const literal = JSON.stringify(route.to).replace(/</g, "\\u003c");
-    yield claim(route.outputPath!, `<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=${target}"><link rel="canonical" href="${escapeXml(toAbsoluteUrl(route.to, site.siteUrl))}"><title>Page moved</title></head><body><p>This page has moved. <a href="${target}">Continue to the page</a>.</p><script>const target=${literal},url=new URL(target,location.href);if(!target.includes('?'))url.search=location.search;if(!target.includes('#'))url.hash=location.hash;location.replace(url.href)</script></body></html>`);
-  }
+  const redirects = [...routes.redirects.values()].filter((route): route is RedirectRecord & { outputPath: string } => !!route.outputPath);
+  for (const route of redirects) yield claim(route.outputPath, redirectPage(route.to, site));
   if (redirects.length) yield claim("_redirects", redirects.map(route => `${route.publicPath} ${route.to} ${route.status}`).join("\n") + "\n");
   for (const [path, body] of assets.files) yield claim(path, body);
-  const urls = pages.filter(p => options?.routes ? options.routes.byOutputPath.get(p.outputPath)?.index : p.status !== 404 && p.context.version.index !== false && p.contentLocale === p.context.locale).map(page => {
-    const publicPath = page.publicPath ?? toPublicPath(page.outputPath, site.baseUrl, site.prettyUrls);
-    return `  <url><loc>${escapeXml(site.siteUrl ? toAbsoluteUrl(publicPath, site.siteUrl) : publicPath)}</loc></url>`;
+  const urls = pages.flatMap(page => {
+    const route = routes.byOutputPath.get(page.outputPath);
+    return route?.index ? [`  <url><loc>${escapeXml(site.siteUrl ? toAbsoluteUrl(route.publicPath, site.siteUrl) : route.publicPath)}</loc></url>`] : [];
   });
   yield claim("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`);
-  for (const [path, body] of options?.ogImages ?? []) yield claim(path, body);
-  for (const [path, body] of options?.extraFiles ?? []) yield claim(path, body);
+  for (const [path, body] of options.extraFiles ?? []) yield claim(path, body);
   if (cache) for (const path of cache.keys()) if (!written.has(path)) cache.delete(path);
+}
+
+/** The page a moved address serves: it leads on to where the page is now, keeping the query and fragment it was reached with. */
+function redirectPage(to: string, site: SiteConfig): string {
+  const target = escapeXml(to);
+  const literal = JSON.stringify(to).replace(/</g, "\\u003c");
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=${target}"><link rel="canonical" href="${escapeXml(toAbsoluteUrl(to, site.siteUrl))}"><title>Page moved</title></head><body><p>This page has moved. <a href="${target}">Continue to the page</a>.</p><script>const target=${literal},url=new URL(target,location.href);if(!target.includes('?'))url.search=location.search;if(!target.includes('#'))url.hash=location.hash;location.replace(url.href)</script></body></html>`;
 }
 
 function resolveRenderHref(pathOrUrl: string, assetBase: string, site: SiteConfig): string {

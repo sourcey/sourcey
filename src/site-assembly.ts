@@ -12,7 +12,6 @@ import { InputReader, loadSpec, type InputReaderOptions } from "./core/loader.js
 import { sectionIndexDependencies } from "./core/markdown-components.js";
 import { docsExport, drawDocsSource, loadDocsSource, outlineDocsSource, slugFromPath, type DocsPage, type DocsSource, type LoadDocsPageOptions, type MarkdownPage, type MarkdownSource } from "./core/markdown-loader.js";
 import { normalizeMcpSpec } from "./core/mcp-normalizer.js";
-import { english } from "./core/messages.js";
 import { buildAuthoredNavigation, buildNavFromPages, buildNavFromSpec, buildSiteNavigation, prettyNavigationHrefs, walkNavGroups, walkNavItems, type SiteTab } from "./core/navigation.js";
 import { navigationResolver } from "./core/navigation-targets.js";
 import { normalizeSpec } from "./core/normalizer.js";
@@ -69,10 +68,10 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   const referenceRedirects = new Map<string, Redirect>();
   const sectionRenders: { page: MarkdownPage; content: () => string }[] = [];
   function localizeNavigation(nav: SiteTab, context: ResolvedSiteContext): void {
-    const messages = context.localeConfig.messages;
-    nav.label = messages?.navigation?.[nav.label] ?? nav.label;
-    for (const group of walkNavGroups(nav.groups)) group.label = messages?.navigation?.[group.id ?? ""] ?? group.label;
-    for (const item of walkNavItems(nav.groups)) item.label = messages?.navigation?.[item.documentId ?? item.id] ?? messages?.navigation?.[item.id] ?? item.label;
+    const names = context.localeConfig.messages.navigation;
+    nav.label = names?.[nav.label] ?? nav.label;
+    for (const group of walkNavGroups(nav.groups)) group.label = names?.[group.id ?? ""] ?? group.label;
+    for (const item of walkNavItems(nav.groups)) item.label = names?.[item.documentId ?? item.id] ?? names?.[item.id] ?? item.label;
   }
   /**
    * The site's own pages, outside the documentation: one set per language, in
@@ -113,7 +112,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   function loadOptions(context: ResolvedSiteContext, contentLocale: string): LoadDocsPageOptions {
     return { repoUrl: config.repo, input: reader, components: config.components, smartypants: config.markdown.smartypants, configDir: config.configDir,
       editRoot: context.version.revision ? resolve(config.configDir, context.version.content ?? "") : undefined, baseUrl: config.baseUrl,
-      context: { locale: context.locale, lang: context.localeConfig.lang ?? context.locale, dir: context.localeConfig.dir ?? "ltr", contentLocale, version: context.version, versionScope: context.scope, messages: context.localeConfig.messages, icons: config.theme.icons } };
+      context: { locale: context.locale, lang: context.localeConfig.lang, dir: context.localeConfig.dir, contentLocale, version: context.version, versionScope: context.scope, messages: context.localeConfig.messages, icons: config.theme.icons } };
   }
   function routeOutputPath(tab: ResolvedTab, route: string): string {
     return /\.html$/.test(route) ? tabPath(tab.slug, route) : pageOutputPath(tab.slug, route, config.prettyUrls);
@@ -228,7 +227,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     const navTab = tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : buildNavFromPages(tab, sources, config.prettyUrls, (source, reference) => {
       const documentId = source.id ?? slugFromPath(reference, slugs);
       return toPublicUrl(outputPathFor(tab, documentId, source.slug), undefined, config.baseUrl, config.prettyUrls);
-    }, context.localeConfig.messages?.navigation);
+    }, context.localeConfig.messages.navigation);
     for (const { rp, source } of published) {
       const documentId = source.kind === "markdown" ? source.id ?? slugFromPath(rp.slug, slugs) : slugFromPath(rp.slug, slugs);
       const page = outlineDocsSource(source);
@@ -264,7 +263,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       group.href = sectionPage(id, slug, title, () => [...walkNavItems([group])].map(item => `- [${item.label.replace(/\]/g, "\\]")}](${item.href})`).join("\n"));
     }
     if (wide) {
-      const label = context.localeConfig.messages?.sections ?? english.sections;
+      const label = context.localeConfig.messages.sections;
       nav.sectionIndex = { label, href: sectionPage("section-index", "_sections/index", label, () => nav.groups.map(group => `- [${group.label}](${group.href})`).join("\n")) };
     }
   }
@@ -327,8 +326,8 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       const landing = tab && siteTabs.find(nav => nav.slug === tab.slug)?.href;
       if (!route && !landing) return [];
       const label = kind === "locale" ? candidate.localeConfig.label : candidate.version.label;
-      return [{ kind, label: route ? label : `${label} · ${context.localeConfig.messages?.overview ?? english.overview}`,
-        href: route?.publicPath ?? landing!, lang: kind === "locale" && route?.page.contentLocale === candidate.locale ? candidate.localeConfig.lang ?? candidate.locale : undefined,
+      return [{ kind, label: route ? label : `${label} · ${context.localeConfig.messages.overview}`,
+        href: route?.publicPath ?? landing!, lang: kind === "locale" && route?.page.contentLocale === candidate.locale ? candidate.localeConfig.lang : undefined,
         anchors: route ? [...routes.byKey.get(identityKey(page))!.anchors].filter(anchor => route.anchors.has(anchor)) : undefined,
         active: kind === "locale" ? candidate.locale === context.locale : candidate.version.id === context.version.id }];
     }

@@ -70,8 +70,8 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
     if (page.status === 404 || page.currentPage.kind === "not-found") continue;
     const file = pageMarkdownPath(page);
     const metadata = pageMetadata(page.currentPage, site);
-    const contextMetadata = { locale: page.context?.locale, contentLocale: page.contentLocale,
-      contentVersion: page.context?.version.id, versionScope: page.context?.scope };
+    const contextMetadata = { locale: page.context.locale, contentLocale: page.contentLocale,
+      contentVersion: page.context.version.id, versionScope: page.context.scope };
     let body: string;
     const children: ReadableDocument[] = [];
     let symbols: DocumentationEntry["symbols"];
@@ -106,21 +106,26 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
     } else {
       const spec = page.currentPage.spec;
       const view = page.currentPage.view;
+      // A page of its own links a model where the routes publish it: its own page, or its section of another.
+      const published = (name: string) => {
+        const target = page.referenceTargets?.schemas[name];
+        return target ? publicUrl(target.anchor ? schemaMarkdownPath(target.outputPath, name) : markdownPath(target.outputPath)) : undefined;
+      };
       if (view?.kind === "operation") {
         const operation = referenceOperation(spec, view.id);
         sources.set(file, operation);
-        documents.push({ entry: { ...contextMetadata, id: file, documentId: page.identity.document, kind: "operation", searchText: referenceSearchText(operation), title: metadata.title, description: metadata.description, tab: page.tabSlug, url: publicUrl(page.outputPath), markdown: publicUrl(file), file }, content: operationMarkdown(operation, spec, site, name => { const target = page.referenceTargets?.schemas[name]; return target ? publicUrl(target.anchor ? schemaMarkdownPath(target.outputPath, name) : markdownPath(target.outputPath)) : undefined; }), aggregate: true });
+        documents.push({ entry: { ...contextMetadata, id: file, documentId: page.identity.document, kind: "operation", searchText: referenceSearchText(operation), title: metadata.title, description: metadata.description, tab: page.tabSlug, url: publicUrl(page.outputPath), markdown: publicUrl(file), file }, content: operationMarkdown(operation, spec, site, published), aggregate: true });
         continue;
       }
       if (view?.kind === "schema") {
         const schema = spec.schemas[view.name];
         sources.set(file, schema);
-        documents.push({ entry: { ...contextMetadata, id: file, documentId: page.identity.document, kind: "schema", searchText: referenceSearchText(schema), title: metadata.title, description: metadata.description, tab: page.tabSlug, url: publicUrl(page.outputPath), markdown: publicUrl(file), file }, content: `# ${view.name}\n\n${schemaMarkdown(schema, new Set(), name => { const target = page.referenceTargets?.schemas[name]; return target ? publicUrl(target.anchor ? schemaMarkdownPath(target.outputPath, name) : markdownPath(target.outputPath)) : undefined; })}`, aggregate: true });
+        documents.push({ entry: { ...contextMetadata, id: file, documentId: page.identity.document, kind: "schema", searchText: referenceSearchText(schema), title: metadata.title, description: metadata.description, tab: page.tabSlug, url: publicUrl(page.outputPath), markdown: publicUrl(file), file }, content: `# ${view.name}\n\n${schemaMarkdown(schema, new Set(), published)}`, aggregate: true });
         continue;
       }
       const reference = (name: string) =>
         spec.schemas[name] ? publicUrl(schemaMarkdownPath(page.outputPath, name)) : undefined;
-      for (const operation of page.currentPage.view?.kind === "overview" ? [] : spec.operations) {
+      for (const operation of view?.kind === "overview" ? [] : spec.operations) {
         if (operation.hidden) continue;
         const operationFile = operationMarkdownPath(page.outputPath, operation, spec);
         const operationMetadata = pageMetadata({ kind: "spec", spec, view: { kind: "operation", id: operationName(operation) } }, site);
@@ -143,7 +148,7 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
           aggregate: false,
         });
       }
-      for (const [name, schema] of page.currentPage.view?.kind === "overview" ? [] : Object.entries(spec.schemas)) {
+      for (const [name, schema] of view?.kind === "overview" ? [] : Object.entries(spec.schemas)) {
         const schemaFile = schemaMarkdownPath(page.outputPath, name);
         const schemaMetadata = pageMetadata({ kind: "spec", spec, view: { kind: "schema", name } }, site);
         sources.set(schemaFile, schema);
@@ -180,11 +185,8 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
       {
         entry: {
           id: file,
-          documentId: page.identity?.document,
-          locale: page.context?.locale,
-          contentLocale: page.contentLocale,
-          contentVersion: page.context?.version.id,
-          versionScope: page.context?.scope,
+          documentId: page.identity.document,
+          ...contextMetadata,
           kind: "page",
           searchText: page.currentPage.kind === "spec" ? referenceOverviewSearchText(page.currentPage.spec) : body,
           title,
