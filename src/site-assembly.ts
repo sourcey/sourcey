@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { pageOutputPath, tabPath, type Redirect, type ResolvedConfig, type ResolvedTab } from "./config.js";
-import { joinHref, normalizeBaseUrl, toPublicPath, toPublicUrl } from "./site-url.js";
+import type { Redirect, ResolvedConfig, ResolvedTab } from "./config.js";
+import { joinHref, normalizeBaseUrl, pageOutputPath, tabPath, toPublicPath, toPublicUrl } from "./site-url.js";
 import { markdownPages } from "./adapters/shared.js";
 import type { ResolvedDoxygenSource, ResolvedGodocSource, ResolvedMarkdownSource, ResolvedMcpSource, ResolvedOpenApiSource, ResolvedRustdocSource } from "./adapters/types.js";
 import type { BuildDiagnostics } from "./core/build-diagnostics.js";

@@ -1,11 +1,10 @@
 import type { NormalizedSpec } from "./types.js";
 import { tagDisplayName } from "./tag-utils.js";
-import { pageOutputPath, tabIndexOutputPath } from "../config.js";
 import type { ResolvedTab, ResolvedGroup, GroupConfig, NavigationTarget } from "../config.js";
 import { slugFromPath } from "./markdown-loader.js";
 import type { NavigationDocument } from "./markdown-loader.js";
 import { operationAnchor, definitionAnchor, tagAnchor } from "./reference-identity.js";
-import { toPrettyLink, toPublicPath, type LinkStyle, type PrettyUrls } from "../site-url.js";
+import { pageOutputPath, tabIndexOutputPath, toPrettyLink, toPublicPath, type LinkStyle, type PrettyUrls } from "../site-url.js";
 
 /**
  * Convert a file output path (e.g. `concepts/index.html`) into the relative

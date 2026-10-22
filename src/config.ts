@@ -997,35 +997,6 @@ export function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/** Build a path under a tab, handling empty slugs (root-level tabs). */
-export function tabPath(tabSlug: string, file: string): string {
-  if (!tabSlug) return file;
-  if (file.startsWith(`${tabSlug}/`)) return file;
-  return `${tabSlug}/${file}`;
-}
-
-/** Build the on-disk output path for a tab landing page. */
-export function tabIndexOutputPath(tabSlug: string, prettyUrls: PrettyUrls): string {
-  if (!tabSlug) return "index.html";
-  if (prettyUrls === "slash") return tabPath(tabSlug, "index.html");
-  return `${tabSlug}.html`;
-}
-
-/**
- * Build the on-disk output path for a content page within a tab.
- * `"slash"` emits directory indexes. `false` and `"strip"` emit `.html`
- * files; `"strip"` only changes the public URL, not the file layout.
- */
-export function pageOutputPath(tabSlug: string, slug: string, prettyUrls: PrettyUrls): string {
-  if (slug === "index") {
-    return tabIndexOutputPath(tabSlug, prettyUrls);
-  }
-  if (prettyUrls === "slash") {
-    return tabPath(tabSlug, `${slug}/index.html`);
-  }
-  return tabPath(tabSlug, `${slug}.html`);
-}
-
 function resolvePrettyUrls(value: PrettyUrls | undefined): PrettyUrls {
   if (value === undefined || value === false) return false;
   if (value === "slash" || value === "strip") return value;

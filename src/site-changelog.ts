@@ -1,10 +1,10 @@
-import { pageOutputPath, tabPath, type PrettyUrls, type ResolvedConfig } from "./config.js";
+import type { ResolvedConfig } from "./config.js";
 import type { ChangelogPage } from "./core/markdown-loader.js";
 import type { NormalizedChangelogVersion } from "./core/types.js";
 import { isMainChangelogPage, type SitePage } from "./core/site-model.js";
 import type { ArtifactBody } from "./core/source-file.js";
 import { generateChangelogFeeds } from "./renderer/changelog-feed.js";
-import { toPublicUrl } from "./site-url.js";
+import { pageOutputPath, tabPath, toPublicUrl, type PrettyUrls } from "./site-url.js";
 
 /** A page of its own for each release of every changelog, where the site gives releases permalinks. */
 export function addPermalinkPages(pageMap: Map<string, SitePage>, prettyUrls: PrettyUrls): void {

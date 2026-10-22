@@ -1,4 +1,5 @@
-import { tabPath, type ResolvedRustdocConfig } from "../config.js";
+import type { ResolvedRustdocConfig } from "../config.js";
+import { tabPath } from "../site-url.js";
 import type { MarkdownPage, PageHeading, PageSearchEntry } from "./markdown-loader.js";
 import type { SiteTab, SiteNavGroup, SiteNavItem } from "./navigation.js";
 import { runIntrospector, RustdocIntrospectorError } from "./rustdoc-introspector.js";

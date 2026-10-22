@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
-import { tabPath, type ResolvedConfig, type ResolvedTab } from "./config.js";
+import type { ResolvedConfig, ResolvedTab } from "./config.js";
 import type { InputReader } from "./core/loader.js";
 import { staticMediaAsset } from "./core/media.js";
 import { stringifyShared } from "./core/shared-json.js";
@@ -8,7 +8,7 @@ import type { SitePage } from "./core/site-model.js";
 import type { ArtifactBody } from "./core/source-file.js";
 import type { SiteConfig } from "./renderer/context.js";
 import { consoleArtifactPath, consoleData } from "./renderer/try-it.js";
-import { toPublicUrl } from "./site-url.js";
+import { tabPath, toPublicUrl } from "./site-url.js";
 
 /**
  * The site as its pages draw it: its name, theme and links, with its logo,

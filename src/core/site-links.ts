@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { posix, relative } from "node:path";
 import type { Links } from "marked";
-import { tabPath, type ResolvedConfig, type ResolvedTab } from "../config.js";
+import type { ResolvedConfig, ResolvedTab } from "../config.js";
 import type { ResolvedMarkdownSource } from "../adapters/types.js";
 import { markdownPages } from "../adapters/shared.js";
-import { joinHref, toPrettyLink, type LinkStyle } from "../site-url.js";
+import { joinHref, tabPath, toPrettyLink, type LinkStyle } from "../site-url.js";
 import { OPERATION_LINK } from "../utils/markdown.js";
 import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
 import type { ContentLinks } from "./markdown-components.js";
