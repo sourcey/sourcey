@@ -70,6 +70,7 @@
     "mcp-parser": "^0.4.2",
     "mdast-util-mdx-jsx": "3.2.0",
     "mdast-util-mdxjs-esm": "2.0.1",
+    "mermaid": "11.17.2",
     "micromark-extension-mdx-jsx": "3.0.2",
     "micromark-extension-mdxjs-esm": "3.0.0",
     "moxygen": "^2.2.2",

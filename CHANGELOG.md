@@ -53,6 +53,8 @@
 - A logo, favicon or social image whose path starts with `http`, such as `httpdocs/card.png`, is read from the config's folder, as any other path is, rather than taken for a web address and looked for in the working directory. A site's own social image is read as its logo and favicon are, through the build's reader, and `sourcey build` copies it from its source rather than holding it in memory.
 - A component a site defines is given the language and version its page is read in, as `context.context`, and its type says so: it no longer types that context as possibly missing, which it never was in a build.
 - A page declares the language its content is in by that language's tag, as its `hreflang` links name it: where a site sets `lang: "pt-BR"` for `pt`, a Portuguese page is `<html lang="pt-BR">`, where it was `lang="pt"`, and a page that falls back to the default language's content declares the default language's tag. A site that sets no `lang` draws as before.
+- A flowchart's subgraphs run as Mermaid runs them. A subgraph no link crosses is laid out on its own, in the direction it declares (`direction LR`), or else across the chart's, so a top-to-bottom chart lists each layer's members down its side; one a link crosses keeps the chart's direction. Members no link joins keep the order they are written in. Every subgraph had run in the chart's direction, so a top-to-bottom architecture chart spread each layer across the page, wider than its column, where Mermaid stacks it.
+- A diagram's labels read as Mermaid shows them: an entity such as `&lt;` is the character it names, an `&` in a label with a line break reads `&` rather than `&amp;`, and other markup, such as `<b>`, is left out rather than shown as written.
 
 ## 3.8.3 - 2026-10-21
 

@@ -99,7 +99,7 @@ export async function diagramSvgs(source: string): Promise<{ light: string; dark
   const files = await cachedArtifacts(
     "diagram",
     createHash("sha256").update(source).digest("hex"),
-    ["@speajus/mermaid-to-svg", "sanitize-html"],
+    ["@speajus/mermaid-to-svg", "mermaid", "sanitize-html"],
     async () => {
       const job = diagramQueue.then(() =>
         heavyBuildJob(async () => {

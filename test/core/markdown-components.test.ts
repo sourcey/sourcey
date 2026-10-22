@@ -134,6 +134,13 @@ describe("line breaks in diagram labels", () => {
     for (const svg of [flowchart, sequence]) expect(svg).not.toMatch(/&lt;br/i);
   });
 
+  it("reads a label as Mermaid shows it: an entity is the character it names, and other markup is left out", async () => {
+    const lines = (svg: string) => [...svg.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((match) => match[1].replace(/<tspan[^>]*>/g, "|").replace(/<\/tspan>/g, "").replace(/\s+/g, " ").trim());
+    const svg = (await diagramSvgs('graph LR\n  slot["&lt;page-slot id=\'main\'&gt;"] --> orm["Decorator Layer<br/>(entities & metadata)"]\n  orm --> plain["Plain <b>bold</b> text"]')).light;
+    expect(lines(svg)).toEqual(expect.arrayContaining(["&lt;page-slot id='main'&gt;", "|Decorator Layer|(entities &amp; metadata)", "Plain bold text"]));
+    expect(svg).not.toMatch(/&amp;(lt|gt|amp);/);
+  });
+
   it("draws a flowchart's subgraphs around their members, an inner one over the one around it", async () => {
     const svg = (await diagramSvgs('graph LR\n  subgraph Outer["Server Layer"]\n    subgraph Inner["Core"]\n      a[A] --> b[B]\n    end\n    c[C]\n  end\n  d[D] --> a\n  Inner --> c')).light;
     const boxes = [...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="4"[^>]*><\/rect><text[^>]*>([^<]*)<\/text>/g)].map(([, x, y, width, height, title]) => ({ title, x: +x, y: +y, right: +x + +width, bottom: +y + +height }));
@@ -146,6 +153,20 @@ describe("line breaks in diagram labels", () => {
     const a = node("A"), d = node("D");
     expect(a.x > inner.x && a.x < inner.right && a.y > inner.y && a.y < inner.bottom).toBe(true);
     expect(d.x < outer.x || d.x > outer.right).toBe(true);
+  });
+
+  it("runs a subgraph no link crosses across the one around it, or as it declares, as Mermaid does", async () => {
+    const at = (svg: string, label: string) => { const match = svg.match(new RegExp(`<text x="([\\d.]+)" y="([\\d.]+)"[^>]*>${label}</text>`)); return { x: Number(match![1]), y: Number(match![2]) }; };
+    // A top-to-bottom chart lists each layer's unlinked members down its side, in the order written.
+    const layers = (await diagramSvgs('graph TD\n  subgraph Clients["Client Layer"]\n    web[Web]\n    desktop[Desktop]\n  end\n  subgraph Data["Database Layer"]\n    sqlite[SQLite]\n    pg[PostgreSQL]\n  end\n  Clients --> Data')).light;
+    const [web, desktop, sqlite, pg] = ["Web", "Desktop", "SQLite", "PostgreSQL"].map((label) => at(layers, label));
+    expect([web.y < desktop.y, desktop.y < sqlite.y, sqlite.y < pg.y]).toEqual([true, true, true]);
+    // One that declares its direction runs that way; one a link crosses keeps the chart's.
+    const declared = (await diagramSvgs('flowchart TB\n  subgraph s["Steps"]\n    direction LR\n    one --> two\n  end\n  start --> s')).light;
+    expect(at(declared, "two").x).toBeGreaterThan(at(declared, "one").x);
+    expect(at(declared, "two").y).toBe(at(declared, "one").y);
+    const crossed = (await diagramSvgs('flowchart TB\n  subgraph s["Steps"]\n    direction LR\n    one --> two\n  end\n  two --> done')).light;
+    expect(at(crossed, "two").y).toBeGreaterThan(at(crossed, "one").y);
   });
 });
 
