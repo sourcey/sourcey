@@ -6,6 +6,7 @@ import type { SiteNavigation } from "../../src/core/navigation.js";
 import type { NormalizedChangelog, NormalizedSpec } from "../../src/core/types.js";
 import type { ChangelogPage, MarkdownPage } from "../../src/core/markdown-loader.js";
 import type { RenderOptions, SiteConfig } from "../../src/renderer/context.js";
+import { english } from "../../src/core/messages.js";
 import { loadSpec } from "../../src/core/loader.js";
 import { parseSpec } from "../../src/core/parser.js";
 import { convertToOpenApi3 } from "../../src/core/converter.js";
@@ -36,6 +37,10 @@ function createMinimalSpec(overrides?: Partial<NormalizedSpec>): NormalizedSpec 
 const defaultOptions: RenderOptions = {
   embeddable: false,
   assetBase: "",
+  locale: "en",
+  contentLocale: "en",
+  dir: "ltr",
+  messages: english,
 };
 
 const defaultSite: SiteConfig = {
@@ -535,7 +540,7 @@ describe("renderPage (spec)", () => {
   it("prefixes markdown page navigation links with the page asset base", () => {
     const spec = createMinimalSpec();
     const navigation = createDocsNavigation();
-    const options: RenderOptions = { embeddable: false, assetBase: "../../" };
+    const options: RenderOptions = { ...defaultOptions, assetBase: "../../" };
     const currentPage: CurrentPage = {
       kind: "markdown",
       markdown: createMarkdownPage(),
@@ -733,7 +738,7 @@ describe("renderPage (spec)", () => {
       changelog: createChangelogPage(),
     };
     const options: RenderOptions = {
-      embeddable: false,
+      ...defaultOptions,
       assetBase: "../../",
       pageUrl: "https://docs.example.com/reference/changelog.html",
       ogImageUrl: "https://docs.example.com/reference/_og/changelog.png",

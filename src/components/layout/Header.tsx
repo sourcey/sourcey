@@ -7,7 +7,6 @@ import { Logo, logoHref } from "../ui/Logo.js";
 import type { SiteNavigation } from "../../core/navigation.js";
 import { joinHref } from "../../site-url.js";
 import { linkTarget } from "../../utils/html.js";
-import { english } from "../../core/messages.js";
 import { ContextControls, hasContextChoices } from "./ContextControls.js";
 
 function SearchIcon() {
@@ -93,7 +92,7 @@ export function Header() {
   const nav = useContext(NavigationContext);
   const options = useContext(OptionsContext);
   const site = useContext(SiteContext);
-  const messages = options.messages ?? english;
+  const { messages } = options;
 
   const base = options.assetBase;
   const home = logoHref(site, nav, base);

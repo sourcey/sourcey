@@ -1,8 +1,7 @@
 import { useContext } from "preact/hooks";
 import { OptionsContext } from "../../renderer/context.js";
-import { english } from "../../core/messages.js";
 export function SearchDialog() {
-  const messages = useContext(OptionsContext).messages ?? english;
+  const { messages } = useContext(OptionsContext);
   return (
     <dialog id="search-dialog" role="dialog" aria-label={messages.search} data-loading={messages.loading} data-error={messages.searchFailed} data-retry={messages.tryAgain} data-empty={messages.noResults}>
       <div class="search-dialog-inner">

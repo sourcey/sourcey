@@ -41,10 +41,12 @@ export interface RenderOptions {
   ogImageUrl?: string;
   /** Alternate link tags to emit for the current page. */
   alternateLinks?: AlternateLink[];
-  locale?: string;
-  contentLocale?: string;
-  dir?: "ltr" | "rtl";
-  messages?: import("../core/messages.js").UiMessages;
+  /** The language the page's interface is drawn in, as its `lang` tag. */
+  locale: string;
+  /** The language its content is written in: the page's own, or the one it falls back to. */
+  contentLocale: string;
+  dir: "ltr" | "rtl";
+  messages: UiMessages;
   noindex?: boolean;
   equivalents?: EquivalentPageLink[];
   notice?: string;
@@ -75,9 +77,12 @@ export const SpecContext = createContext<NormalizedSpec>(null as never);
 /**
  * Preact context for render options.
  */
-export const OptionsContext = createContext<RenderOptions & { messages: UiMessages }>({
+export const OptionsContext = createContext<RenderOptions>({
   embeddable: false,
   assetBase: "",
+  locale: "en",
+  contentLocale: "en",
+  dir: "ltr",
   messages: english,
 });
 

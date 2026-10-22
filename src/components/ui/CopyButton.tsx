@@ -1,14 +1,13 @@
 import { COPY_ICON_PATH_1, COPY_ICON_PATH_2 } from "../../utils/copy-svg.js";
 import { useContext } from "preact/hooks";
 import { OptionsContext } from "../../renderer/context.js";
-import { english } from "../../core/messages.js";
 
 /**
  * Copy-to-clipboard button with hover tooltip.
  * Sits inside code block headers; actual copy logic is in client JS.
  */
 export function CopyButton() {
-  const messages = useContext(OptionsContext).messages ?? english;
+  const { messages } = useContext(OptionsContext);
   return (
     <div class="relative z-10 select-none">
       <button

@@ -11,7 +11,6 @@ import {
 import type { RenderOptions, SiteConfig } from "../renderer/context.js";
 import { Head } from "./layout/Head.js";
 import { Page } from "./layout/Page.js";
-import { messagesFor } from "../core/messages.js";
 
 export interface AppProps {
   spec: NormalizedSpec | undefined;
@@ -29,7 +28,7 @@ export function App({ spec, options, navigation, currentPage, site }: AppProps) 
   const content = options.embeddable ? (
     <Page />
   ) : (
-    <html lang={options.contentLocale ?? options.locale ?? "en"} dir={options.dir ?? "ltr"}>
+    <html lang={options.contentLocale} dir={options.dir}>
       <Head />
       <body id="sourcey" data-sourcey-theme={site.theme.name}>
         <Page />
@@ -41,7 +40,7 @@ export function App({ spec, options, navigation, currentPage, site }: AppProps) 
   return (
     <SiteContext.Provider value={site}>
       <SpecContext.Provider value={spec!}>
-        <OptionsContext.Provider value={{ ...options, messages: options.messages ?? messagesFor(options.locale ?? "en") }}>
+        <OptionsContext.Provider value={options}>
           <NavigationContext.Provider value={navigation}>
             <PageContext.Provider value={currentPage}>{content}</PageContext.Provider>
           </NavigationContext.Provider>
