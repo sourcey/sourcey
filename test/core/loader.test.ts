@@ -32,7 +32,7 @@ describe("loadSpec", () => {
   });
 
   it("throws on missing file", async () => {
-    await expect(loadSpec("/nonexistent/spec.yml")).rejects.toThrow("not found");
+    await expect(loadSpec("/nonexistent/spec.yml")).rejects.toThrow("File not found: /nonexistent/spec.yml");
   });
 
   it("throws on unrecognized spec version", async () => {

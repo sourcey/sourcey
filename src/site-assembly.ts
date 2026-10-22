@@ -137,7 +137,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   /** An OpenAPI or MCP reference: its overview, and in a split reference each operation's and model's own page. */
   async function addReference(context: ResolvedSiteContext, tab: ResolvedTab, source: ResolvedOpenApiSource | ResolvedMcpSource): Promise<void> {
     const input = await reader.read(source.spec, context.key);
-        const overlays = source.kind === "openapi" ? await Promise.all((source.overlays ?? []).map(async file => [file, (await reader.read(file, source.spec)).digest])) : [];
+    const overlays = source.kind === "openapi" ? await Promise.all((source.overlays ?? []).map(async file => [file, (await reader.read(file, source.spec)).digest])) : [];
     const owner = JSON.stringify([source.kind, source.spec, source.kind === "openapi" ? source.overlays ?? [] : undefined, source.kind === "openapi" ? source.overlayUnmatched ?? "error" : undefined, config.exports.openapi]);
     const key = JSON.stringify([input.digest, overlays]);
     const prior = previous?.references.get(owner);
@@ -150,8 +150,8 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
         const parsed = await parseSpec(loaded, { publishBundle: config.exports.openapi, input: reader });
         reference = { key, spec: shareReferenceSnapshot(normalizeSpec(await convertToOpenApi3(parsed)), prior?.spec), publicDocument: parsed.publicDocument, diagnostics };
       } else {
-        const { parse } = await import("mcp-parser");
-        reference = { key, spec: shareReferenceSnapshot(normalizeMcpSpec(await parse(source.spec)), prior?.spec) };
+        const { parseString } = await import("mcp-parser");
+        reference = { key, spec: shareReferenceSnapshot(normalizeMcpSpec(parseString(input.body.toString("utf8"))), prior?.spec) };
       }
     }
     cache.references.set(owner, reference);

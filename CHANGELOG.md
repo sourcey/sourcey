@@ -49,6 +49,7 @@
 - Vite loads only to read a config file, or to bundle a site's own components, rather than whenever Sourcey is imported: a host that passes Sourcey a resolved config, such as Astro's integration, never loads it, and importing Sourcey takes 61 MB where it took 110.
 - A page's sidebar draws once each section that holds neither the page nor a link to it, and reuses it on every other page, rather than drawing the whole navigation again for every page: a section looks the same on each page but around the current one. Pages are drawn as before, and a 458-page site builds with 5% less CPU time.
 - A site that defines a component named `Include` has its own drawn where a page writes `<Include>`, as a site's component named after any other built-in is, rather than Sourcey reading the file the tag names and passing over the site's component. A directive that opens no component fails the build naming the directive, whatever it is called: `:::constructor` had failed naming an internal function instead.
+- An MCP tab whose spec is a web address builds. The spec is read once, through the build's reader, as an OpenAPI spec is, rather than read a second time by the MCP parser, which took the address for a file name and failed. A file the build reads and cannot find fails naming it, as `File not found: <path>`.
 
 ## 3.8.3 - 2026-10-21
 

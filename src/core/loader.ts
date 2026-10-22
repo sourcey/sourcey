@@ -1,4 +1,4 @@
-import { readFile, access, realpath } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { resolve, extname, dirname, basename, isAbsolute } from "node:path";
 import { load, YAMLException } from "js-yaml";
 import type { LoadedSpec, SpecFormat, SpecVersion } from "./types.js";
@@ -118,7 +118,9 @@ export class InputReader {
           body = Buffer.from(await response.arrayBuffer());
           etag = response.headers.get("etag") ?? undefined;
           modified = response.headers.get("last-modified") ?? undefined;
-        } else body = await readFile(key, { signal: this.signal });
+        } else body = await readFile(key, { signal: this.signal }).catch((error: NodeJS.ErrnoException) => {
+          throw error.code === "ENOENT" ? new Error(`File not found: ${key}`, { cause: error }) : error;
+        });
         const value = { body, digest: createHash("sha256").update(body).digest("hex"), etag, modified };
         this.inputs.set(key, value);
         if (isAbsoluteHttpUrl(key)) remoteInputs.set(key, value);
@@ -156,32 +158,13 @@ export async function loadSpec(source: string, reader?: InputReader): Promise<Lo
   return { raw, format, version, source: resolvedSource };
 }
 
-/** Parse a JSON/YAML input through the same build-scoped byte authority. */
-export async function loadDocument(source: string, reader?: InputReader, dependent?: string): Promise<{ raw: Record<string, unknown>; format: SpecFormat }> {
-  const content = reader ? await reader.readText(source, dependent) : await fetchContent(source);
+/** Parse a JSON/YAML input, read through the build's reader or, outside a build, one of its own. */
+export async function loadDocument(source: string, reader = new InputReader(), dependent?: string): Promise<{ raw: Record<string, unknown>; format: SpecFormat }> {
+  const content = await reader.readText(source, dependent);
   const format = detectFormat(source, content);
   const raw = parseContent(content, format);
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`Document must be an object: ${source}`);
   return { raw, format };
-}
-
-/**
- * Fetch raw content from a file path or URL.
- */
-async function fetchContent(source: string): Promise<string> {
-  if (isAbsoluteHttpUrl(source)) {
-    const response = await fetch(source);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch spec from ${source}: ${response.status} ${response.statusText}`);
-    }
-    return response.text();
-  }
-
-  const filePath = resolve(source);
-  await access(filePath).catch(() => {
-    throw new Error(`Spec file not found: ${filePath}`);
-  });
-  return readFile(filePath, "utf-8");
 }
 
 /**

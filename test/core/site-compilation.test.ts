@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { realpath, mkdtemp, mkdir, writeFile, readFile, stat, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defineConfig, markdown, openapi, godoc, rustdoc, defineComponent } from "../../src/index.js";
+import { createServer } from "node:http";
+import { defineConfig, markdown, mcp, openapi, godoc, rustdoc, defineComponent } from "../../src/index.js";
 import { GODOC_SCHEMA_VERSION } from "../../src/core/godoc-types.js";
 import { resolveConfigFromRaw, loadConfig } from "../../src/config.js";
 import { buildSourceySite, collectSourceyWatchPaths, updateSourceySite, writeSourceySite, sourceyArtifacts } from "../../src/site.js";
@@ -22,6 +23,21 @@ async function file(root: string, name: string, content: string) {
   const path = join(root, name); await mkdir(join(path, ".."), { recursive: true }); await writeFile(path, content); return path;
 }
 describe("native compilation", () => {
+  it("builds an MCP reference from a web address, reading the document once", () => fixture(async root => {
+    const document = await readFile(new URL("../fixtures/nitrosend.mcp.json", import.meta.url), "utf8");
+    let reads = 0;
+    const server = createServer((_request, response) => { reads++; response.setHeader("content-type", "application/json"); response.end(document); });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Expected TCP server");
+      const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation: { tabs: [{ tab: "Tools", source: mcp(`http://127.0.0.1:${address.port}/mcp.json`) }] } }, root);
+      const site = await buildSourceySite({ config, generateOgImages: false });
+      expect(site.references.get("tools")!.operations.length).toBeGreaterThan(0);
+      expect(reads).toBe(1);
+    } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+  }));
+
   it("renders system-font pages without third-party font requests in every theme", () => fixture(async root => {
     await file(root, "guide.md", "# Guide\n\nUseful content.\n");
     for (const name of ["default", "minimal", "api-first", "reader"] as const) {
