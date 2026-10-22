@@ -4,10 +4,23 @@ import { buildSearchArtifacts } from "./core/search-artifacts.js";
 import type { SearchEntry } from "./core/search-indexer.js";
 import type { SitePage } from "./core/site-model.js";
 import type { ArtifactBody } from "./core/source-file.js";
-import { toPublicPath } from "./site-url.js";
 
-/** Each language and version's published search, by context, with the rows it was built from. */
+/** Each language and version's published search, by context, keyed by the rows it was built from. */
 export type SearchCache = Map<string, { key: string } & ReturnType<typeof buildSearchArtifacts>>;
+
+/** Each language and version's search rows, by context: a row is searched where the page it opens is. */
+export function searchRowsByContext(pages: readonly SitePage[], rows: readonly SearchEntry[]): Map<string, SearchEntry[]> {
+  const contextByUrl = new Map(pages.map(page => [page.publicPath, page.context.key]));
+  const rowsByContext = new Map<string, SearchEntry[]>();
+  for (const row of rows) {
+    const key = contextByUrl.get(row.url.split("#")[0]);
+    if (key === undefined) throw new Error(`Search: row ${JSON.stringify(row.title)} opens no page of the site: ${row.url}`);
+    const own = rowsByContext.get(key);
+    if (own) own.push(row);
+    else rowsByContext.set(key, [row]);
+  }
+  return rowsByContext;
+}
 
 /**
  * Publish a site's search: for each language and version, its rows as
@@ -16,15 +29,7 @@ export type SearchCache = Map<string, { key: string } & ReturnType<typeof buildS
  * versions its navigation reaches. A context whose rows are the previous
  * build's keeps that build's files.
  */
-export function publishSearch(config: ResolvedConfig, pages: readonly SitePage[], rows: readonly SearchEntry[], files: Map<string, ArtifactBody>, previous?: SearchCache): SearchCache {
-  const contextByUrl = new Map(pages.map(page => [toPublicPath(page.outputPath, config.baseUrl, config.prettyUrls), page.context.key]));
-  const rowsByContext = new Map<string, SearchEntry[]>();
-  for (const row of rows) {
-    const key = contextByUrl.get(row.url.split("#")[0]);
-    if (key === undefined) continue;
-    const own = rowsByContext.get(key) ?? [];
-    own.push(row); rowsByContext.set(key, own);
-  }
+export function publishSearch(config: ResolvedConfig, pages: readonly SitePage[], rowsByContext: ReadonlyMap<string, readonly SearchEntry[]>, files: Map<string, ArtifactBody>, previous?: SearchCache): SearchCache {
   const searches: SearchCache = new Map();
   const manifests = new Map<string, string>();
   for (const context of config.contexts) {
