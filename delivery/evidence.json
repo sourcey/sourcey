@@ -1,0 +1,71 @@
+{
+  "summary": "Reproducible Sourcey 3.6.5 generation of llms.txt from the maintained sourcey/sourcey repository at a pinned commit, followed by a public upstream pull request adding the generated artifact.",
+  "runx_cli_version": "runx-cli 0.8.2",
+  "receipt_ref": "runx:receipt:sha256:ca1f8bc8fdc457c4033e9509c245aa76463038abf9a13487056cdce02d1d13cb",
+  "observations": [
+    {
+      "kind": "source_repo",
+      "repo_url": "https://github.com/sourcey/sourcey",
+      "pinned_commit": "7b84dc2b672f97b286be5eab8d4f9f095b9c4d76",
+      "why_maintained": "The repository has a current main branch, release changelog, tests, and active Sourcey documentation sources."
+    },
+    {
+      "kind": "source_license",
+      "license_url": "https://github.com/sourcey/sourcey/blob/7b84dc2b672f97b286be5eab8d4f9f095b9c4d76/LICENSE",
+      "license_observed": "AGPL-3.0-only"
+    },
+    {
+      "kind": "sourcey_command",
+      "command": "sourcey build --config docs/sourcey.config.ts --output docs/dist",
+      "sourcey_version": "3.6.5",
+      "config_source": "docs/sourcey.config.ts",
+      "input_sources": ["docs/introduction.md", "docs/install.md", "docs/configuration.md", "docs/roadmap.md", "docs/changelog.md"]
+    },
+    {
+      "kind": "generation_proof",
+      "method": "The official Sourcey CLI read the pinned Markdown/config inputs and emitted llms.txt and llms-full.txt alongside the static HTML site; the file was not hand-written.",
+      "llms_sha256": "sha256:fb903241d7ff29b4854bdb2a24780c5ddec4bb9fc36717145426a792e100b421",
+      "llms_full_sha256": "sha256:904d4d38275a16d2d386199b0c115be53bcac3289b5862be5b7b91fc1bdbbb36"
+    },
+    {
+      "kind": "governed_validation",
+      "runx_version_output": "runx-cli 0.8.2",
+      "command": "runx-cli 0.8.2 skill work/runx-sourcey-validation -R <receipt-dir> --json",
+      "run_id": "run_validate_6069036bf9e7737e",
+      "receipt_ref": "runx:receipt:sha256:ca1f8bc8fdc457c4033e9509c245aa76463038abf9a13487056cdce02d1d13cb",
+      "verify_verdict": "valid=true; digest valid; content_address valid; signature valid; findings=[]",
+      "result": "The validation runner rebuilt Sourcey output from the pinned project inputs and matched llms.txt sha256:fb903241d7ff29b4854bdb2a24780c5ddec4bb9fc36717145426a792e100b421."
+    },
+    {
+      "kind": "build_output",
+      "generated_files": ["index.html", "introduction.html", "install.html", "configuration.html", "roadmap.html", "changelog.html", "llms.txt", "llms-full.txt", "search-index.json", "sitemap.xml", "sourcey.css", "sourcey.js"],
+      "index_title": "Sourcey",
+      "index_headings": ["Sourcey"],
+      "index_excerpt": "Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, and Markdown."
+    },
+    {
+      "kind": "live_artifact",
+      "public_url": "https://raw.githubusercontent.com/sourcey/sourcey/refs/pull/261/head/docs/llms.txt",
+      "content_type": "text/plain",
+      "stranger_fetchable": true,
+      "credibility": "Raw GitHub content from the maintained project's canonical upstream pull-request head ref; it is the exact file proposed by sourcey/sourcey#261 and is stranger-fetchable."
+    },
+    {
+      "kind": "upstream_adoption",
+      "pr_url": "https://github.com/sourcey/sourcey/pull/261",
+      "target_repo": "sourcey/sourcey",
+      "status_at_delivery": "open",
+      "change": "Adds docs/llms.txt generated from the pinned project documentation source."
+    },
+    {
+      "kind": "entry_audit",
+      "audited_entries": [
+        {"entry": "Introduction", "target": "https://github.com/sourcey/sourcey/blob/7b84dc2b672f97b286be5eab8d4f9f095b9c4d76/docs/introduction.md", "result": "exists in pinned source"},
+        {"entry": "Install", "target": "https://github.com/sourcey/sourcey/blob/7b84dc2b672f97b286be5eab8d4f9f095b9c4d76/docs/install.md", "result": "exists in pinned source"},
+        {"entry": "Configuration", "target": "https://github.com/sourcey/sourcey/blob/7b84dc2b672f97b286be5eab8d4f9f095b9c4d76/docs/configuration.md", "result": "exists in pinned source"},
+        {"entry": "Roadmap", "target": "https://github.com/sourcey/sourcey/blob/7b84dc2b672f97b286be5eab8d4f9f095b9c4d76/docs/roadmap.md", "result": "exists in pinned source"},
+        {"entry": "Changelog", "target": "https://github.com/sourcey/sourcey/blob/7b84dc2b672f97b286be5eab8d4f9f095b9c4d76/docs/changelog.md", "result": "exists in pinned source"}
+      ]
+    }
+  ]
+}
