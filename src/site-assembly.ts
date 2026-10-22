@@ -1,46 +1,35 @@
-import { rewriteMarkdownDestinations } from "./utils/markdown-links.js";
 import { createHash } from "node:crypto";
-import { OPERATION_LINK, renderMarkdown } from "./utils/markdown.js";
-import { htmlId } from "./utils/html-id.js";
-import { operationAnchor, operationKey, definitionAnchor, operationPagePath, schemaPagePath, referenceOperation } from "./core/reference-identity.js";
-import { dirname, posix, relative, resolve } from "node:path";
-import { InputReader, loadSpec, type InputReaderOptions } from "./core/loader.js";
-import { applyOverlays, formatOverlayDiagnostic, type OverlayDiagnostic } from "./core/overlay.js";
+import { resolve } from "node:path";
+import { pageOutputPath, tabPath, type Redirect, type ResolvedConfig, type ResolvedTab } from "./config.js";
+import { joinHref, normalizeBaseUrl, toPublicPath, toPublicUrl } from "./site-url.js";
+import { markdownPages } from "./adapters/shared.js";
+import type { ResolvedDoxygenSource, ResolvedGodocSource, ResolvedMarkdownSource, ResolvedMcpSource, ResolvedOpenApiSource, ResolvedRustdocSource } from "./adapters/types.js";
+import type { BuildDiagnostics } from "./core/build-diagnostics.js";
 import { convertToOpenApi3 } from "./core/converter.js";
-import { parseSpec } from "./core/parser.js";
-import { normalizeSpec } from "./core/normalizer.js";
-import { normalizeMcpSpec } from "./core/mcp-normalizer.js";
-import { shareReferenceSnapshot } from "./core/reference-snapshot.js";
-import { docsExport, drawDocsSource, loadDocsSource, outlineDocsSource, slugFromPath, type ContentDiagnostic, type LoadDocsPageOptions, type MarkdownSource } from "./core/markdown-loader.js";
 import { loadDoxygenTab } from "./core/doxygen-loader.js";
 import { loadGodocTab, type GodocLoaderDiagnostic } from "./core/godoc-loader.js";
-import { loadRustdocTab, type RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
-import { buildNavFromSpec, buildNavFromPages, buildAuthoredNavigation, buildSiteNavigation, walkNavGroups, walkNavItems, isNavGroup } from "./core/navigation.js";
-import { navigationResolver } from "./core/navigation-targets.js";
-import { generateChangelogFeeds } from "./renderer/changelog-feed.js";
-import { pageOutputPath, tabPath } from "./config.js";
-import type { PrettyUrls, Redirect, ResolvedConfig, ResolvedTab } from "./config.js";
-import type { ChangelogPage, DocsPage, DocsSource, MarkdownPage } from "./core/markdown-loader.js";
-import type { ResolvedMarkdownSource } from "./adapters/types.js";
-import type { SiteTab } from "./core/navigation.js";
-import type { ContentLinks } from "./core/markdown-components.js";
-import type { Links } from "marked";
-import type {
-  ChangelogDiagnostic,
-  NormalizedChangelogVersion,
-  NormalizedSpec,
-} from "./core/types.js";
-import { RouteTable, SITE_PAGES, identityKey, reportUnmatchedAnchor, validateAnchorAliases, type AnchorDiagnostic, type ReferenceTarget, type ReferenceTargets, type SitePage, type ResolvedSiteContext } from "./core/site-model.js";
-import { sitePageFiles } from "./core/site-pages.js";
-import { english } from "./core/messages.js";
+import { InputReader, loadSpec, type InputReaderOptions } from "./core/loader.js";
 import { sectionIndexDependencies } from "./core/markdown-components.js";
-import { markdownPages } from "./adapters/shared.js";
-import type { SiteConfig } from "./renderer/context.js";
-import { joinHref, normalizeBaseUrl, toPrettyLink, toPublicPath, toPublicUrl, type LinkStyle } from "./site-url.js";
-import { consoleArtifactPath, consoleData } from "./renderer/try-it.js";
-import { stringifyShared } from "./core/shared-json.js";
-import { staticMediaAsset } from "./core/media.js";
+import { docsExport, drawDocsSource, loadDocsSource, outlineDocsSource, slugFromPath, type DocsPage, type DocsSource, type LoadDocsPageOptions, type MarkdownPage, type MarkdownSource } from "./core/markdown-loader.js";
+import { normalizeMcpSpec } from "./core/mcp-normalizer.js";
+import { english } from "./core/messages.js";
+import { buildAuthoredNavigation, buildNavFromPages, buildNavFromSpec, buildSiteNavigation, prettyNavigationHrefs, walkNavGroups, walkNavItems, type SiteTab } from "./core/navigation.js";
+import { navigationResolver } from "./core/navigation-targets.js";
+import { normalizeSpec } from "./core/normalizer.js";
+import { applyOverlays, type OverlayDiagnostic } from "./core/overlay.js";
+import { parseSpec } from "./core/parser.js";
+import { definitionAnchor, operationAnchor, operationKey, operationPagePath, referenceOperation, schemaPagePath } from "./core/reference-identity.js";
+import { shareReferenceSnapshot } from "./core/reference-snapshot.js";
+import { RouteTable, SITE_PAGES, identityKey, reportUnmatchedAnchor, validateAnchorAliases, type AnchorDiagnostic, type ReferenceTargets, type ResolvedSiteContext, type SitePage } from "./core/site-model.js";
+import { pageLinks, resolveInternalHref, rewriteHtmlLinks, rewriteMarkdownLinks, siteLinks, type LinkedReference, type LinkScope } from "./core/site-links.js";
+import { sitePageFiles } from "./core/site-pages.js";
 import type { ArtifactBody } from "./core/source-file.js";
+import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
+import { loadRustdocTab, type RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
+import { htmlId } from "./utils/html-id.js";
+import { renderMarkdown } from "./utils/markdown.js";
+import { attachSiteFiles } from "./site-assets.js";
+import { addPermalinkPages, attachChangelogFeeds } from "./site-changelog.js";
 
 export interface AssemblyCache {
   reader: InputReader;
@@ -49,19 +38,13 @@ export interface AssemblyCache {
   /** Each page as drawn and linked, by output path, with the source and the routes it was drawn from. */
   pages: Map<string, { source: DocsSource | DocsPage; key: string; page: DocsPage }>;
 }
-export interface SiteAssembly {
+export interface SiteAssembly extends BuildDiagnostics {
   publicSpecs: Map<string, Record<string, unknown>>;
   siteTabs: SiteTab[];
   references: Map<string, NormalizedSpec>;
   pageMap: Map<string, SitePage>;
   routes: RouteTable;
   cache: AssemblyCache;
-  changelogDiagnostics: ChangelogDiagnostic[];
-  godocDiagnostics: GodocLoaderDiagnostic[];
-  rustdocDiagnostics: RustdocLoaderDiagnostic[];
-  overlayDiagnostics: OverlayDiagnostic[];
-  contentDiagnostics: ContentDiagnostic[];
-  anchorDiagnostics: AnchorDiagnostic[];
   extraFiles: Map<string, ArtifactBody>;
 }
 
@@ -150,84 +133,84 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     pageMap.set(key, page);
     return page;
   }
-  for (const context of config.contexts) for (const tab of context.tabs) {
-    if (tab.source.kind === "openapi" || tab.source.kind === "mcp") {
-      const input = await reader.read(tab.source.spec, context.key);
-      const source = tab.source;
-      const overlays = source.kind === "openapi" ? await Promise.all((source.overlays ?? []).map(async file => [file, (await reader.read(file, source.spec)).digest])) : [];
-      const owner = JSON.stringify([source.kind, source.spec, source.kind === "openapi" ? source.overlays ?? [] : undefined, source.kind === "openapi" ? source.overlayUnmatched ?? "error" : undefined, config.exports.openapi]);
-      const key = JSON.stringify([input.digest, overlays]);
-      const prior = previous?.references.get(owner);
-      let reference = cache.references.get(owner);
-      if (!reference && previous && prior?.key === key && !await previous.reader.affected(source.spec, changed)) reference = prior;
-      if (!reference) {
-        if (tab.source.kind === "openapi") {
-          const loaded = await loadSpec(tab.source.spec, reader);
-          const diagnostics = await applyOverlays(loaded, tab.source, reader);
-          const parsed = await parseSpec(loaded, { publishBundle: config.exports.openapi, input: reader });
-          reference = { key, spec: shareReferenceSnapshot(normalizeSpec(await convertToOpenApi3(parsed)), prior?.spec), publicDocument: parsed.publicDocument, diagnostics };
-        } else {
-          const { parse } = await import("mcp-parser");
-          reference = { key, spec: shareReferenceSnapshot(normalizeMcpSpec(await parse(tab.source.spec)), prior?.spec) };
-        }
-        cache.references.set(owner, reference);
-      }
-      cache.references.set(owner, reference);
-      overlayDiagnostics.push(...reference.diagnostics ?? []);
-      const spec = reference.spec;
-      references.set(tab.slug, spec);
-      if (reference.publicDocument) publicSpecs.set(tab.slug, reference.publicDocument);
-      const navTab = tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : buildNavFromSpec(spec, tab.slug, config.prettyUrls);
-      navTab.label = tab.label;
-      siteTabs.push(navTab);
-      const current: Extract<SitePage["currentPage"], { kind: "spec" }> = { kind: "spec", spec, specKey: tab.slug,
-        tryIt: tab.source.kind === "mcp" ? false : tab.tryIt ?? config.tryIt };
-      const split = tab.reference.split === "operations";
-      const overview = add(context, tab, { ...current, view: split ? { kind: "overview" } : undefined }, "introduction", tab.source.spec, tab.contentLocale);
-      const operations = spec.operations.filter(op => !op.hidden);
-      if (split) {
-        const models = !tab.navigation && navTab.groups.find(group => group.label === "Models");
-        if (models) { models.href = toPublicUrl(overview.outputPath, undefined, config.baseUrl, config.prettyUrls) + "#models"; models.id = "models"; }
-        for (const operation of operations) {
-          const document = operationKey(operation);
-          add(context, { ...tab, routes: { ...tab.routes, [document]: tab.routes?.[document] ?? operationPagePath(operation, spec, tab.reference.operations) } }, { ...current, view: { kind: "operation", id: document } }, document, tab.source.spec, tab.contentLocale);
-        }
-        for (const name of Object.keys(spec.schemas)) {
-          const document = `schema:${name}`;
-          add(context, { ...tab, routes: { ...tab.routes, [document]: tab.routes?.[document] ?? schemaPagePath(name, spec) } }, { ...current, view: { kind: "schema", name } }, document, tab.source.spec, tab.contentLocale);
-        }
-        continue;
-      }
-      // On one page, an operation's or model's own address stays permanent: it
-      // redirects to the section, so the reference can split or join again.
-      const page = toPublicPath(overview.outputPath, config.baseUrl, config.prettyUrls);
-      const permanent = (address: string | undefined, anchor: string) => {
-        if (address) referenceRedirects.set(toPublicPath(routeOutputPath(tab, address), config.baseUrl, config.prettyUrls), { to: `${page}#${anchor}`, status: 301 });
-      };
-      for (const operation of operations) permanent(tab.routes?.[operationKey(operation)] ?? (tab.reference.operations && operationPagePath(operation, spec, tab.reference.operations)), operationAnchor(operation, spec));
-      for (const name of Object.keys(spec.schemas)) permanent(tab.routes?.[`schema:${name}`], definitionAnchor(name, spec));
-      continue;
-    }
-    if (tab.source.kind !== "markdown") {
-      let result;
-      const edit = { repo: config.repo, editBranch: context.version.revision ?? config.editBranch };
-      const callouts = { icons: config.theme.icons, messages: context.localeConfig.messages };
-      if (tab.source.kind === "doxygen") result = await loadDoxygenTab(tab.source.config, tab.slug, tab.label, config.titleSeparator, callouts);
-      else if (tab.source.kind === "godoc") {
-        const loaded = await loadGodocTab(tab.source.config, tab.slug, tab.label, { ...edit, editBasePath: tab.source.config.sourceBasePath }, reader, callouts);
-        godocDiagnostics.push(...loaded.diagnostics); result = loaded;
+  /** An OpenAPI or MCP reference: its overview, and in a split reference each operation's and model's own page. */
+  async function addReference(context: ResolvedSiteContext, tab: ResolvedTab, source: ResolvedOpenApiSource | ResolvedMcpSource): Promise<void> {
+    const input = await reader.read(source.spec, context.key);
+        const overlays = source.kind === "openapi" ? await Promise.all((source.overlays ?? []).map(async file => [file, (await reader.read(file, source.spec)).digest])) : [];
+    const owner = JSON.stringify([source.kind, source.spec, source.kind === "openapi" ? source.overlays ?? [] : undefined, source.kind === "openapi" ? source.overlayUnmatched ?? "error" : undefined, config.exports.openapi]);
+    const key = JSON.stringify([input.digest, overlays]);
+    const prior = previous?.references.get(owner);
+    let reference = cache.references.get(owner);
+    if (!reference && previous && prior?.key === key && !await previous.reader.affected(source.spec, changed)) reference = prior;
+    if (!reference) {
+      if (source.kind === "openapi") {
+        const loaded = await loadSpec(source.spec, reader);
+        const diagnostics = await applyOverlays(loaded, source, reader);
+        const parsed = await parseSpec(loaded, { publishBundle: config.exports.openapi, input: reader });
+        reference = { key, spec: shareReferenceSnapshot(normalizeSpec(await convertToOpenApi3(parsed)), prior?.spec), publicDocument: parsed.publicDocument, diagnostics };
       } else {
-        const loaded = await loadRustdocTab(tab.source.config, tab.slug, tab.label, { ...edit, editBasePath: tab.source.config.sourceBasePath }, reader, callouts);
-        rustdocDiagnostics.push(...loaded.diagnostics); result = loaded;
+        const { parse } = await import("mcp-parser");
+        reference = { key, spec: shareReferenceSnapshot(normalizeMcpSpec(await parse(source.spec)), prior?.spec) };
       }
-      for (const [id, page] of result.pages) add(context, tab, { kind: "markdown", markdown: page }, id, page.sourcePath);
-      siteTabs.push(tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : result.navTab); continue;
     }
+    cache.references.set(owner, reference);
+    overlayDiagnostics.push(...reference.diagnostics ?? []);
+    const spec = reference.spec;
+    references.set(tab.slug, spec);
+    if (reference.publicDocument) publicSpecs.set(tab.slug, reference.publicDocument);
+    const navTab = tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : buildNavFromSpec(spec, tab.slug, config.prettyUrls);
+    navTab.label = tab.label;
+    siteTabs.push(navTab);
+    const current: Extract<SitePage["currentPage"], { kind: "spec" }> = { kind: "spec", spec, specKey: tab.slug,
+      tryIt: source.kind === "mcp" ? false : tab.tryIt ?? config.tryIt };
+    const split = tab.reference.split === "operations";
+    const overview = add(context, tab, { ...current, view: split ? { kind: "overview" } : undefined }, "introduction", source.spec, tab.contentLocale);
+    const operations = spec.operations.filter(op => !op.hidden);
+    if (split) {
+      const models = !tab.navigation && navTab.groups.find(group => group.label === "Models");
+      if (models) { models.href = toPublicUrl(overview.outputPath, undefined, config.baseUrl, config.prettyUrls) + "#models"; models.id = "models"; }
+      for (const operation of operations) {
+        const document = operationKey(operation);
+        add(context, { ...tab, routes: { ...tab.routes, [document]: tab.routes?.[document] ?? operationPagePath(operation, spec, tab.reference.operations) } }, { ...current, view: { kind: "operation", id: document } }, document, source.spec, tab.contentLocale);
+      }
+      for (const name of Object.keys(spec.schemas)) {
+        const document = `schema:${name}`;
+        add(context, { ...tab, routes: { ...tab.routes, [document]: tab.routes?.[document] ?? schemaPagePath(name, spec) } }, { ...current, view: { kind: "schema", name } }, document, source.spec, tab.contentLocale);
+      }
+      return;
+    }
+    // On one page, an operation's or model's own address stays permanent: it
+    // redirects to the section, so the reference can split or join again.
+    const page = toPublicPath(overview.outputPath, config.baseUrl, config.prettyUrls);
+    const permanent = (address: string | undefined, anchor: string) => {
+      if (address) referenceRedirects.set(toPublicPath(routeOutputPath(tab, address), config.baseUrl, config.prettyUrls), { to: `${page}#${anchor}`, status: 301 });
+    };
+    for (const operation of operations) permanent(tab.routes?.[operationKey(operation)] ?? (tab.reference.operations && operationPagePath(operation, spec, tab.reference.operations)), operationAnchor(operation, spec));
+    for (const name of Object.keys(spec.schemas)) permanent(tab.routes?.[`schema:${name}`], definitionAnchor(name, spec));
+  }
+  /** A reference a Doxygen, Go or Rust source generates, its pages drawn by its loader. */
+  async function addGeneratedReference(context: ResolvedSiteContext, tab: ResolvedTab, source: ResolvedDoxygenSource | ResolvedGodocSource | ResolvedRustdocSource): Promise<void> {
+    let result;
+    const edit = { repo: config.repo, editBranch: context.version.revision ?? config.editBranch };
+    const callouts = { icons: config.theme.icons, messages: context.localeConfig.messages };
+    if (source.kind === "doxygen") result = await loadDoxygenTab(source.config, tab.slug, tab.label, config.titleSeparator, callouts);
+    else if (source.kind === "godoc") {
+      const loaded = await loadGodocTab(source.config, tab.slug, tab.label, { ...edit, editBasePath: source.config.sourceBasePath }, reader, callouts);
+      godocDiagnostics.push(...loaded.diagnostics); result = loaded;
+    } else {
+      const loaded = await loadRustdocTab(source.config, tab.slug, tab.label, { ...edit, editBasePath: source.config.sourceBasePath }, reader, callouts);
+      rustdocDiagnostics.push(...loaded.diagnostics); result = loaded;
+    }
+    for (const [id, page] of result.pages) add(context, tab, { kind: "markdown", markdown: page }, id, page.sourcePath);
+    siteTabs.push(tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : result.navTab);
+  }
+  /** A tab of Markdown pages, outlined in its navigation's order and drawn once the site's routes compile. */
+  async function addMarkdownTab(context: ResolvedSiteContext, tab: ResolvedTab, content: ResolvedMarkdownSource): Promise<void> {
     // A tab's pages load together, so one page's media and diagram work overlaps another's
     // (the heavy-job budget bounds it); they are kept in navigation order, first listing wins.
     const listed = new Set<string>();
-    const slugs = tab.source.slugs;
-    const loaded = await Promise.all([...markdownPages(tab.source.groups)].filter(rp => !listed.has(rp.slug) && listed.add(rp.slug)).map(async rp => {
+    const slugs = content.slugs;
+    const loaded = await Promise.all([...markdownPages(content.groups)].filter(rp => !listed.has(rp.slug) && listed.add(rp.slug)).map(async rp => {
       const input = await reader.read(rp.file, context.key);
       const key = JSON.stringify([rp.file, input.digest, rp.slug, config.changelog.enabled, rp.title, context.key, config.theme.icons, config.markdown.smartypants]);
       let source = previous?.documents.get(key);
@@ -241,7 +224,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     const published = loaded.filter(({ source }) => source.kind !== "markdown" || !source.draft);
     const sources = new Map(published.map(({ rp, source }) => [rp.slug, source]));
     const navTab = tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : buildNavFromPages(tab, sources, config.prettyUrls, (source, reference) => {
-      const documentId = source.id ?? slugFromPath(reference, tab.source.kind === "markdown" ? tab.source.slugs : "normalized");
+      const documentId = source.id ?? slugFromPath(reference, slugs);
       return toPublicUrl(outputPathFor(tab, documentId, source.slug), undefined, config.baseUrl, config.prettyUrls);
     }, context.localeConfig.messages?.navigation);
     for (const { rp, source } of published) {
@@ -252,6 +235,12 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       drafts.set(record, { source, navigation: navTab, document: documentId });
     }
     siteTabs.push(navTab);
+  }
+  for (const context of config.contexts) for (const tab of context.tabs) {
+    const source = tab.source;
+    if (source.kind === "openapi" || source.kind === "mcp") await addReference(context, tab, source);
+    else if (source.kind === "markdown") await addMarkdownTab(context, tab, source);
+    else await addGeneratedReference(context, tab, source);
   }
   // Section destinations exist before routes compile; their link content is a
   // projection of final navigation and is rendered only after target resolution.
@@ -278,7 +267,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     }
   }
   if (config.changelog.permalinks) addPermalinkPages(pageMap, config.prettyUrls);
-  normalizeNavigationHrefs(siteTabs, config);
+  prettyNavigationHrefs(siteTabs, config);
   const statusPath = config.host?.statusPageFormat === "directory" ? "404/index.html" : "404.html";
   if (config.pages) await addSitePages(config.pages);
   const defaultContext = config.contexts.find(context => context.isDefaultVersion && context.locale === context.defaultLocale && context.scope === "site") ?? config.contexts[0];
@@ -314,7 +303,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     resolveNavigation(nav, tab, context);
     localizeNavigation(nav, context);
   }
-  normalizeNavigationHrefs(siteTabs, config);
+  prettyNavigationHrefs(siteTabs, config);
   // Standalone, the site is Sourcey's: a root no page publishes leads to the first section.
   const root = toPublicPath("index.html", config.baseUrl, config.prettyUrls);
   if (!config.host && home && !routes.match(root) && !routes.redirectFor(root)) routes.addRedirects({ [root]: { to: joinHref(normalizeBaseUrl(config.baseUrl) || "/", home.href), status: 302 } });
@@ -367,204 +356,9 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     drawPages(pages.filter(p => p.context.key === context.key), config, routes, drafts, cache.pages, previous?.pages, linked);
   }
   const extraFiles = attachChangelogFeeds(pages, config);
-  const emittedConsoles = new Set<string>();
-  for (const page of pages) {
-    if (emittedConsoles.has(page.tabSlug)) continue;
-    if (page.currentPage.kind !== "spec" || page.currentPage.tryIt === false) continue;
-    emittedConsoles.add(page.tabSlug);
-    for (const operation of page.currentPage.spec.operations) {
-      if (operation.hidden || operation.mcpExtras) continue;
-      const scope = page.currentPage.specKey ?? page.tabSlug;
-      extraFiles.set(consoleArtifactPath(scope, operation), stringifyShared(
-        consoleData(operation, page.currentPage.spec, scope, config.codeSamples, page.currentPage.tryIt)));
-    }
-  }
-  for (const page of pages) if (page.currentPage.kind === "markdown") for (const [path, body] of page.currentPage.markdown.assets ?? []) extraFiles.set(path, body);
-  // A page's own stylesheets, published once each as the theme's are.
-  const stylesheets = new Map<string, string>();
-  for (const page of pages) {
-    const files = page.currentPage.kind === "markdown" ? page.currentPage.markdown.css ?? [] : [];
-    for (const file of files) {
-      let path = stylesheets.get(file);
-      if (!path) {
-        const css = await loadCustomCSS([file], reader, async source => {
-          const asset = await staticMediaAsset(source, reader, file);
-          extraFiles.set(asset.path, asset.body);
-          return toPublicUrl(asset.path, undefined, config.baseUrl, config.prettyUrls);
-        }, file);
-        path = `_media/${createHash("sha256").update(css).digest("hex").slice(0, 20)}.css`;
-        extraFiles.set(path, css);
-        stylesheets.set(file, path);
-      }
-      (page.stylesheets ??= []).push(path);
-    }
-  }
-  await attachSourceAssets(extraFiles, tabs, reader);
-  if (config.publicDir) {
-    const { publicAssets } = await import("./core/media.js");
-    for (const [path, body] of await publicAssets(config.publicDir, reader)) {
-      if (extraFiles.has(path)) throw new Error(`Public asset collides with a generated artifact: ${path}`);
-      extraFiles.set(path, body);
-    }
-  }
+  await attachSiteFiles(extraFiles, pages, tabs, config, reader);
   const contentDiagnostics = [...new Map(pages.flatMap(page => page.currentPage.kind === "markdown" ? page.currentPage.markdown.diagnostics ?? [] : []).map(diagnostic => [JSON.stringify(diagnostic), diagnostic])).values()];
   return { publicSpecs, siteTabs, references, pageMap, routes, cache, changelogDiagnostics, godocDiagnostics, rustdocDiagnostics, overlayDiagnostics, contentDiagnostics, anchorDiagnostics, extraFiles };
-}
-
-/** One reporting projection for the CLI, preview server and host integrations. */
-export function formatBuildDiagnostics(result: Pick<SiteAssembly, "changelogDiagnostics" | "godocDiagnostics" | "rustdocDiagnostics" | "overlayDiagnostics" | "contentDiagnostics" | "anchorDiagnostics">): string[] {
-  return [
-    ...result.changelogDiagnostics.map(formatChangelogDiagnostic),
-    ...result.godocDiagnostics.map(formatGodocDiagnostic),
-    ...result.rustdocDiagnostics.map(formatRustdocDiagnostic),
-    ...result.overlayDiagnostics.map(formatOverlayDiagnostic),
-    ...result.contentDiagnostics.map(formatContentDiagnostic),
-    ...result.anchorDiagnostics.map(diagnostic => `anchor [${diagnostic.code}]: ${diagnostic.message} Unmatched aliases are omitted.`),
-  ];
-}
-
-export function formatContentDiagnostic(diagnostic: ContentDiagnostic): string {
-  return `${diagnostic.severity.toUpperCase()} ${diagnostic.code}: ${diagnostic.message}`;
-}
-
-export function formatGodocDiagnostic(diag: GodocLoaderDiagnostic): string {
-  const sev = diag.severity.toUpperCase();
-  const where = diag.package ? ` [${diag.package}]` : "";
-  const loc = diag.file ? ` ${diag.file}${diag.line ? `:${diag.line}` : ""}` : "";
-  return `[${sev}] ${diag.code}${where}${loc} ${diag.message}`;
-}
-
-export function enforceGodocDiagnostics(diagnostics: GodocLoaderDiagnostic[]): void {
-  const error = diagnostics.find((diagnostic) => diagnostic.severity === "error");
-  if (error) throw new Error(formatGodocFailure(error));
-}
-
-export function enforceRustdocDiagnostics(diagnostics: RustdocLoaderDiagnostic[]): void {
-  const error = diagnostics.find((diagnostic) => diagnostic.severity === "error");
-  if (error) throw new Error(formatRustdocFailure(error));
-}
-
-function formatGodocFailure(diagnostic: GodocLoaderDiagnostic): string {
-  const where = diagnostic.package ? ` (${diagnostic.package})` : "";
-  const loc = diagnostic.file
-    ? ` ${diagnostic.file}${diagnostic.line ? `:${diagnostic.line}` : ""}`
-    : "";
-  return `[${diagnostic.code}]${where}${loc}: ${diagnostic.message}`;
-}
-
-export function formatRustdocDiagnostic(diagnostic: RustdocLoaderDiagnostic): string {
-  const location = diagnostic.file
-    ? ` ${diagnostic.file}${diagnostic.line ? `:${diagnostic.line}` : ""}`
-    : "";
-  const cratePrefix = diagnostic.crate ? ` [${diagnostic.crate}]` : "";
-  return `[${diagnostic.severity.toUpperCase()}] ${diagnostic.code}${cratePrefix}${location} ${diagnostic.message}`;
-}
-
-function formatRustdocFailure(diagnostic: RustdocLoaderDiagnostic): string {
-  const location = diagnostic.file
-    ? ` ${diagnostic.file}${diagnostic.line ? `:${diagnostic.line}` : ""}`
-    : "";
-  const cratePrefix = diagnostic.crate ? ` (${diagnostic.crate})` : "";
-  return `[${diagnostic.code}]${cratePrefix}${location}: ${diagnostic.message}`;
-}
-
-/** Searchable pages by the tab that owns them; a site page's owner is its language's site pages. */
-export function collectDocsPagesByTab(
-  pageMap: Map<string, SitePage>,
-): Map<string, import("./core/search-indexer.js").SearchDocument[]> {
-  const docsPagesByTab = new Map<string, import("./core/search-indexer.js").SearchDocument[]>();
-  for (const page of pageMap.values()) {
-    if (page.status === 404 || !isSearchableDocsSitePage(page)) continue;
-    const tabPages = docsPagesByTab.get(page.tabSlug) ?? [];
-    tabPages.push({ page: page.currentPage.kind === "markdown" ? page.currentPage.markdown : page.currentPage.changelog, url: page.publicPath! });
-    docsPagesByTab.set(page.tabSlug, tabPages);
-  }
-  return docsPagesByTab;
-}
-
-function normalizeNavigationHrefs(siteTabs: SiteTab[], links: LinkStyle): void {
-  for (const tab of siteTabs) {
-    tab.href = toPrettyLink(tab.href, links);
-    for (const group of walkNavGroups(tab.groups)) {
-      for (const item of group.items) {
-        if (isNavGroup(item)) continue;
-        item.href = toPrettyLink(item.href, links);
-      }
-    }
-  }
-}
-
-export function enforceChangelogDiagnostics(
-  diagnostics: ChangelogDiagnostic[],
-  strictChangelog = false,
-): void {
-  const error = diagnostics.find((diagnostic) => diagnostic.severity === "error");
-  if (error) {
-    throw new Error(formatChangelogFailure(error));
-  }
-
-  if (!strictChangelog) return;
-
-  const warning = diagnostics.find((diagnostic) => diagnostic.severity === "warning");
-  if (warning) {
-    throw new Error(formatChangelogFailure(warning));
-  }
-}
-
-export function formatChangelogDiagnostic(diagnostic: ChangelogDiagnostic): string {
-  const location = diagnostic.version ? ` (${diagnostic.version})` : "";
-  const line = diagnostic.line ? ` line ${diagnostic.line}` : "";
-  return `${diagnostic.severity.toUpperCase()} ${diagnostic.code}${location}${line}: ${diagnostic.message}`;
-}
-
-export function formatChangelogFailure(diagnostic: ChangelogDiagnostic): string {
-  const location = diagnostic.version ? ` (${diagnostic.version})` : "";
-  const line = diagnostic.line ? ` line ${diagnostic.line}` : "";
-  return `[${diagnostic.code}]${location}${line}: ${diagnostic.message}`;
-}
-
-export function formatChangelogDiagnostics(diagnostics: ChangelogDiagnostic[]): string[] {
-  return diagnostics.map(formatChangelogDiagnostic);
-}
-
-export async function buildSiteConfig(config: ResolvedConfig, input: InputReader, assets: Map<string, ArtifactBody>): Promise<SiteConfig> {
-  async function assetUrl(source: string): Promise<string> {
-    if (!source || /^(?:data:|https?:\/\/)/.test(source)) return source;
-    const asset = await staticMediaAsset(source, input, "site");
-    assets.set(asset.path, asset.body);
-    return toPublicUrl(asset.path, undefined, config.baseUrl, config.prettyUrls);
-  }
-  const logo = config.logo
-    ? {
-        light: await assetUrl(config.logo.light ?? ""),
-        dark: config.logo.dark ? await assetUrl(config.logo.dark) : undefined,
-        href: config.logo.href,
-        mark: config.logo.mark,
-      }
-    : undefined;
-
-  const customCSS = await loadCustomCSS(config.theme.css, input, assetUrl);
-
-  return {
-    name: config.name,
-    tryIt: config.tryIt,
-    titleSeparator: config.titleSeparator,
-    siteUrl: config.siteUrl,
-    baseUrl: config.baseUrl,
-    prettyUrls: config.prettyUrls,
-    theme: config.theme,
-    logo: logo?.light ? logo : undefined,
-    favicon: config.favicon ? await assetUrl(config.favicon) : undefined,
-    repo: config.repo,
-    editBranch: config.editBranch,
-    editBasePath: config.editBasePath,
-    codeSamples: config.codeSamples,
-    navbar: config.navbar,
-    footer: config.footer,
-    customCSS: customCSS || undefined,
-    changelog: config.changelog,
-    ...(config.markdown.smartypants ? { smartypants: true } : {}),
-  };
 }
 
 /** A page still to draw from its content: its source, and the navigation and document its page lists read. */
@@ -581,43 +375,17 @@ type PageDrafts = Map<SitePage, PageDraft>;
  */
 function drawPages(pages: SitePage[], config: ResolvedConfig, routes: RouteTable, drafts: ReadonlyMap<SitePage, PageDraft>,
   cache: AssemblyCache["pages"], previous: AssemblyCache["pages"] | undefined, references: readonly LinkedReference[]): void {
-  const pathMap = new Map<string, string>();
-  addSourceAssetAliases(pathMap, config.contexts.flatMap(c => c.tabs), config.configDir);
-  for (const page of pages) {
-    const out = page.outputPath;
-    const clean = out.replace(/\/index\.html$/, "").replace(/\.html$/, "");
-    pathMap.set(clean, out);
-
-    const docsSourcePath = getCanonicalSourcePath(page);
-    if (!docsSourcePath) continue;
-
-    const sourceClean = docsSourcePath
-      .replace(/\\/g, "/")
-      .replace(/^\/+/, "")
-      .replace(/\.(md|mdx)$/, "");
-    pathMap.set(sourceClean, out);
-
-    const sourceRelativeClean = getSourceRootRelativePath(page);
-    if (sourceRelativeClean) {
-      pathMap.set(sourceRelativeClean, out);
-    }
-  }
-
-  const repoBase = config.repo?.replace(/\/$/, "");
-  const linkDigest = createHash("sha256").update(JSON.stringify([[...pathMap], config.baseUrl, config.prettyUrls, references])).digest("hex");
+  const links = siteLinks(pages, config, references);
   for (const page of pages) {
     const draft = drafts.get(page);
     const source = draft?.source ?? (page.currentPage.kind === "markdown" ? page.currentPage.markdown : page.currentPage.kind === "changelog" ? page.currentPage.changelog : undefined);
     if (!source) continue;
-    const sourcePath = getDocsSourcePath(page);
+    const scope = links.scope(page);
     // A page with no source of its own, such as a long section's index, links as it was written.
-    if (!sourcePath && !draft) continue;
-    const branch = page.context.version.revision ?? config.editBranch;
-    const sourceBase = repoBase && branch ? { href: `${repoBase}/tree/${branch}`, root: page.context.version.revision ? page.context.version.content : undefined } : undefined;
-    const scope: LinkScope | undefined = sourcePath ? { outputPath: page.outputPath, sourcePath, pathMap, sourceBase, links: config, references, root: config.baseUrl || "/" } : undefined;
+    if (!scope && !draft) continue;
     // A page list's content follows the navigation it lists.
     const lists = draft?.navigation && draft.source.kind === "markdown" ? sectionIndexDependencies(draft.source.nodes, draft.navigation, draft.document) : "";
-    const key = JSON.stringify([linkDigest, sourceBase, lists]);
+    const key = JSON.stringify([links.digest, scope?.sourceBase, lists]);
     const cached = previous?.get(page.outputPath);
     const document = cached?.source === source && cached.key === key ? cached.page
       : draft ? drawDraft(draft, scope, routes.byKey.get(identityKey(page))!.anchors, page.outputPath)
@@ -661,342 +429,3 @@ function relinked(source: DocsPage, scope: LinkScope): DocsPage {
   return changelog;
 }
 
-function attachChangelogFeeds(
-  pages: SitePage[],
-  config: ResolvedConfig,
-): Map<string, ArtifactBody> {
-  const extraFiles = new Map<string, ArtifactBody>();
-  if (!config.changelog.feed) return extraFiles;
-
-  const changelogPages = pages.filter(isMainChangelogSitePage);
-  const globalFeedLinks =
-    changelogPages.length === 1
-      ? createFeedLinks("feed.xml", "feed.rss", changelogPages[0].currentPage.changelog.title)
-      : null;
-
-  for (const page of changelogPages) {
-    const changelog = page.currentPage.changelog;
-    const versionHref = (version: NormalizedChangelogVersion) => {
-      if (config.changelog.permalinks) {
-        return toPublicUrl(
-          pageOutputPath(page.tabSlug, `${changelog.slug}/${version.id}`, config.prettyUrls),
-          config.siteUrl,
-          config.baseUrl,
-          config.prettyUrls,
-        );
-      }
-
-      return `${toPublicUrl(page.outputPath, config.siteUrl, config.baseUrl, config.prettyUrls)}#${version.id}`;
-    };
-
-    const atomPath =
-      globalFeedLinks && changelogPages.length === 1
-        ? "feed.xml"
-        : tabPath(page.tabSlug, `${changelog.slug}/feed.xml`);
-    const rssPath =
-      globalFeedLinks && changelogPages.length === 1
-        ? "feed.rss"
-        : tabPath(page.tabSlug, `${changelog.slug}/feed.rss`);
-
-    const feedConfig = config.changelog.feed || undefined;
-    const feeds = generateChangelogFeeds(changelog, {
-      atomPath: toPublicUrl(atomPath, config.siteUrl, config.baseUrl, config.prettyUrls),
-      rssPath: toPublicUrl(rssPath, config.siteUrl, config.baseUrl, config.prettyUrls),
-      pagePath: toPublicUrl(page.outputPath, config.siteUrl, config.baseUrl, config.prettyUrls),
-      siteName: config.name,
-      title: feedConfig?.title,
-      description: feedConfig?.description,
-      versionHref,
-    });
-
-    extraFiles.set(atomPath, feeds.atom);
-    extraFiles.set(rssPath, feeds.rss);
-
-    const feedLinks = createFeedLinks(atomPath, rssPath, changelog.title);
-    page.alternateLinks = feedLinks;
-
-    for (const candidate of pages) {
-      if (candidate.currentPage.kind !== "changelog") continue;
-      if (candidate.currentPage.changelog.sourcePath !== changelog.sourcePath) continue;
-      candidate.alternateLinks = feedLinks;
-    }
-  }
-
-  if (globalFeedLinks) {
-    for (const page of pages) {
-      if (!page.alternateLinks?.length) {
-        page.alternateLinks = globalFeedLinks;
-      }
-    }
-  }
-
-  return extraFiles;
-}
-
-async function attachSourceAssets(
-  extraFiles: Map<string, ArtifactBody>,
-  tabs: ResolvedTab[],
-  input: InputReader,
-): Promise<void> {
-  for (const tab of tabs) {
-    if (tab.source.kind !== "markdown") continue;
-    for (const asset of tab.source.assets ?? []) {
-      extraFiles.set(tabPath(tab.slug, asset.outputPath), (await input.file(asset.file, asset.file)).body);
-    }
-  }
-}
-
-function addPermalinkPages(pageMap: Map<string, SitePage>, prettyUrls: PrettyUrls): void {
-  const changelogPages = Array.from(pageMap.values()).filter(isMainChangelogSitePage);
-  for (const page of changelogPages) {
-    const changelog = page.currentPage.changelog;
-    for (const version of changelog.changelog.versions) {
-      const permalinkPage: ChangelogPage = {
-        ...structuredClone(changelog),
-        description: version.summary ?? changelog.description,
-        slug: `${changelog.slug}/${version.id}`,
-        headings: [],
-        permalinkVersionId: version.id,
-      };
-
-      const outputPath = pageOutputPath(
-        page.tabSlug,
-        `${changelog.slug}/${version.id}`,
-        prettyUrls,
-      );
-      pageMap.set(JSON.stringify([page.identity, page.context.key, version.id]), {
-        outputPath,
-        currentPage: { kind: "changelog", changelog: permalinkPage },
-        identity: { ...page.identity, document: `${page.identity.document}/${version.id}` },
-        context: page.context,
-        contentLocale: page.contentLocale,
-        tabSlug: page.tabSlug,
-        pageSlug: `${page.pageSlug}--${version.id}`,
-      });
-    }
-  }
-}
-
-/**
- * Theme stylesheets, with each relative `url()` (a site's own fonts or images)
- * resolved from the stylesheet's folder and published as a shared asset.
- */
-async function loadCustomCSS(paths: string[], input: InputReader, assetUrl: (source: string) => Promise<string>, owner = "site"): Promise<string> {
-  const parts: string[] = [];
-  for (const path of paths) {
-    const css = await input.readText(path, owner);
-    const urls = new Map<string, string>();
-    for (const [, , target] of css.matchAll(CSS_URL)) {
-      if (urls.has(target) || /^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(target)) continue;
-      const [file, suffix = ""] = target.split(/(?=[?#])/, 2);
-      const source = resolve(dirname(path), file);
-      try {
-        urls.set(target, (await assetUrl(source)) + suffix);
-      } catch (error) {
-        throw new Error(`${path} refers to ${target}, which cannot be read: ${(error as Error).message}`, { cause: error });
-      }
-    }
-    parts.push(css.replace(CSS_URL, (match, quote: string, target: string) => (urls.has(target) ? `url(${quote}${urls.get(target)}${quote})` : match)));
-  }
-  return parts.join("\n");
-}
-const CSS_URL = /url\(\s*(["']?)([^"')]+?)\1\s*\)/g;
-
-function isMainChangelogSitePage(
-  page: SitePage,
-): page is SitePage & { currentPage: { kind: "changelog"; changelog: ChangelogPage } } {
-  return page.currentPage.kind === "changelog" && !page.currentPage.changelog.permalinkVersionId;
-}
-
-function isSearchableDocsSitePage(page: SitePage): page is SitePage & {
-  currentPage:
-    { kind: "markdown"; markdown: MarkdownPage } | { kind: "changelog"; changelog: ChangelogPage };
-} {
-  return page.currentPage.kind === "markdown" || isMainChangelogSitePage(page);
-}
-
-function createFeedLinks(atomPath: string, rssPath: string, title: string) {
-  return [
-    { href: atomPath, type: "application/atom+xml", title: `${title} Atom Feed` },
-    { href: rssPath, type: "application/rss+xml", title: `${title} RSS Feed` },
-  ];
-}
-
-function getCanonicalSourcePath(page: SitePage): string | undefined {
-  if (page.currentPage.kind === "markdown") return page.currentPage.markdown.sourcePath;
-  if (isMainChangelogSitePage(page)) return page.currentPage.changelog.sourcePath;
-  return undefined;
-}
-
-function getDocsSourcePath(page: SitePage): string | undefined {
-  if (page.currentPage.kind === "markdown") return page.currentPage.markdown.sourcePath;
-  if (page.currentPage.kind === "changelog") return page.currentPage.changelog.sourcePath;
-  return undefined;
-}
-
-function getSourceRootRelativePath(page: SitePage): string | undefined {
-  if (page.currentPage.kind !== "markdown") return undefined;
-  const markdown = page.currentPage.markdown;
-  if (!markdown.sourceRoot) return undefined;
-
-  const sourceRoot = normalizeSourcePath(markdown.sourceRoot);
-  const sourcePath = normalizeSourcePath(markdown.sourcePath);
-  if (!sourcePath.startsWith(`${sourceRoot}/`)) return undefined;
-  return stripMarkdownExtension(sourcePath.slice(sourceRoot.length + 1));
-}
-
-function addSourceAssetAliases(pathMap: Map<string, string>, tabs: ResolvedTab[], configDir: string): void {
-  for (const tab of tabs) {
-    if (tab.source.kind !== "markdown") continue;
-    for (const asset of tab.source.assets ?? []) {
-      const outputPath = tabPath(tab.slug, asset.outputPath);
-      pathMap.set(normalizeSourcePath(asset.outputPath), outputPath);
-      for (const sourceRoot of sourceRootsForMarkdownSource(tab.source)) {
-        const sourceRootPath = normalizeSourcePath(relative(configDir, sourceRoot));
-        pathMap.set(posix.join(sourceRootPath, normalizeSourcePath(asset.outputPath)), outputPath);
-      }
-    }
-  }
-}
-
-function sourceRootsForMarkdownSource(source: ResolvedMarkdownSource): string[] {
-  const roots = new Set<string>();
-  for (const page of markdownPages(source.groups)) {
-    {
-      if (page.sourceRoot) roots.add(page.sourceRoot);
-    }
-  }
-  return [...roots];
-}
-
-function normalizeSourcePath(value: string): string {
-  return value.replace(/\\/g, "/").replace(/^\/+/, "");
-}
-
-function stripMarkdownExtension(value: string): string {
-  return value.replace(/\.(md|mdx)$/, "");
-}
-
-function rewriteHtmlLinks(html: string, scope: LinkScope): string {
-  return html.replace(/\b(href|src)="([^"]+)"/g, (match, attr: string, href: string) => {
-    const resolved = resolveInternalHref(href, scope);
-    return resolved ? `${attr}="${resolved}"` : match;
-  });
-}
-
-function rewriteMarkdownLinks(markdown: string, scope: LinkScope, definitions?: Links): string {
-  return rewriteMarkdownDestinations(markdown, (href) => resolveInternalHref(href, scope) ?? href, definitions);
-}
-
-/** A page's links as its export resolves them: its marked blocks always, other text only where a link could be. */
-function pageLinks(scope: LinkScope, definitions?: Links): ContentLinks {
-  const markdown = (text: string) => rewriteMarkdownLinks(text, scope, definitions);
-  return { markdown, text: (text) => (text.includes("](") || (definitions && text.includes("[")) ? markdown(text) : text) };
-}
-
-interface SourceLinkBase { href: string; root?: string }
-/** A reference whose operations a page's `operation:` links can name. */
-export interface LinkedReference { id: string; targets: ReferenceTargets }
-/** What one page's links resolve against. */
-interface LinkScope {
-  outputPath: string;
-  sourcePath: string;
-  pathMap: ReadonlyMap<string, string>;
-  sourceBase?: SourceLinkBase;
-  links: LinkStyle;
-  references: readonly LinkedReference[];
-  /** The site's base, which every link on the page starts from, so it lands from any address the page answers at. */
-  root: string;
-}
-
-function resolveInternalHref(href: string, scope: LinkScope): string | null {
-  const { outputPath, sourcePath: docsSourcePath, pathMap, sourceBase, links } = scope;
-  if (
-    href.startsWith("http://") ||
-    href.startsWith("https://") ||
-    href.startsWith("#") ||
-    href.startsWith("mailto:")
-  ) {
-    return null;
-  }
-
-  const pageDir = outputPath.includes("/")
-    ? outputPath.substring(0, outputPath.lastIndexOf("/"))
-    : "";
-  if (href.startsWith(OPERATION_LINK)) {
-    const target = operationTarget(decodeHrefPath(href.slice(OPERATION_LINK.length)), scope);
-    return `${joinHref(scope.root, toPrettyLink(target.outputPath, links))}${target.anchor ? `#${target.anchor}` : ""}`;
-  }
-
-  const [path, hash] = href.split("#", 2);
-  const hashSuffix = hash ? `#${hash}` : "";
-  const sourcePath = decodeHrefPath(path).replace(/\\/g, "/");
-  const clean = sourcePath
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "")
-    .replace(/\.(md|mdx|html)$/, "");
-
-  const candidates = new Set<string>();
-
-  if (!sourcePath.startsWith("/") && docsSourcePath) {
-    const sourceDir = posix.dirname(docsSourcePath.replace(/\\/g, "/"));
-    candidates.add(posix.normalize(posix.join(sourceDir, clean)));
-  }
-
-  if (!sourcePath.startsWith("/") && pageDir) {
-    candidates.add(posix.normalize(posix.join(pageDir, clean)));
-  }
-
-  candidates.add(clean);
-
-  let target: string | undefined;
-  for (const initialCandidate of candidates) {
-    let candidate = initialCandidate;
-    while (!target && candidate && candidate !== ".") {
-      target = pathMap.get(candidate);
-      if (target) break;
-      const slash = candidate.indexOf("/");
-      if (slash === -1) break;
-      candidate = candidate.substring(slash + 1);
-    }
-    if (target) break;
-  }
-
-  if (target) {
-    return `${joinHref(scope.root, toPrettyLink(target, links))}${hashSuffix}`;
-  }
-
-  if (sourceBase && href.includes("../") && docsSourcePath) {
-    const sourceDir = posix.dirname(docsSourcePath);
-    const resolved = posix.relative(sourceBase.root || ".", posix.normalize(posix.join(sourceDir, path)));
-    if (!resolved.startsWith("..")) {
-      return `${sourceBase.href}/${resolved}${hashSuffix}`;
-    }
-  }
-
-  return null;
-}
-
-/**
- * An operation a page links by name, `GET /pets` or `TOOL search` as navigation
- * names it, after its reference's tab ID when two references publish it
- * (`rest:GET /pets`). It lands wherever the operation is published: its own
- * page in a split reference, or its section on the single page.
- */
-function operationTarget(name: string, scope: LinkScope): ReferenceTarget {
-  const [, id, operation] = name.match(/^(?:([^:\s]+):)?([A-Z]+ \S.*)$/) ?? [];
-  const found = operation ? scope.references.filter(reference => (id === undefined || reference.id === id) && reference.targets.operations[operation]) : [];
-  if (found.length === 1) return found[0].targets.operations[operation];
-  const problem = !operation ? "name an operation as METHOD /path"
-    : found.length ? `${found.map(reference => reference.id).join(", ")} each publish it; name one, as ${OPERATION_LINK}${found[0].id}:${operation}`
-    : id === undefined ? "no reference publishes it" : `reference ${JSON.stringify(id)} does not publish it`;
-  throw new Error(`${scope.sourcePath}: link ${OPERATION_LINK}${name}: ${problem}`);
-}
-
-function decodeHrefPath(path: string): string {
-  try {
-    return decodeURIComponent(path);
-  } catch {
-    return path;
-  }
-}

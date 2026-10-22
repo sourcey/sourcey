@@ -7,7 +7,7 @@ import { resolveConfigFromRaw } from "../../src/config.js";
 import { normalizeSpec } from "../../src/core/normalizer.js";
 import { definitionAnchors, definitionFieldRoot, operationKey, operationFieldRoot, operationFieldAnchors, referenceFieldPath } from "../../src/core/reference-identity.js";
 import { buildSourceySite, sourceyArtifacts, updateSourceySite } from "../../src/site.js";
-import { formatBuildDiagnostics } from "../../src/site-assembly.js";
+import { formatBuildDiagnostics } from "../../src/core/build-diagnostics.js";
 import { renderPage } from "../../src/renderer/static-renderer.js";
 import { createRenderOptions } from "../../src/renderer/html-builder.js";
 import { projectNavigation } from "../../src/core/navigation.js";

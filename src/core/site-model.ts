@@ -136,6 +136,11 @@ export function redirectLocation(redirect: Redirect, request: string): string {
     : redirect.to.slice(0, hash) + query + redirect.to.slice(hash);
 }
 
+/** A changelog's own page, rather than one of its releases' pages. */
+export function isMainChangelogPage(page: SitePage): page is SitePage & { currentPage: { kind: "changelog"; changelog: ChangelogPage } } {
+  return page.currentPage.kind === "changelog" && !page.currentPage.changelog.permalinkVersionId;
+}
+
 export function identityKey(page: Pick<SitePage, "identity" | "context">): string {
   return JSON.stringify([
     page.identity.tab,

@@ -8,7 +8,7 @@ import { extname, resolve, relative, isAbsolute } from "node:path";
 import type { ResolvedConfig } from "./config.js";
 import { loadConfig, resolveConfigFromRaw } from "./config.js";
 import { buildSiteNavigation } from "./core/navigation.js";
-import { buildSearchIndex, type SearchEntry } from "./core/search-indexer.js";
+import { buildSearchIndex, searchDocuments, type SearchEntry } from "./core/search-indexer.js";
 import type { ChangelogDiagnostic } from "./core/types.js";
 import type { GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import type { RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
@@ -21,14 +21,9 @@ import { pageMetadata } from "./core/page-metadata.js";
 import { collectSiteDiagnostics, type SiteDiagnostic } from "./core/site-diagnostics.js";
 import { closeDiagramRenderer } from "./core/diagrams.js";
 import { contentTypeForPath, outputPathFromRequestPath } from "./renderer/static-files.js";
-import {
-  assembleSite,
-  buildSiteConfig,
-  collectDocsPagesByTab,
-  enforceChangelogDiagnostics,
-  enforceGodocDiagnostics,
-  enforceRustdocDiagnostics,
-} from "./site-assembly.js";
+import { assembleSite } from "./site-assembly.js";
+import { buildSiteConfig } from "./site-assets.js";
+import { enforceBuildDiagnostics } from "./core/build-diagnostics.js";
 import { artifactBytes, type ArtifactBody } from "./core/source-file.js";
 
 interface CompilationCache {
@@ -105,11 +100,9 @@ export async function buildSourceySite(
   const pages = Array.from(assembled.pageMap.values());
   const navigation = buildSiteNavigation(assembled.siteTabs);
 
-  enforceChangelogDiagnostics(assembled.changelogDiagnostics, options.strictChangelog);
-  enforceGodocDiagnostics(assembled.godocDiagnostics);
-  enforceRustdocDiagnostics(assembled.rustdocDiagnostics);
+  enforceBuildDiagnostics(assembled, options.strictChangelog);
 
-  const docsPagesByTab = collectDocsPagesByTab(assembled.pageMap);
+  const docsPagesByTab = searchDocuments(assembled.pageMap.values());
   const allSearchRows = buildSearchIndex(
     assembled.references,
     docsPagesByTab,

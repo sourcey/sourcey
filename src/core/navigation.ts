@@ -5,7 +5,7 @@ import type { ResolvedTab, ResolvedGroup, GroupConfig, NavigationTarget } from "
 import { slugFromPath } from "./markdown-loader.js";
 import type { NavigationDocument } from "./markdown-loader.js";
 import { operationAnchor, definitionAnchor, tagAnchor } from "./reference-identity.js";
-import { toPublicPath, type PrettyUrls } from "../site-url.js";
+import { toPrettyLink, toPublicPath, type LinkStyle, type PrettyUrls } from "../site-url.js";
 
 /**
  * Convert a file output path (e.g. `concepts/index.html`) into the relative
@@ -363,4 +363,12 @@ export function projectNavigation(nav: SiteNavigation, tabSlug: string, pageSlug
   return { ...nav, activeTabSlug: tabSlug, activePageSlug: pageSlug,
     adjacentPages: index.adjacent.get(pageSlug),
     tabs: nav.tabs.map(tab => tab === active ? { ...tab, groups: projected } : { ...tab, groups: [] }) };
+}
+
+/** Write every link of a navigation in the site's pretty-URL form. */
+export function prettyNavigationHrefs(tabs: readonly SiteTab[], links: LinkStyle): void {
+  for (const tab of tabs) {
+    tab.href = toPrettyLink(tab.href, links);
+    for (const item of walkNavItems(tab.groups)) item.href = toPrettyLink(item.href, links);
+  }
 }

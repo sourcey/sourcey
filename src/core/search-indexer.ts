@@ -1,5 +1,6 @@
 import type { MediaTypeContent, NormalizedOperation, NormalizedParameter, NormalizedSchema, NormalizedSpec } from "./types.js";
-import type { DocsPage } from "./markdown-loader.js";
+import type { ChangelogPage, DocsPage, MarkdownPage } from "./markdown-loader.js";
+import { isMainChangelogPage, type SitePage } from "./site-model.js";
 import { readingOrder, type SiteNavigation } from "./navigation.js";
 import type { PrettyUrls } from "../site-url.js";
 import { toPublicPath } from "../site-url.js";
@@ -49,6 +50,23 @@ export interface SearchDocument {
 // ---------------------------------------------------------------------------
 // Index builder
 // ---------------------------------------------------------------------------
+
+/** Searchable pages by the tab that owns them; a site page's owner is its language's site pages. */
+export function searchDocuments(pages: Iterable<SitePage>): Map<string, SearchDocument[]> {
+  const documents = new Map<string, SearchDocument[]>();
+  for (const page of pages) {
+    if (page.status === 404 || !isSearchablePage(page)) continue;
+    const tabPages = documents.get(page.tabSlug) ?? [];
+    tabPages.push({ page: page.currentPage.kind === "markdown" ? page.currentPage.markdown : page.currentPage.changelog, url: page.publicPath! });
+    documents.set(page.tabSlug, tabPages);
+  }
+  return documents;
+}
+
+/** A page searched as a document: one drawn from Markdown, or a changelog's own page. */
+function isSearchablePage(page: SitePage): page is SitePage & { currentPage: { kind: "markdown"; markdown: MarkdownPage } | { kind: "changelog"; changelog: ChangelogPage } } {
+  return page.currentPage.kind === "markdown" || isMainChangelogPage(page);
+}
 
 /**
  * Build a search index from specs and markdown pages.

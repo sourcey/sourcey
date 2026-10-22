@@ -11,7 +11,7 @@ import { buildSourceySite, collectSourceyWatchPaths, sourceyArtifacts, updateSou
 import { contentTypeForPath, outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
 import { normalizeBaseUrl, toPublicPath } from "../site-url.js";
 import { redirectLocation } from "../core/site-model.js";
-import { formatBuildDiagnostics } from "../site-assembly.js";
+import { formatBuildDiagnostics } from "../core/build-diagnostics.js";
 import { formatSiteDiagnostics } from "../core/site-diagnostics.js";
 export interface SourceyAstroOptions {
   /**

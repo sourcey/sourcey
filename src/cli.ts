@@ -10,10 +10,7 @@ import { runIntrospector, GodocIntrospectorError } from "./core/godoc-introspect
 import { GODOC_SCHEMA_VERSION } from "./core/godoc-types.js";
 import type { GodocSnapshot } from "./core/godoc-types.js";
 import { init } from "./init.js";
-import {
-  formatChangelogDiagnostic,
-  formatBuildDiagnostics,
-} from "./site-assembly.js";
+import { formatBuildDiagnostics, formatChangelogDiagnostic } from "./core/build-diagnostics.js";
 import { findPlaceholderServerUrls } from "./utils/server-warnings.js";
 import { formatSiteDiagnostics } from "./core/site-diagnostics.js";
 import pkg from "../package.json" with { type: "json" };

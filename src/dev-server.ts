@@ -10,7 +10,7 @@ import { projectNavigation } from "./core/navigation.js";
 import { createRenderOptions } from "./renderer/html-builder.js";
 import { renderPage } from "./renderer/static-renderer.js";
 import { redirectLocation } from "./core/site-model.js";
-import { formatBuildDiagnostics } from "./site-assembly.js";
+import { formatBuildDiagnostics } from "./core/build-diagnostics.js";
 import { sourceyPlugin } from "./vite-plugin.js";
 import tailwindcss from "@tailwindcss/vite";
 import preact from "@preact/preset-vite";
