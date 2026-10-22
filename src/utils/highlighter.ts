@@ -1,30 +1,8 @@
+import { createRequire } from "node:module";
 import type { CodeFenceMetadata } from "./markdown.js";
-import { createHighlighterCore, type HighlighterCore } from "shiki/core";
+import { createHighlighterCore, type HighlighterCore, type LanguageRegistration } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import { INITIAL, Theme, type StateStack } from "shiki/textmate";
-import js from "shiki/langs/javascript.mjs";
-import ts from "shiki/langs/typescript.mjs";
-import bash from "shiki/langs/bash.mjs";
-import python from "shiki/langs/python.mjs";
-import json from "shiki/langs/json.mjs";
-import cpp from "shiki/langs/cpp.mjs";
-import c from "shiki/langs/c.mjs";
-import yaml from "shiki/langs/yaml.mjs";
-import html from "shiki/langs/html.mjs";
-import css from "shiki/langs/css.mjs";
-import go from "shiki/langs/go.mjs";
-import rust from "shiki/langs/rust.mjs";
-import ruby from "shiki/langs/ruby.mjs";
-import java from "shiki/langs/java.mjs";
-import php from "shiki/langs/php.mjs";
-import csharp from "shiki/langs/csharp.mjs";
-import swift from "shiki/langs/swift.mjs";
-import kotlin from "shiki/langs/kotlin.mjs";
-import dart from "shiki/langs/dart.mjs";
-import cmake from "shiki/langs/cmake.mjs";
-import sql from "shiki/langs/sql.mjs";
-import xml from "shiki/langs/xml.mjs";
-import docker from "shiki/langs/docker.mjs";
 import githubLight from "shiki/themes/github-light-default.mjs";
 import darkPlus from "shiki/themes/dark-plus.mjs";
 
@@ -34,15 +12,47 @@ const shared = globalThis as Record<string, unknown>;
 // Oniguruma, the regex engine the grammars are written for, compiled to
 // WebAssembly: it reads them as written, where the JavaScript engine
 // translates each pattern and missed some (SQL's SUM read as plain text),
-// and it highlights in half the time, holding a fifth of the heap.
+// and it highlights in half the time.
 const highlighter = await ((shared[CACHE_KEY] as Promise<HighlighterCore> | undefined)
   ?? (shared[CACHE_KEY] = createHighlighterCore({
     themes: [githubLight, darkPlus],
-    langs: [js, ts, bash, python, json, cpp, c, yaml, html, css, go, rust, ruby, java, php, csharp, swift, kotlin, dart, cmake, sql, xml, docker],
+    langs: [],
     engine: createOnigurumaEngine(import("shiki/wasm")),
   })));
 
-const languages = new Set(highlighter.getLoadedLanguages());
+/**
+ * The languages code is highlighted in: each grammar's name and the other
+ * names a fence may give it. A grammar is read, with the grammars it reaches,
+ * the first time a block in its language is drawn, so a site holds only the
+ * grammars of the languages it shows: a compiled grammar holds megabytes.
+ */
+export const LANGUAGES: Readonly<Record<string, readonly string[]>> = {
+  c: [], cmake: [], cpp: ["c++"], "cpp-macro": [], csharp: ["c#", "cs"], css: [], dart: [], docker: ["dockerfile"],
+  glsl: [], go: [], graphql: ["gql"], haml: [], html: [], java: [], javascript: ["js", "cjs", "mjs"], json: [],
+  jsx: [], kotlin: ["kt", "kts"], lua: [], php: [], python: ["py"], regexp: ["regex"], ruby: ["rb"], rust: ["rs"],
+  shellscript: ["bash", "sh", "shell", "zsh"], sql: [], swift: [], tsx: [], typescript: ["ts", "cts", "mts"], xml: [], yaml: ["yml"],
+};
+/**
+ * Each language's grammar comes from its own module, which registers the
+ * grammars it embeds, except where a grammar reaches one that module leaves
+ * out: C++ macros include C++, and HAML embeds Ruby only once Ruby is loaded.
+ */
+export const GRAMMAR_MODULES: Readonly<Record<string, string>> = { "cpp-macro": "cpp", haml: "ruby" };
+const grammarNames = new Map(Object.entries(LANGUAGES).flatMap(([name, aliases]) => [name, ...aliases].map((alias) => [alias, name] as const)));
+const require = createRequire(import.meta.url);
+const read = new Set<string>();
+
+/** The grammar a fence's language is highlighted with, or undefined for a language that is not. */
+function grammarFor(language: string) {
+  const name = grammarNames.get(language);
+  if (!name) return undefined;
+  const module = GRAMMAR_MODULES[name] ?? name;
+  if (!read.has(module)) {
+    highlighter.loadLanguageSync((require(`shiki/langs/${module}.mjs`) as { default: LanguageRegistration[] }).default);
+    read.add(module);
+  }
+  return highlighter.getLanguage(name);
+}
 
 /**
  * The two code themes as the tokenizer matches them. A page shows the first
@@ -120,12 +130,12 @@ export function highlightCode(code: string, lang?: string, metadata?: CodeFenceM
     return [metadata.highlight.includes(line) && "highlighted", metadata.focus.length && (metadata.focus.includes(line) ? "focused" : "unfocused"), metadata.add.includes(line) && "diff-added", metadata.remove.includes(line) && "diff-removed"].filter((value): value is string => typeof value === "string");
   }
 
-  if (!lang || !languages.has(lang)) {
+  const grammar = lang ? grammarFor(lang) : undefined;
+  if (!grammar) {
     const lines = escapeCode(code).split("\n").map((l, index) => `<span class="line ${lineClasses(index + 1).join(" ")}"><span>${l}</span></span>`).join("\n");
     return `<pre class="shiki" tabindex="0"><code>${lines}</code></pre>`;
   }
 
-  const grammar = highlighter.getLanguage(lang);
   let state: StateStack = INITIAL;
   const lines = code.split(/\r?\n/).map((line, index) => {
     const open = `<span class="${["line", ...lineClasses(index + 1)].join(" ")}">`;

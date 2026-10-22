@@ -10,7 +10,8 @@ import yaml from "shiki/langs/yaml.mjs";
 import bash from "shiki/langs/bash.mjs";
 import html from "shiki/langs/html.mjs";
 import javascript from "shiki/langs/javascript.mjs";
-import { highlightCode } from "../../src/utils/highlighter.js";
+import type { LanguageRegistration } from "shiki/core";
+import { GRAMMAR_MODULES, LANGUAGES, highlightCode } from "../../src/utils/highlighter.js";
 
 const samples: [string, string][] = [
   ["typescript", "interface A<T> { x: T }\nconst re = /\\d+\\.\\w/g; // escapes are bold in light\nexport default async function f(): Promise<void> { await g(`x${y}`); }"],
@@ -57,5 +58,30 @@ describe("highlightCode", () => {
       });
       expect(appearance(highlightCode(code, lang, { language: lang, highlight: [2], focus: [], add: [3], remove: [] })), lang).toEqual(appearance(expected));
     }
+  });
+
+  it("reads each language's grammar from a module that registers it, its names, and every grammar it reaches", async () => {
+    const modules = new Map(await Promise.all(Object.keys(LANGUAGES).map(async (name) => {
+      const module = GRAMMAR_MODULES[name] ?? name;
+      return [name, ((await import(`shiki/langs/${module}.mjs`)) as { default: LanguageRegistration[] }).default] as const;
+    })));
+    // A scope no highlighted language registers stays unresolved however the grammars load.
+    const shipped = new Set([...modules.values()].flat().map((grammar) => grammar.scopeName));
+    for (const [name, registered] of modules) {
+      const own = registered.find((grammar) => grammar.name === name);
+      expect(own, `${GRAMMAR_MODULES[name] ?? name} registers ${name}`).toBeDefined();
+      expect(own!.aliases ?? [], name).toEqual(LANGUAGES[name]);
+      // Read on its own, a grammar highlights as it does beside every other only if its module holds all it includes.
+      const scopes = new Set(registered.map((grammar) => grammar.scopeName));
+      for (const grammar of registered) {
+        for (const [, scope] of JSON.stringify(grammar).matchAll(/"include":"((?:source|text)\.[^"#$]+)/g)) {
+          if (shipped.has(scope)) expect(scopes.has(scope), `${name}: ${grammar.name} includes ${scope}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("leaves a language it has no grammar for as plain text", () => {
+    expect(highlightCode("a < b", "brainfuck")).toBe('<pre class="shiki" tabindex="0"><code><span class="line "><span>a &lt; b</span></span></code></pre>');
   });
 });
