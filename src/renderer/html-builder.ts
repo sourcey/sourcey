@@ -86,11 +86,10 @@ export function createRenderOptions(
   return {
     anchorAliases: page.anchorAliases,
     embeddable: options?.embeddable ?? false,
-    locale: context.localeConfig.lang,
     referenceTargets: page.referenceTargets,
     sourceRevision: context.version.revision,
     componentStyles: [...(page.currentPage.kind === "markdown" ? page.currentPage.markdown.componentStyles ?? [] : []), ...page.stylesheets ?? []],
-    contentLocale: page.contentLocale,
+    lang: translated ? context.localeConfig.lang : context.defaultLang,
     equivalents: page.equivalents?.map(link => ({ ...link, href: site.siteUrl ? toAbsoluteUrl(link.href, site.siteUrl) : link.href })),
     searchIndexes: page.searchIndexes?.map(path => `${assetBase}${path}`),
     dir: context.localeConfig.dir,

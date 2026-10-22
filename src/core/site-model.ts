@@ -42,6 +42,8 @@ export interface ResolvedSiteContext {
     messages: import("./messages.js").UiMessages & { navigation?: Record<string, string> };
   };
   defaultLocale: string;
+  /** The default language's tag, which a page reading its content in that language declares. */
+  defaultLang: string;
   isDefaultVersion: boolean;
   prefix: string;
   /** The language's path, without the version's. */

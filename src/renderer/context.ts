@@ -41,10 +41,8 @@ export interface RenderOptions {
   ogImageUrl?: string;
   /** Alternate link tags to emit for the current page. */
   alternateLinks?: AlternateLink[];
-  /** The language the page's interface is drawn in, as its `lang` tag. */
-  locale: string;
-  /** The language its content is written in: the page's own, or the one it falls back to. */
-  contentLocale: string;
+  /** The tag of the language the page's content is in, which the page declares: its own language's, or the default language's where it falls back. */
+  lang: string;
   dir: "ltr" | "rtl";
   messages: UiMessages;
   noindex?: boolean;
@@ -80,8 +78,7 @@ export const SpecContext = createContext<NormalizedSpec>(null as never);
 export const OptionsContext = createContext<RenderOptions>({
   embeddable: false,
   assetBase: "",
-  locale: "en",
-  contentLocale: "en",
+  lang: "en",
   dir: "ltr",
   messages: english,
 });

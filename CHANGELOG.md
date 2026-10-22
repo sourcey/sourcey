@@ -52,6 +52,7 @@
 - An MCP tab whose spec is a web address builds. The spec is read once, through the build's reader, as an OpenAPI spec is, rather than read a second time by the MCP parser, which took the address for a file name and failed. A file the build reads and cannot find fails naming it, as `File not found: <path>`.
 - A logo, favicon or social image whose path starts with `http`, such as `httpdocs/card.png`, is read from the config's folder, as any other path is, rather than taken for a web address and looked for in the working directory. A site's own social image is read as its logo and favicon are, through the build's reader, and `sourcey build` copies it from its source rather than holding it in memory.
 - A component a site defines is given the language and version its page is read in, as `context.context`, and its type says so: it no longer types that context as possibly missing, which it never was in a build.
+- A page declares the language its content is in by that language's tag, as its `hreflang` links name it: where a site sets `lang: "pt-BR"` for `pt`, a Portuguese page is `<html lang="pt-BR">`, where it was `lang="pt"`, and a page that falls back to the default language's content declares the default language's tag. A site that sets no `lang` draws as before.
 
 ## 3.8.3 - 2026-10-21
 

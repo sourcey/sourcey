@@ -37,8 +37,7 @@ function createMinimalSpec(overrides?: Partial<NormalizedSpec>): NormalizedSpec 
 const defaultOptions: RenderOptions = {
   embeddable: false,
   assetBase: "",
-  locale: "en",
-  contentLocale: "en",
+  lang: "en",
   dir: "ltr",
   messages: english,
 };

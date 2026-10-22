@@ -28,7 +28,7 @@ export function App({ spec, options, navigation, currentPage, site }: AppProps) 
   const content = options.embeddable ? (
     <Page />
   ) : (
-    <html lang={options.contentLocale} dir={options.dir}>
+    <html lang={options.lang} dir={options.dir}>
       <Head />
       <body id="sourcey" data-sourcey-theme={site.theme.name}>
         <Page />

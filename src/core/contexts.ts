@@ -145,6 +145,7 @@ export async function resolveContexts(
             messages: messagesFor(localeConfig.lang ?? locale, localeConfig.messages),
           },
           defaultLocale,
+          defaultLang: locales[defaultLocale].lang ?? defaultLocale,
           isDefaultVersion: version.id === (versionInput?.default ?? "current"),
           prefix,
           localePath,

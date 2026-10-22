@@ -585,6 +585,21 @@ describe("native compilation", () => {
     expect(index.documents.some((entry: {url: string}) => entry.url.includes("archive"))).toBe(false);
   }));
 
+  it("declares each page's language by its tag: its own, or the language it falls back to", () => fixture(async root => {
+    await file(root, "guide.md", "# Guide\n\nHello.\n");
+    await file(root, "pt/guide.md", "# Guia\n\nOlá.\n");
+    await file(root, "second.md", "# Second\n\nOnly in English.\n");
+    const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } },
+      i18n: { defaultLocale: "en", locales: { en: { label: "English", lang: "en-GB" }, pt: { label: "Português", lang: "pt-BR" } } },
+      navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Start", pages: ["guide", "second"] }] }) }] } }, root);
+    const files = await sourceyArtifacts(await buildSourceySite({ config, generateOgImages: false }));
+    const lang = (path: string) => files.get(path)?.toString().match(/<html lang="([^"]+)"/)?.[1];
+    expect(lang("guide.html")).toBe("en-GB");
+    expect(lang("pt/guide.html")).toBe("pt-BR");
+    expect(lang("pt/second.html")).toBe("en-GB");
+    expect(files.get("guide.html")!.toString()).toContain('hreflang="pt-BR"');
+  }));
+
   it("indexes the home of a version, a language and an API version in its own exports, in every URL style", () => fixture(async root => {
     await file(root, "index.md", "# Start\n\nHello.\n");
     await file(root, "archive/index.md", "# Start\n\nBefore.\n");
