@@ -2,7 +2,7 @@ import type { NormalizedOperation, NormalizedResponse } from "../../core/types.j
 import { useContext } from "preact/hooks";
 import { OptionsContext, PageContext, SpecContext } from "../../renderer/context.js";
 import { operationSectionAnchor, operationFieldRoot, referenceFieldPath } from "../../core/reference-identity.js";
-import { htmlId } from "../../utils/html-id.js";
+import { slugify } from "../../utils/slug.js";
 import { AnchorAliases } from "../ui/AnchorAliases.js";
 import { httpStatusText } from "../../utils/http.js";
 import { SchemaDatatype } from "../schema/SchemaDatatype.js";
@@ -34,7 +34,7 @@ export function ResponsesCopy({ responses, operation }: ResponsesProps) {
   const spec = useContext(SpecContext);
   const page = useContext(PageContext);
   const messages = useContext(OptionsContext).messages;
-  const sectionId = (status: string) => operation ? operationSectionAnchor(operation, spec, `response-${htmlId(status)}`, page?.kind === "spec" && page.view?.kind === "operation") : undefined;
+  const sectionId = (status: string) => operation ? operationSectionAnchor(operation, spec, `response-${slugify(status)}`, page?.kind === "spec" && page.view?.kind === "operation") : undefined;
   const fieldRoot = operation && referenceFieldPath(operationFieldRoot(operation), "responses");
   if (!responses.length) return null;
 

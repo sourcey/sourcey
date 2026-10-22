@@ -3,7 +3,7 @@ import { isNavGroup, walkNavGroups, type SiteTab, type SiteNavGroup } from "./na
 import { rewriteMarkdownDestinations, rewriteMarkdownHtml } from "../utils/markdown-links.js";
 import type { Links, Token, Tokens, TokensList } from "marked";
 import { resolve, dirname, relative, isAbsolute, extname } from "node:path";
-import { toPublicPath } from "../site-url.js";
+import { isAbsoluteHttpUrl, toPublicPath } from "../site-url.js";
 import { createHash } from "node:crypto";
 import { canonicalInputPath } from "./loader.js";
 import type { InputReader } from "./loader.js";
@@ -17,7 +17,7 @@ import { english, type UiMessages } from "./messages.js";
 import { h } from "preact";
 import { renderToString } from "preact-render-to-string";
 import { FieldRow } from "../components/schema/FieldRow.js";
-import { htmlId } from "../utils/html-id.js";
+import { slugify } from "../utils/slug.js";
 import { dedent } from "../utils/indentation.js";
 import { schemaRange } from "../utils/http.js";
 import { inlineCodeEnd } from "../utils/markdown-syntax.js";
@@ -343,7 +343,7 @@ const Field = defineComponent({
   resolve({ props, children }) {
     const name = text(props.name), anchor = props.anchor === undefined ? undefined : text(props.anchor);
     const field: FieldData = {
-      id: anchor ?? `field-${htmlId(name)}`, explicit: anchor !== undefined, name,
+      id: anchor ?? `field-${slugify(name)}`, explicit: anchor !== undefined, name,
       ...(props.type !== undefined ? { type: text(props.type) } : {}),
       required: props.required === true, deprecated: props.deprecated === true,
       ...(props.default !== undefined ? { default: props.default } : {}),
@@ -673,7 +673,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
   const context: ComponentBuildContext = {
     source: options.source, root, context: options.context, icons, location: { file: options.source, offset: 0 },
     icon: (name, presentation) => icon(name, presentation),
-    readText: async file => options.input.readText(/^https?:\/\//.test(file) ? file : await local(file), options.dependent),
+    readText: async file => options.input.readText(isAbsoluteHttpUrl(file) ? file : await local(file), options.dependent),
     async readJson(file) { return JSON.parse(await context.readText(file)); },
     async asset(file) {
       if (/^(https?:|data:|\/)/.test(file)) return file;

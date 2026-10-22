@@ -4,9 +4,10 @@ import { load, YAMLException } from "js-yaml";
 import type { LoadedSpec, SpecFormat, SpecVersion } from "./types.js";
 import { createHash } from "node:crypto";
 import { hashFile, SourceFile } from "./source-file.js";
+import { isAbsoluteHttpUrl } from "../site-url.js";
 
 export async function canonicalInputPath(source: string): Promise<string> {
-  if (isUrl(source)) return source;
+  if (isAbsoluteHttpUrl(source)) return source;
   const path = resolve(source);
   try { return await realpath(path); }
   catch (error) {
@@ -54,7 +55,7 @@ export class InputReader {
     for (const [key, file] of this.files) next.files.set(key, file);
     for (const [key, values] of this.dependents) next.dependents.set(key, new Set(values));
     for (const file of changed) {
-      next.inputs.delete(isUrl(file) ? file : resolve(file));
+      next.inputs.delete(isAbsoluteHttpUrl(file) ? file : resolve(file));
       next.files.delete(resolve(file));
     }
     return next;
@@ -71,7 +72,7 @@ export class InputReader {
    * itself when the build copies from source, otherwise its bytes.
    */
   async file(source: string, dependent?: string): Promise<{ body: Buffer | SourceFile; digest: string; head: Buffer }> {
-    if (!this.options.copyFromSource || isUrl(source)) {
+    if (!this.options.copyFromSource || isAbsoluteHttpUrl(source)) {
       const { body, digest } = await this.read(source, dependent);
       return { body, digest, head: body.subarray(0, 80) };
     }
@@ -106,7 +107,7 @@ export class InputReader {
       promise = (async () => {
         let body: Buffer;
         let etag: string | undefined, modified: string | undefined;
-        if (isUrl(key)) {
+        if (isAbsoluteHttpUrl(key)) {
           const previous = remoteInputs.get(key);
           const headers: Record<string, string> = {};
           if (previous?.etag) headers["If-None-Match"] = previous.etag;
@@ -120,7 +121,7 @@ export class InputReader {
         } else body = await readFile(key, { signal: this.signal });
         const value = { body, digest: createHash("sha256").update(body).digest("hex"), etag, modified };
         this.inputs.set(key, value);
-        if (isUrl(key)) remoteInputs.set(key, value);
+        if (isAbsoluteHttpUrl(key)) remoteInputs.set(key, value);
         return value;
       })();
       this.pending.set(key, promise);
@@ -150,7 +151,7 @@ export class InputReader {
 export async function loadSpec(source: string, reader?: InputReader): Promise<LoadedSpec> {
   const { raw, format } = await loadDocument(source, reader, source);
   const version = detectVersion(raw);
-  const resolvedSource = isUrl(source) ? source : resolve(source);
+  const resolvedSource = isAbsoluteHttpUrl(source) ? source : resolve(source);
 
   return { raw, format, version, source: resolvedSource };
 }
@@ -168,7 +169,7 @@ export async function loadDocument(source: string, reader?: InputReader, depende
  * Fetch raw content from a file path or URL.
  */
 async function fetchContent(source: string): Promise<string> {
-  if (isUrl(source)) {
+  if (isAbsoluteHttpUrl(source)) {
     const response = await fetch(source);
     if (!response.ok) {
       throw new Error(`Failed to fetch spec from ${source}: ${response.status} ${response.statusText}`);
@@ -238,8 +239,4 @@ function detectVersion(raw: Record<string, unknown>): SpecVersion {
   throw new Error(
     'Unable to detect spec version. Expected "swagger": "2.0" or "openapi": "3.x.x"',
   );
-}
-
-function isUrl(source: string): boolean {
-  return source.startsWith("http://") || source.startsWith("https://");
 }

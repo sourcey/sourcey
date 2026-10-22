@@ -4,7 +4,7 @@ import type { SiteNavigation } from "../core/navigation.js";
 import type { SiteConfig } from "../renderer/context.js";
 import type { AlternateLink } from "../core/site-model.js";
 import type { ResolvedSiteContext, SitePage } from "../core/site-model.js";
-import { toPublicPath, toPublicUrl } from "../site-url.js";
+import { isAbsoluteHttpUrl, toPublicPath, toPublicUrl } from "../site-url.js";
 import { generateLlmsTxt, generateLlmsFullTxt } from "../renderer/llms.js";
 import { collectReadableDocuments, exportRoot, pageMarkdownPath } from "./documents.js";
 import type { DiscoveryResource } from "./config.js";
@@ -160,7 +160,7 @@ export function generateExports(
           /\{([^}]+)\}/g,
           (match, name: string) => server.variables?.[name]?.default ?? match,
         );
-        if (!/^https?:\/\//.test(href) || /\{/.test(href)) continue;
+        if (!isAbsoluteHttpUrl(href) || /\{/.test(href)) continue;
         linkset.push({
           anchor: href,
           "service-desc": [{ href: url(path), type: "application/json" }],

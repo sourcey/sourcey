@@ -2,7 +2,7 @@ import { readFile as readFileAsync } from "node:fs/promises";
 import { basename, dirname, relative, resolve } from "node:path";
 import { load as parseYaml } from "js-yaml";
 import { normalizeChangelog } from "./changelog-normalizer.js";
-import { htmlId } from "../utils/html-id.js";
+import { slugify } from "../utils/slug.js";
 import { smartypants } from "../utils/typography.js";
 import {
   decodeEntities,
@@ -390,5 +390,5 @@ function slugSegmentFromPath(segment: string): string {
     .replace(/\+/g, "-plus")
     .replace(/</g, "-lt")
     .replace(/>/g, "-gt");
-  return htmlId(normalized);
+  return slugify(normalized);
 }

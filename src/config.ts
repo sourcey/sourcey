@@ -1,7 +1,6 @@
 import { access, stat } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { normalizeBaseUrl, normalizeSiteUrl } from "./site-url.js";
-import type { PrettyUrls } from "./site-url.js";
+import { isAbsoluteHttpUrl, normalizeBaseUrl, normalizeSiteUrl, type PrettyUrls } from "./site-url.js";
 import {
   doxygen as doxygenSource,
   godoc as godocSource,
@@ -27,6 +26,7 @@ import type { ResolvedTabSource, SourceAdapter } from "./adapters/types.js";
 import { DEFAULT_CODE_SAMPLE_LANGS, SUPPORTED_CODE_SAMPLE_LANGS } from "./utils/code-samples.js";
 import { themeDefinitions, type ThemeName } from "./themes/registry.js";
 import { textShades } from "./utils/palette.js";
+import { slugify } from "./utils/slug.js";
 
 export type { PrettyUrls } from "./site-url.js";
 
@@ -808,10 +808,6 @@ function resolveTryIt(value: SourceyConfig["tryIt"]): false | TryItConfig {
   return { credentials: value?.credentials ?? "same-origin" };
 }
 
-function isUrl(source: string): boolean {
-  return source.startsWith("http://") || source.startsWith("https://");
-}
-
 const VALID_THEMES = Object.keys(themeDefinitions) as ThemeName[];
 
 function resolveTheme(raw: SourceyConfig, configDir: string): ResolvedTheme {
@@ -931,7 +927,7 @@ async function resolveTabs(
       tabSlug: slug,
       resolvePath: (path) => resolve(configDir, path),
       assertExists,
-      isUrl,
+      isUrl: isAbsoluteHttpUrl,
     });
     if (tab.anchorUnmatched !== undefined && !["error", "warn", "ignore"].includes(tab.anchorUnmatched)) throw new Error(`Invalid anchorUnmatched in tab "${tab.tab}"; expected error, warn or ignore`);
     const reference = tab.reference ?? {};
@@ -989,13 +985,6 @@ function resolvedTabFromSource(
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
-
-export function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 function resolvePrettyUrls(value: PrettyUrls | undefined): PrettyUrls {
   if (value === undefined || value === false) return false;

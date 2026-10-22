@@ -1,5 +1,5 @@
 import type { Token, Tokens } from "marked";
-import { htmlId } from "../utils/html-id.js";
+import { slugify } from "../utils/slug.js";
 import { lexMarkdown, renderMarkdownInline, PAGE_CONTENT } from "../utils/markdown.js";
 import type {
   ChangelogChangeType,
@@ -393,7 +393,7 @@ function normalizeVersionBlock(
   versionLinkMap: Map<string, string>,
 ): NormalizedChangelogVersion {
   return {
-    id: htmlId(block.heading.version ?? "unreleased"),
+    id: slugify(block.heading.version ?? "unreleased"),
     version: block.heading.version,
     date: block.heading.date,
     yanked: block.heading.yanked,

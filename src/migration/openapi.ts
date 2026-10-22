@@ -9,6 +9,7 @@ import { parseSourceSpec, parseSpec } from "../core/parser.js";
 import { operationAnchors, operationKey } from "../core/reference-identity.js";
 import type { NormalizedOperation, SecurityScheme } from "../core/types.js";
 import type { ProjectFiles } from "./project-files.js";
+import { isAbsoluteHttpUrl } from "../site-url.js";
 
 const METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"] as const;
 
@@ -41,7 +42,7 @@ export interface ApiReference {
 }
 
 export async function readApiReference(project: ProjectFiles, spec: string): Promise<ApiReference> {
-  const loaded = await loadSpec(/^https?:\/\//.test(spec) ? spec : project.absolute(spec));
+  const loaded = await loadSpec(isAbsoluteHttpUrl(spec) ? spec : project.absolute(spec));
   const parsed = await parseSourceSpec(loaded);
   const document = parsed.document as unknown as {
     paths?: Record<string, SourceObject | undefined>;

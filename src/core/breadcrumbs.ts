@@ -1,5 +1,5 @@
 import { isNavGroup, type SiteNavigation, type SiteNavGroup } from "./navigation.js";
-import { joinHref } from "../site-url.js";
+import { isAbsoluteHttpUrl, joinHref } from "../site-url.js";
 
 /** Project the authored browsing trail. An unlinked category is not a new page. */
 export function breadcrumbList(
@@ -8,7 +8,7 @@ export function breadcrumbList(
   canonical: string | undefined,
   baseUrl: string,
 ): object | undefined {
-  if (!canonical || !/^https?:\/\//.test(canonical)) return;
+  if (!canonical || !isAbsoluteHttpUrl(canonical)) return;
   const tab = navigation.tabs.find(candidate => candidate.slug === navigation.activeTabSlug);
   if (!tab) return;
   function ancestors(groups: SiteNavGroup[]): SiteNavGroup[] | undefined {

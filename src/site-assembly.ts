@@ -25,7 +25,7 @@ import { sitePageFiles } from "./core/site-pages.js";
 import type { ArtifactBody } from "./core/source-file.js";
 import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
 import { loadRustdocTab, type RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
-import { htmlId } from "./utils/html-id.js";
+import { slugify } from "./utils/slug.js";
 import { renderMarkdown } from "./utils/markdown.js";
 import { attachSiteFiles } from "./site-assets.js";
 import { addPermalinkPages, attachChangelogFeeds } from "./site-changelog.js";
@@ -258,7 +258,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     for (const group of [...walkNavGroups(nav.groups)].reverse()) {
       if (group.href || group.items.length <= 80 && !(wide && nav.groups.includes(group))) continue;
       const id = `section:${group.id ?? group.label}`;
-      const slug = `_sections/${htmlId(group.label) || "pages"}-${createHash("sha256").update(id).digest("hex").slice(0,8)}`;
+      const slug = `_sections/${slugify(group.label) || "pages"}-${createHash("sha256").update(id).digest("hex").slice(0,8)}`;
       const title = context.localeConfig.messages.navigation?.[group.id ?? ""] ?? group.label;
       group.href = sectionPage(id, slug, title, () => [...walkNavItems([group])].map(item => `- [${item.label.replace(/\]/g, "\\]")}](${item.href})`).join("\n"));
     }

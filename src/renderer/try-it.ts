@@ -1,7 +1,7 @@
 import type { ConsoleData } from "../core/try-it.js";
 import type { NormalizedOperation, NormalizedSpec } from "../core/types.js";
 import type { TryItConfig } from "../config.js";
-import { htmlId } from "../utils/html-id.js";
+import { slugify } from "../utils/slug.js";
 import { createHash } from "node:crypto";
 
 export function consoleArtifactPath(scope: string, operation: NormalizedOperation): string {
@@ -10,7 +10,7 @@ export function consoleArtifactPath(scope: string, operation: NormalizedOperatio
     "_sourcey/try-it/" +
     directory +
     "/" +
-    `operation-${htmlId(operation.path)}-${htmlId(operation.method)}`.slice(0, 80) +
+    `operation-${slugify(operation.path)}-${slugify(operation.method)}`.slice(0, 80) +
     "-" +
     digest(operation.method + " " + operation.path) +
     ".json"

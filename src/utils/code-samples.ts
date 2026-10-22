@@ -3,6 +3,7 @@ import type { CodeSample } from "../core/types.js";
 import { describeRequest, initialDraft, normalizeRequestHeaders, type RequestDescription } from "../core/request.js";
 import { multipartSamples } from "./multipart-samples.js";
 import { codeBlockString, codeString, sampleUrl, sampleOrigin } from "./code-literals.js";
+import { isAbsoluteHttpUrl } from "../site-url.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -264,7 +265,7 @@ export function generateCodeSamples(
       password: "YOUR_PASSWORD",
     };
   const { server, unfilled, base } = operationServer(op, servers, sourceUrl);
-  const originVariable = !/^https?:\/\//.test(base);
+  const originVariable = !isAbsoluteHttpUrl(base);
   const request = describeRequest(
     {
       operation: op,
@@ -292,7 +293,7 @@ export function operationServer(op: NormalizedOperation, servers: readonly Serve
   const unfilled = [...origin.matchAll(/\{([^}]+)\}/g)].some(([, name]) => !declared.variables?.[name]?.default);
   const server = unfilled ? { ...declared, url: declared.url.slice(origin.length) || "/" } : declared;
   const resolved = server.url.replace(/\{([^}]+)\}/g, (match, name: string) => server.variables?.[name]?.default ?? match);
-  const located = !unfilled && sourceUrl && !/^https?:\/\//.test(resolved) ? decodeURI(new URL(resolved, sourceUrl).href) : resolved;
+  const located = !unfilled && sourceUrl && !isAbsoluteHttpUrl(resolved) ? decodeURI(new URL(resolved, sourceUrl).href) : resolved;
   return { server, unfilled, base: located.replace(/\/+$/, "") };
 }
 

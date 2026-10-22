@@ -1,5 +1,6 @@
 /** Native navigation shapes every converter builds the same way. */
-import { slugify, SOCIAL_NETWORKS, type GroupConfig, type NavbarLink, type NavigationItem } from "../config.js";
+import { SOCIAL_NETWORKS, type GroupConfig, type NavbarLink, type NavigationItem } from "../config.js";
+import { slugify } from "../utils/slug.js";
 import type { ConfigValue } from "./config-writer.js";
 
 /**

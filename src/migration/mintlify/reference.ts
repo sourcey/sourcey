@@ -21,6 +21,7 @@ import { readApiReference, type ReferenceOperation } from "../openapi.js";
 import type { ProjectFiles } from "../project-files.js";
 import { readFrontmatter } from "../text-edits.js";
 import { topLevelGroups } from "../navigation.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 
 type Node = Record<string, unknown>;
 
@@ -162,7 +163,7 @@ export async function prepareReference(
       id: "api",
       tab: label,
       slug,
-      source: new Call("openapi", [{ spec: /^https?:\/\//.test(spec) ? spec : `./${spec.replace(/^\.?\/+/, "")}`, overlays: [`./${REFERENCE_FILES.overlay}`] }]),
+      source: new Call("openapi", [{ spec: isAbsoluteHttpUrl(spec) ? spec : `./${spec.replace(/^\.?\/+/, "")}`, overlays: [`./${REFERENCE_FILES.overlay}`] }]),
       reference: { split: "operations" },
       routes: new Reference("apiRoutes"),
       ...(navigation.length ? { navigation: new Reference("apiNavigation") } : {}),

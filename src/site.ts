@@ -22,6 +22,7 @@ import { assembleSite, type SiteAssembly } from "./site-assembly.js";
 import { buildSiteConfig } from "./site-assets.js";
 import { drawingCards, planCards, type SiteCards } from "./site-cards.js";
 import { publishSearch, searchRowsByContext, type SearchCache } from "./site-search.js";
+import { isAbsoluteHttpUrl } from "./site-url.js";
 
 interface CompilationCache {
   pages: PageRenderCache;
@@ -142,7 +143,7 @@ export async function writeSourceySite(
   options: SourceySiteWriteOptions = {},
 ): Promise<void> {
   const output = await canonicalInputPath(site.outputDir);
-  const inputs = [site.config.configDir, ...site.assembly.cache.reader.inputs.keys()].filter((path): path is string => Boolean(path) && !/^https?:\/\//.test(path!));
+  const inputs = [site.config.configDir, ...site.assembly.cache.reader.inputs.keys()].filter((path): path is string => Boolean(path) && !isAbsoluteHttpUrl(path!));
   for (const source of inputs) {
     const path = relative(output, await canonicalInputPath(source));
     if (!path || !path.startsWith("..") && !isAbsolute(path)) throw new Error(`Output directory would encompass source input: ${source}`);

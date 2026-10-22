@@ -1,5 +1,6 @@
 import type { ResolvedRustdocConfig } from "../config.js";
 import { tabPath } from "../site-url.js";
+import { slugify } from "../utils/slug.js";
 import type { MarkdownPage, PageHeading, PageSearchEntry } from "./markdown-loader.js";
 import type { SiteTab, SiteNavGroup, SiteNavItem } from "./navigation.js";
 import { runIntrospector, RustdocIntrospectorError } from "./rustdoc-introspector.js";
@@ -553,13 +554,6 @@ function emptyNavTab(tabSlug: string, tabLabel: string): SiteTab {
 
 function crateIndexSlug(crateName: string): string {
   return `pkg-${slugify(crateName)}`;
-}
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 /**

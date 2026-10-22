@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import type { NormalizedOperation, NormalizedSchema, NormalizedSpec } from "../core/types.js";
 import type { ResolvedSiteContext, SitePage } from "../core/site-model.js";
 import type { SiteConfig } from "../renderer/context.js";
-import { htmlId } from "../utils/html-id.js";
+import { slugify } from "../utils/slug.js";
 import { operationAnchor, definitionAnchor, referenceOperation } from "../core/reference-identity.js";
 import { generateCodeSamples } from "../utils/code-samples.js";
 import { toPublicUrl } from "../site-url.js";
@@ -50,7 +50,7 @@ function detailRoot(outputPath: string): string {
 
 export function schemaMarkdownPath(outputPath: string, name: string): string {
   const digest = createHash("sha256").update(name).digest("hex").slice(0, 10);
-  return `${detailRoot(outputPath)}/schemas/${htmlId(name) || "schema"}-${digest}.md`;
+  return `${detailRoot(outputPath)}/schemas/${slugify(name) || "schema"}-${digest}.md`;
 }
 
 export function operationMarkdownPath(outputPath: string, operation: NormalizedOperation, spec: NormalizedSpec): string {

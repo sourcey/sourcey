@@ -11,6 +11,7 @@ import { hasContextChoices } from "./ContextControls.js";
 import pkg from "../../../package.json" with { type: "json" };
 import { pageMetadata } from "../../core/page-metadata.js";
 import { breadcrumbList, structuredDataJson } from "../../core/breadcrumbs.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 
 /**
  * The weights the themes set. Google serves each from a variable family's one file, or the
@@ -86,7 +87,7 @@ export function Head() {
       <meta property="og:description" content={pageDescription} />
       <meta property="og:type" content="website" />
       {siteName && <meta property="og:site_name" content={siteName} />}
-      {options.pageUrl && /^https?:\/\//.test(options.pageUrl) && <meta property="og:url" content={options.pageUrl} />}
+      {options.pageUrl && isAbsoluteHttpUrl(options.pageUrl) && <meta property="og:url" content={options.pageUrl} />}
       {options.ogImageUrl && <meta property="og:image" content={options.ogImageUrl} />}
       {options.ogImageUrl && <meta property="og:image:width" content="1200" />}
       {options.ogImageUrl && <meta property="og:image:height" content="630" />}

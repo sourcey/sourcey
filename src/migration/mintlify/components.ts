@@ -6,11 +6,12 @@
 import { posix } from "node:path";
 import type { Tokens } from "marked";
 import type { JsonValue } from "../../core/markdown-components.js";
-import { htmlId } from "../../utils/html-id.js";
+import { slugify } from "../../utils/slug.js";
 import { hasIcon, isImageIcon } from "../../utils/icons.js";
 import { headingInfo, lexMarkdown } from "../../utils/markdown.js";
 import { attributeText, identityKey, rejectDynamic, unsupportedAttributes, type ComponentConverter, type ConversionFailure, type ConverterTable, type ElementInput } from "../components.js";
 import { mintlifySlug } from "./fragments.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 
 /** The module identity Mintlify's global components resolve to. */
 const MINTLIFY = "mintlify";
@@ -58,7 +59,7 @@ export const MINTLIFY_GLOBALS: ReadonlyMap<string, string> = new Map(
  * `missing` when the set has no icon of that name.
  */
 async function nativeIcon(element: ElementInput, icon: string): Promise<{ icon: string } | { missing: true } | ConversionFailure> {
-  if (/^https?:\/\//.test(icon)) return { icon };
+  if (isAbsoluteHttpUrl(icon)) return { icon };
   if (attributeText(element.props.iconType) === "brands") return hasIcon("brands", icon) ? { icon: `brand:${icon}` } : { missing: true };
   if (!isImageIcon(icon)) return hasIcon(element.project.icons, icon) ? { icon } : { missing: true };
   const path = posix.normalize(icon.replace(/^\/+/, ""));
@@ -81,7 +82,7 @@ function accordionConverter(): ComponentConverter {
     const extra = unsupportedAttributes(element, ["title", "id", ...presentation]);
     if (extra.length) return { error: `<${element.name}> attribute ${extra.join(", ")} has no native equivalent yet` };
     const title = attributeText(element.props.title) ?? "";
-    const anchor = attributeText(element.props.id) ?? htmlId(title);
+    const anchor = attributeText(element.props.id) ?? slugify(title);
     if (!pages.has(element.file)) pages.set(element.file, element.project.readText(element.file).then(headingAnchors));
     const taken = await pages.get(element.file)!;
     const kept = Boolean(anchor) && !taken.has(anchor);

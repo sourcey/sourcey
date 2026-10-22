@@ -19,10 +19,10 @@
  */
 import { operationFieldRoot, parameterFieldAnchor, referenceFieldPath } from "../../core/reference-identity.js";
 import type { NormalizedSchema, SecurityScheme } from "../../core/types.js";
-import { htmlId } from "../../utils/html-id.js";
+import { slugify } from "../../utils/slug.js";
 import type { ReferenceOperation } from "../openapi.js";
 
-export const mintlifySlug = (name: string) => htmlId(name.replace(/([a-z0-9])([A-Z])/g, "$1-$2"));
+export const mintlifySlug = (name: string) => slugify(name.replace(/([a-z0-9])([A-Z])/g, "$1-$2"));
 
 /** Locations in the order Mintlify lists their parameters. */
 const LOCATIONS = ["header", "path", "query", "cookie"];

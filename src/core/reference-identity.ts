@@ -2,7 +2,7 @@ import { slug as githubSlug } from "github-slugger";
 import { createHash } from "node:crypto";
 import type { NormalizedOperation, NormalizedParameter, NormalizedSchema, NormalizedSpec } from "./types.js";
 import { omittedField, type SchemaUsage } from "./schema.js";
-import { htmlId } from "../utils/html-id.js";
+import { slugify } from "../utils/slug.js";
 
 interface ReferenceAnchors {
   byOperation: ReadonlyMap<string, NormalizedOperation>;
@@ -52,13 +52,13 @@ function anchors(spec: NormalizedSpec): ReferenceAnchors {
       operations: allocate(
         spec.operations.map((op) => [
           operationKey(op),
-          `operation-${htmlId(op.path)}-${htmlId(op.method)}`,
+          `operation-${slugify(op.path)}-${slugify(op.method)}`,
         ]),
       ),
       schemas: allocate(
-        Object.keys(spec.schemas).map((name) => [name, `definition-${htmlId(name) || "item"}`]),
+        Object.keys(spec.schemas).map((name) => [name, `definition-${slugify(name) || "item"}`]),
       ),
-      tags: allocate(spec.tags.map((tag) => [tag.name, `tag-${htmlId(tag.name) || "item"}`])),
+      tags: allocate(spec.tags.map((tag) => [tag.name, `tag-${slugify(tag.name) || "item"}`])),
     };
     allocations.set(spec, result);
   }
@@ -106,7 +106,7 @@ export function operationSections(operation: NormalizedOperation): ("request-bod
 }
 export function operationAnchors(operation: NormalizedOperation, spec: NormalizedSpec, standalone: boolean): string[] {
   const sections = operationSections(operation).flatMap((section): OperationSection[] =>
-    section === "responses" ? [section, ...operation.responses.map(response => `response-${htmlId(response.statusCode)}` as const)] : [section]);
+    section === "responses" ? [section, ...operation.responses.map(response => `response-${slugify(response.statusCode)}` as const)] : [section]);
   return [operationAnchor(operation, spec), ...sections.map(section => operationSectionAnchor(operation, spec, section, standalone)), ...operationFieldAnchors(operation)];
 }
 

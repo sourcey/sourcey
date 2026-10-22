@@ -5,13 +5,14 @@
  */
 import { posix } from "node:path";
 import type { JsonValue } from "../../core/markdown-components.js";
-import { htmlId } from "../../utils/html-id.js";
+import { slugify } from "../../utils/slug.js";
 import { Call, type ConfigValue } from "../config-writer.js";
 import { toJson, type Value } from "../javascript.js";
 import { readApiReference, type ApiReference, type ReferenceOperation } from "../openapi.js";
 import { githubSlugs } from "../slugs.js";
 import { lineAt } from "../text-edits.js";
 import { STARLIGHT_OPENAPI, type StarlightContext } from "./starlight-model.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 
 /** Header parameters starlight-openapi leaves out of its parameter lists. */
 const IGNORED_HEADERS = new Set(["accept", "authorization", "content-type"]);
@@ -49,7 +50,7 @@ export async function convertOpenApiPlugins(context: StarlightContext, plugins: 
     for (const config of configs.value as Record<string, JsonValue>[]) {
       const base = String(config.base ?? "").replace(/^\/+|\/+$/g, "");
       const schema = String(config.schema ?? "");
-      const spec = /^https?:\/\//.test(schema) ? schema : posix.join(root.dir, schema);
+      const spec = isAbsoluteHttpUrl(schema) ? schema : posix.join(root.dir, schema);
       const reference = await readApiReference(context.project, spec);
       if (reference.describedTags.length || reference.webhooks) fail(`${schema} publishes tag or webhook pages, which have no native reference view yet`);
 
@@ -74,7 +75,7 @@ export async function convertOpenApiPlugins(context: StarlightContext, plugins: 
       result.tabs.push({
         tab: typeof config.label === "string" ? config.label : "API",
         slug: base,
-        source: new Call("openapi", [/^https?:\/\//.test(schema) ? schema : `./${posix.relative(root.dir, spec)}`]),
+        source: new Call("openapi", [isAbsoluteHttpUrl(schema) ? schema : `./${posix.relative(root.dir, spec)}`]),
         reference: { split: "operations", operations: "operations/{operation}" },
         ...(Object.keys(routes).length ? { routes } : {}),
         ...(Object.keys(anchors).length ? { anchors } : {}),
@@ -121,9 +122,9 @@ function operationFragments(operation: ReferenceOperation, document: SourceObjec
     fragments.set("responses", section("responses"));
     // The plugin lists the default response last.
     const codes = Object.keys(responses).sort((a, b) => Number(a === "default") - Number(b === "default"));
-    for (const code of codes) fragments.set(slug(code), section(`response-${htmlId(code)}`));
+    for (const code of codes) fragments.set(slug(code), section(`response-${slugify(code)}`));
     const withHeaders = codes.find((code) => Object.keys((responses[code]?.headers as SourceObject | undefined) ?? {}).length);
-    if (withHeaders) fragments.set("headers", section(`response-${htmlId(withHeaders)}`));
+    if (withHeaders) fragments.set("headers", section(`response-${slugify(withHeaders)}`));
   }
   return fragments;
 }

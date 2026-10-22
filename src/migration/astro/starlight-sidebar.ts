@@ -5,6 +5,7 @@ import { toJson, type Value } from "../javascript.js";
 import { groupId, placeUnlisted, topLevelGroups } from "../navigation.js";
 import { lineAt } from "../text-edits.js";
 import { STARLIGHT_OPENAPI, withoutPrefix, type Locale, type SourceEntry, type StarlightContext } from "./starlight-model.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 
 export interface NavigationResult {
   groups: GroupConfig[];
@@ -114,7 +115,7 @@ export async function convertSidebar(
       return page(entry, label, raw.translations);
     }
     if (typeof raw.link === "string") {
-      if (/^https?:\/\//.test(raw.link)) return { href: raw.link, label: label ?? raw.link };
+      if (isAbsoluteHttpUrl(raw.link)) return { href: raw.link, label: label ?? raw.link };
       const path = raw.link.replace(/^\/+|\/+$/g, "");
       const inMount = withoutPrefix(path, mount);
       const entry = inMount === undefined ? undefined : bySlug.get(inMount);

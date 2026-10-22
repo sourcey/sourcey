@@ -18,6 +18,7 @@ import { stringOption } from "./project.js";
 import { convertOpenApiPlugins } from "./starlight-openapi.js";
 import { convertSidebar } from "./starlight-sidebar.js";
 import { withoutPrefix, type Locale, type SourceEntry, type StarlightContext } from "./starlight-model.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 
 const DOC_EXTENSIONS = /\.(markdown|mdown|mkdn|mkd|mdwn|md|mdx)$/;
 
@@ -272,7 +273,7 @@ function logoOptions(logo: JsonValue | undefined): Record<string, ConfigValue> {
 
 async function faviconPath(project: ProjectFiles, rootDir: string, favicon: JsonValue | undefined): Promise<string | undefined> {
   const path = typeof favicon === "string" ? favicon : "/favicon.svg";
-  if (/^https?:\/\//.test(path)) return path;
+  if (isAbsoluteHttpUrl(path)) return path;
   const file = posix.join(rootDir, "public", path);
   return (await project.exists(file)) ? `./${posix.join("public", path)}` : undefined;
 }

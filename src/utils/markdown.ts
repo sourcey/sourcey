@@ -3,7 +3,7 @@ import { slug as githubSlug } from "github-slugger";
 import { Marked, Lexer, type Links, type Token, type Tokens } from "marked";
 import { highlightCode } from "./highlighter.js";
 import { COPY_ICON_SVG } from "./copy-svg.js";
-import { htmlId } from "./html-id.js";
+import { slugify } from "./slug.js";
 import { escapeAttr, escapeHtml, safeUrl, sanitizeRenderedHtml } from "./html.js";
 import { ALERT, CALLOUTS, alertBody, alertCallout, renderCallout } from "./callouts.js";
 import { english, type UiMessages } from "../core/messages.js";
@@ -377,7 +377,7 @@ function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
       heading({ tokens, depth, text }: Tokens.Heading): string {
         const explicit = text.match(/\s+\{#([^}]+)\}\s*$/);
         if (explicit) tokens = Lexer.lexInline(text.slice(0, explicit.index));
-        const id = `${options.headingPrefix ?? ""}${explicit?.[1] ?? htmlId(headingSource(tokens))}`;
+        const id = `${options.headingPrefix ?? ""}${explicit?.[1] ?? slugify(headingSource(tokens))}`;
         const level = Math.min(6, depth + (options.headingOffset ?? 0));
         return `<h${level} id="${escapeAttr(id)}">${this.parser.parseInline(tokens)}</h${level}>\n`;
       },
@@ -509,7 +509,7 @@ export function headingInfo(heading: Tokens.Heading) {
   const text = headingText(inline);
   const source = headingSource(inline);
   const id = explicit?.[1] ?? (githubSlug(text) || "section");
-  return { id, text, markdown, explicit: !!explicit, previousId: htmlId(source) };
+  return { id, text, markdown, explicit: !!explicit, previousId: slugify(source) };
 }
 
 /**
@@ -526,7 +526,7 @@ export function extractHeadings(input: string): PageHeading[] {
         const heading = token as Tokens.Heading;
         const explicit = heading.text.match(/\s+\{#([^}]+)\}\s*$/);
         const text = headingText(heading.tokens).replace(/\s+\{#[^}]+\}\s*$/, "");
-        headings.push({ level: depth as 2 | 3, text, id: explicit?.[1] ?? htmlId(headingSource(heading.tokens)) });
+        headings.push({ level: depth as 2 | 3, text, id: explicit?.[1] ?? slugify(headingSource(heading.tokens)) });
       }
     }
   }

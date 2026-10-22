@@ -147,7 +147,7 @@ function resourceToOperation(
     | undefined;
 
   return {
-    operationId: slugify(resource.name),
+    operationId: resourceOperationId(resource.name),
     summary: resource.name,
     description: resource.description,
     method: "resource" as HttpMethod,
@@ -176,7 +176,7 @@ function resourceTemplateToOperation(
     | undefined;
 
   return {
-    operationId: slugify(template.name),
+    operationId: resourceOperationId(template.name),
     summary: template.name,
     description: template.description,
     method: "resource" as HttpMethod,
@@ -354,7 +354,12 @@ function extractUriTemplateParams(uriTemplate: string): NormalizedParameter[] {
   }));
 }
 
-function slugify(name: string): string {
+/**
+ * A resource's operation id: its name in lowercase, each run of anything but
+ * letters and digits one hyphen, kept at either end, as published operation
+ * ids have always been written.
+ */
+function resourceOperationId(name: string): string {
   return name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 }
 

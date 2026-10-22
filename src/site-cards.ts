@@ -6,6 +6,7 @@ import type { SitePage } from "./core/site-model.js";
 import { artifactBytes, type ArtifactBody } from "./core/source-file.js";
 import type { SiteConfig } from "./renderer/context.js";
 import { contentTypeForPath, outputPathFromRequestPath } from "./renderer/static-files.js";
+import { isAbsoluteHttpUrl } from "./site-url.js";
 
 /** Each page's social card, still to draw. */
 export type SiteCards = Map<SitePage, () => Promise<Buffer | undefined>>;
@@ -28,7 +29,7 @@ export async function planCards(pages: readonly SitePage[], config: ResolvedConf
   const { embedRemoteLogo, generateOgImage } = await import("./og/generate-og-image.js");
   // The card is dark, so it draws the logo the site shows in dark mode.
   let logo = site.logo?.dark ?? site.logo?.light;
-  if (logo && /^https?:\/\//.test(logo)) logo = await embedRemoteLogo(logo);
+  if (logo && isAbsoluteHttpUrl(logo)) logo = await embedRemoteLogo(logo);
   else if (logo && !logo.startsWith("data:")) {
     const path = outputPathFromRequestPath(logo, config.baseUrl);
     const body = files.get(path);
