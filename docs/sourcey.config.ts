@@ -1,4 +1,4 @@
-import { defineConfig, markdown } from "sourcey";
+import { defineConfig, godoc, markdown } from "sourcey";
 
 export default defineConfig({
   name: "Sourcey",
@@ -30,7 +30,23 @@ export default defineConfig({
               group: "Project",
               pages: ["roadmap", "changelog"],
             },
+            {
+              group: "References",
+              pages: ["gin-reference"],
+            },
           ],
+        }),
+      },
+      {
+        tab: "Gin reference",
+        slug: "gin-api",
+        source: godoc({
+          module: "./gin-src",
+          packages: ["./..."],
+          mode: "snapshot",
+          snapshot: "./gin-reference.godoc.json",
+          includeTests: true,
+          sourceBasePath: "",
         }),
       },
     ],
