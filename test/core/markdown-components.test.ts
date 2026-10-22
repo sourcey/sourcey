@@ -1,11 +1,11 @@
-import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { markdown } from "../../src/index.js";
 import { resolveConfigFromRaw } from "../../src/config.js";
 import { buildSourceySite, sourceyArtifacts } from "../../src/site.js";
-import { contentDiagnostics, parseComponents, renderContent } from "../../src/core/markdown-components.js";
+import { contentDiagnostics, defineComponent, parseComponents, renderContent, type ContentNode, type NativeComponentDefinition } from "../../src/core/markdown-components.js";
 import { messagesFor } from "../../src/core/messages.js";
 import { InputReader } from "../../src/core/loader.js";
 import { diagramSvgs } from "../../src/core/diagrams.js";
@@ -250,5 +250,46 @@ describe("cards", () => {
     expect(nested.html.match(/<h3 class="card-item-title">/g)).toHaveLength(2);
     expect(nested.html.match(/<h4 class="card-item-title">/g)).toHaveLength(2);
     expect(nested.html).not.toContain("<h2 class=\"card-item-title\">");
+  });
+});
+
+describe("included files", () => {
+  async function inFolder(run: (parse: (markdown: string, components?: Record<string, NativeComponentDefinition>) => Promise<ContentNode[]>, root: string) => Promise<void>) {
+    const root = await mkdtemp(join(tmpdir(), "sourcey-include-"));
+    try {
+      const source = join(root, "guide.md");
+      await run((markdown, components) => parseComponents(markdown, { source, root, input: new InputReader(), components }), root);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+
+  it("read as part of the page: Markdown with its components, or one region as code, and never in a cycle", () => inFolder(async (parse, root) => {
+    await mkdir(join(root, "shared"));
+    await writeFile(join(root, "shared", "intro.md"), "Shared **intro**.\n\n<Note>Inside the include.</Note>\n");
+    await writeFile(join(root, "example.ts"), "const skipped = 0;\n// #region main\nconst answer = 42;\n// #endregion main\n");
+    await writeFile(join(root, "loop.md"), '<Include src="./loop.md" />\n');
+    const html = renderContent(await parse('<Include src="./shared/intro.md" />\n\n<Include src="./example.ts" region="main" language="ts" />\n'));
+    expect(html).toContain("Shared <strong>intro</strong>.");
+    expect(html).toMatch(/class="callout[^"]*"[\s\S]*Inside the include\./);
+    expect(html).toContain("answer");
+    expect(html).not.toContain("skipped");
+    await expect(parse('<Include src="./loop.md" />\n')).rejects.toThrow(/^Include cycle: \S*guide\.md -> \S*loop\.md -> \S*loop\.md$/);
+  }));
+
+  it("are a site's own to draw when it defines an Include of its own", () => inFolder(async parse => {
+    const Include = defineComponent({ parseProps: attributes => attributes, resolve: ({ children }) => ({ content: children }), renderHtml: (result, helpers) => `<aside>${helpers.render(result.content)}</aside>` });
+    expect(renderContent(await parse('<Include src="./missing.md">\n\nKept as written.\n\n</Include>\n', { Include }))).toContain("<aside><p>Kept as written.</p>\n</aside>");
+  }));
+});
+
+describe("directives", () => {
+  it("name the directive a page writes that opens no component, whatever it is called", async () => {
+    const root = await mkdtemp(join(tmpdir(), "sourcey-directive-"));
+    try {
+      await expect(parseComponents(":::constructor\nBody.\n:::\n", { source: join(root, "guide.md"), root, input: new InputReader() })).rejects.toThrow(/^Unknown directive constructor at /);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

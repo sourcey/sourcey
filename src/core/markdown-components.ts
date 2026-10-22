@@ -1,4 +1,4 @@
-import { STATIC_ASSET_EXTENSIONS, staticMediaAsset } from "./media.js";
+import { STATIC_ASSET_EXTENSIONS, staticMediaAsset, type FigureOptions, type ImageVariant } from "./media.js";
 import { isNavGroup, walkNavGroups, type SiteTab, type SiteNavGroup } from "./navigation.js";
 import { rewriteMarkdownDestinations, rewriteMarkdownHtml } from "../utils/markdown-links.js";
 import type { Links, Token, Tokens, TokensList } from "marked";
@@ -7,12 +7,13 @@ import { toPublicPath } from "../site-url.js";
 import { createHash } from "node:crypto";
 import { canonicalInputPath } from "./loader.js";
 import type { InputReader } from "./loader.js";
+import type { NormalizedSchema } from "./types.js";
 import { escapeAttr, escapeHtml, safeUrl, rewriteHtmlUrls, sanitizeRenderedHtml } from "../utils/html.js";
-import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, renderMarkdownInline, renderCodeBlock, parseCodeFenceInfo, type CodeFenceMetadata, type MarkdownRenderOptions, lexMarkdown, headingInfo, pageLinkHref, PAGE_CONTENT } from "../utils/markdown.js";
+import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, renderMarkdownInline, renderCodeBlock, parseCodeFenceInfo, type CodeFenceMetadata, type MarkdownRenderOptions, type PageHeading, lexMarkdown, headingInfo, pageLinkHref, PAGE_CONTENT } from "../utils/markdown.js";
 import { iconDrawing, iconSource, iconSvg, isImageIcon, type IconPresentation } from "../utils/icons.js";
-import { ALERT, ALERT_TYPE, CALLOUTS, alertBody, alertCallout, isCallout, renderCallout } from "../utils/callouts.js";
+import { ALERT, ALERT_TYPE, CALLOUTS, alertBody, alertCallout, isCallout, renderCallout, type CalloutKind } from "../utils/callouts.js";
 import type { IconSet } from "../config.js";
-import { english } from "./messages.js";
+import { english, type UiMessages } from "./messages.js";
 import { h } from "preact";
 import { renderToString } from "preact-render-to-string";
 import { FieldRow } from "../components/schema/FieldRow.js";
@@ -52,7 +53,7 @@ export interface NativeContentContext {
   contentLocale: string;
   version: { id: string; label: string; revision?: string };
   versionScope: string;
-  messages: import("./messages.js").UiMessages;
+  messages: UiMessages;
   /** The theme's icon set. */
   icons: IconSet;
 }
@@ -69,7 +70,7 @@ export interface ComponentBuildContext {
   readText(path: string): Promise<string>;
   readJson(path: string): Promise<unknown>;
   asset(path: string): Promise<string>;
-  figure(path: string, options: import("./media.js").FigureOptions): Promise<import("./media.js").ImageVariant[]>;
+  figure(path: string, options: FigureOptions): Promise<ImageVariant[]>;
   diagram(source: string): Promise<{ light: string; dark: string }>;
   parseMarkdown(markdown: string): Promise<readonly ContentNode[]>;
   id(label: string): string;
@@ -110,83 +111,145 @@ const pictureSources = (light: string, dark: string, type?: string, sizes?: stri
 /** An authored anchor: a fragment of letters, digits, underscores and hyphens. */
 const FRAGMENT = /^[A-Za-z0-9][\w-]*$/;
 
-function container(name: string): NativeComponentDefinition {
+type ComponentNode = Extract<ContentNode, { kind: "component" }>;
+/** Whether a node is a component of the given name. */
+const named = (node: ContentNode, name: string): node is ComponentNode => node.kind === "component" && node.name === name;
+
+/** A container's content, under the heading its title or label gives it, which links where its `href` leads. */
+function headed(props: StaticAttributes, content: readonly ContentNode[], heading: JsonValue | undefined = props.title ?? props.label): ContentNode[] {
+  return [...(heading ? [label(text(heading), text(props.href) || undefined)] : []), ...content];
+}
+
+/** A component holding content under its heading, drawn by `draw`. */
+function container(draw: (result: ResolvedComponent, helpers: ComponentRenderHelpers) => string): NativeComponentDefinition {
   return defineComponent({
-    parseProps(attributes, location) {
-      // An accordion can have its own anchor, which links open.
-      if (name === "Accordion" && attributes.anchor !== undefined && (typeof attributes.anchor !== "string" || !FRAGMENT.test(attributes.anchor)))
-        throw new Error(`Accordion anchor must be a fragment such as billing-faq at ${location.file}:${location.offset}`);
-      return attributes;
-    },
-    async resolve({ props, children }, context) {
-      let content = [...children];
-      if (name === "CodeGroup") content = content.flatMap(node => node.kind !== "markdown" ? [node] : codeChildren(node.value, context.location));
-      if (name === "Steps" && !content.some(node => node.kind === "component" && node.name === "Step")) {
-        const expanded: ContentNode[] = [];
-        for (const node of content) {
-          if (node.kind !== "markdown") { expanded.push(node); continue; }
-          for (const token of lexMarkdown(node.value)) {
-            if (token.type !== "list" || !(token as Tokens.List).ordered) { expanded.push({ kind: "markdown", value: token.raw }); continue; }
-            for (const item of (token as Tokens.List).items) {
-              const lines = item.raw.split("\n");
-              const heading = lines[0].replace(/^\s*\d+[.)]\s+/, "");
-              const body = dedent(lines.slice(1).join("\n"));
-              expanded.push({ kind: "component", name: "Step", id: context.id("step"), definition: builtins.Step,
-                resolved: { content: [label(heading), ...await context.parseMarkdown(body)], data: { props: {} } satisfies ContainerData } });
-            }
-          }
-        }
-        content = expanded;
-      }
-      const callout = isCallout(name);
-      const heading = props.title ?? props.label ?? (callout ? context.context?.messages[CALLOUTS[name].label] ?? name : undefined);
-      const data: ContainerData = { props, ...(callout ? { icons: context.icons } : {}), ...(name === "Card" && props.icon !== undefined ? { cardIcon: await authoredIcon(text(props.icon), { class: "card-icon" }, context) } : {}) };
-      return { content: [...(heading ? [label(text(heading), text(props.href) || undefined)] : []), ...content], data };
-    },
-    renderHtml(result, h) {
-      const { props, icons, cardIcon } = result.data as ContainerData;
-      const heading = title(result);
-      const content = h.render(bodyNodes(result));
-      if (isCallout(name)) return renderCallout(name, { title: renderMarkdownInline(heading?.text || name), content, icons: icons! });
-      if (["Accordion", "Expandable"].includes(name)) return `<details class="accordion-item"${name === "Accordion" && props.anchor !== undefined ? ` id="${escapeAttr(text(props.anchor))}"` : ""}><summary class="accordion-trigger">${renderMarkdownInline(heading?.text ?? "")}</summary><div class="accordion-content">${content}</div></details>`;
-      if (name === "Card") {
-        const href = pageLinkHref(text(props.href));
-        const headingHref = href || (heading?.href ? pageLinkHref(heading.href) : null);
-        const headingHtml = renderMarkdownInline(heading?.text ?? "");
-        const tag = `h${Math.min(6, h.headingLevel + 1)}`;
-        return `<div class="card-item"><div class="card-item-inner">${cardIcon ?? ""}<${tag} class="card-item-title">${headingHref ? `<a class="card-item-link" href="${escapeAttr(headingHref)}">${headingHtml}</a>` : headingHtml}</${tag}><div class="card-item-content">${content}</div></div></div>`;
-      }
-      if (name === "CardGroup" && !bodyNodes(result).some(node => node.kind === "component" && node.name === "Card")) return content;
-      if (name === "CardGroup") return `<div class="card-group not-prose" data-cols="${escapeAttr(text(props.cols || 2))}">${content}</div>`;
-      if (name === "AccordionGroup") return `<div class="accordion-group not-prose">${content}</div>`;
-      if (name === "Steps") {
-        if (!bodyNodes(result).some(node => node.kind === "component" && node.name === "Step")) return content;
-        let index = 0;
-        return `<div role="list" class="steps not-prose">${bodyNodes(result).map(node => {
-          if (node.kind !== "component" || node.name !== "Step") return h.render([node]);
-          return `<div role="listitem" class="step-item"><div class="step-number">${++index}</div><div class="step-body"><p class="step-title">${renderMarkdownInline(title(node.resolved)?.text ?? "")}</p><div class="step-content">${h.render(bodyNodes(node.resolved))}</div></div></div>`;
-        }).join("")}</div>`;
-      }
-      if (name === "Tabs" || name === "CodeGroup") {
-        const panels = bodyNodes(result).filter(n => name === "CodeGroup" ? n.kind === "code" : n.kind === "component" && n.name === "Tab");
-        const outside = bodyNodes(result).filter(n => !panels.includes(n));
-        if (!panels.length) return content;
-        const id = text(props.id);
-        // A code group's tabs name its panels, so a panel's code carries no title of its own.
-        const panel = (n: ContentNode) => n.kind === "component" ? h.render(bodyNodes(n.resolved)) : h.render([n.kind === "code" ? { ...n, title: undefined, metadata: n.metadata && { ...n.metadata, title: undefined } } : n]);
-        return `${h.render(outside)}<div class="directive-tabs${name === "CodeGroup" ? " directive-code-group" : ""} not-prose" data-sourcey-tabs><div class="directive-tab-bar" role="tablist">${panels.map((n, i) => {
-          const name = n.kind === "component" ? title(n.resolved)?.text : n.kind === "code" ? n.title || n.language : "";
-          return `<button type="button" role="tab" id="${id}-tab-${i}" aria-controls="${id}-panel-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" class="directive-tab${i === 0 ? " active" : ""}" data-tab-group="${id}" data-tab-index="${i}">${escapeHtml(name || `Example ${i + 1}`)}</button>`;
-        }).join("")}</div>${panels.map((n, i) => `<section role="tabpanel" id="${id}-panel-${i}" aria-labelledby="${id}-tab-${i}" class="directive-tab-panel${i === 0 ? " active" : ""}" data-tab-group="${id}" data-tab-index="${i}">${panel(n)}</section>`).join("")}</div>`;
-      }
-      return content;
-    },
+    parseProps: attributes => attributes,
+    resolve: ({ props, children }) => ({ content: headed(props, children), data: { props } satisfies ContainerData }),
+    renderHtml: draw,
   });
 }
-const builtins: Record<string, NativeComponentDefinition> = Object.fromEntries([
-  "Note", "Warning", "Tip", "Info", "Caution", "Danger", "Tabs", "Tab", "Steps", "Step", "CardGroup", "Card", "AccordionGroup", "Accordion", "Expandable", "CodeGroup",
-].map(name => [name, container(name)]));
-builtins.PageCards = defineComponent({
+
+/** A container drawn as its content alone, as a tab or step outside its group is. */
+const contentAlone = (result: ResolvedComponent, h: ComponentRenderHelpers) => h.render(bodyNodes(result));
+
+/** A note, tip or warning set apart from the prose, headed by its title, or by its kind in the page's language. */
+function callout(kind: CalloutKind): NativeComponentDefinition {
+  return defineComponent({
+    parseProps: attributes => attributes,
+    resolve: ({ props, children }, context) => ({
+      content: headed(props, children, props.title ?? props.label ?? context.context?.messages[CALLOUTS[kind].label] ?? kind),
+      data: { props, icons: context.icons } satisfies ContainerData,
+    }),
+    renderHtml: (result, h) => renderCallout(kind, { title: renderMarkdownInline(title(result)?.text || kind), content: h.render(bodyNodes(result)), icons: (result.data as ContainerData).icons! }),
+  });
+}
+
+/** A section that opens in place under its heading; an accordion's own anchor is the section's. */
+function disclosure(result: ResolvedComponent, h: ComponentRenderHelpers, anchor?: JsonValue): string {
+  return `<details class="accordion-item"${anchor !== undefined ? ` id="${escapeAttr(text(anchor))}"` : ""}><summary class="accordion-trigger">${renderMarkdownInline(title(result)?.text ?? "")}</summary><div class="accordion-content">${h.render(bodyNodes(result))}</div></details>`;
+}
+const Accordion = defineComponent({
+  parseProps(attributes, location) {
+    // An accordion can have its own anchor, which links open.
+    if (attributes.anchor !== undefined && (typeof attributes.anchor !== "string" || !FRAGMENT.test(attributes.anchor)))
+      throw new Error(`Accordion anchor must be a fragment such as billing-faq at ${location.file}:${location.offset}`);
+    return attributes;
+  },
+  resolve: ({ props, children }) => ({ content: headed(props, children), data: { props } satisfies ContainerData }),
+  renderHtml: (result, h) => disclosure(result, h, (result.data as ContainerData).props.anchor),
+});
+const Expandable = container((result, h) => disclosure(result, h));
+const AccordionGroup = container((result, h) => `<div class="accordion-group not-prose">${h.render(bodyNodes(result))}</div>`);
+
+const Card = defineComponent({
+  parseProps: attributes => attributes,
+  async resolve({ props, children }, context) {
+    const data: ContainerData = { props, ...(props.icon !== undefined ? { cardIcon: await authoredIcon(text(props.icon), { class: "card-icon" }, context) } : {}) };
+    return { content: headed(props, children), data };
+  },
+  renderHtml(result, h) {
+    const { props, cardIcon } = result.data as ContainerData;
+    const heading = title(result);
+    const href = pageLinkHref(text(props.href));
+    const headingHref = href || (heading?.href ? pageLinkHref(heading.href) : null);
+    const headingHtml = renderMarkdownInline(heading?.text ?? "");
+    const tag = `h${Math.min(6, h.headingLevel + 1)}`;
+    return `<div class="card-item"><div class="card-item-inner">${cardIcon ?? ""}<${tag} class="card-item-title">${headingHref ? `<a class="card-item-link" href="${escapeAttr(headingHref)}">${headingHtml}</a>` : headingHtml}</${tag}><div class="card-item-content">${h.render(bodyNodes(result))}</div></div></div>`;
+  },
+});
+/** Cards set side by side; content holding no card reads as written. */
+const CardGroup = container((result, h) => {
+  const content = h.render(bodyNodes(result));
+  if (!bodyNodes(result).some(node => named(node, "Card"))) return content;
+  return `<div class="card-group not-prose" data-cols="${escapeAttr(text((result.data as ContainerData).props.cols || 2))}">${content}</div>`;
+});
+
+const Step = container(contentAlone);
+/** Numbered steps: its own `<Step>`s, or else the items of the ordered lists it holds. */
+const Steps = defineComponent({
+  parseProps: attributes => attributes,
+  async resolve({ props, children }, context) {
+    const content = children.some(node => named(node, "Step")) ? children : await listedSteps(children, context);
+    return { content: headed(props, content), data: { props } satisfies ContainerData };
+  },
+  renderHtml(result, h) {
+    if (!bodyNodes(result).some(node => named(node, "Step"))) return h.render(bodyNodes(result));
+    let index = 0;
+    return `<div role="list" class="steps not-prose">${bodyNodes(result).map(node => {
+      if (!named(node, "Step")) return h.render([node]);
+      return `<div role="listitem" class="step-item"><div class="step-number">${++index}</div><div class="step-body"><p class="step-title">${renderMarkdownInline(title(node.resolved)?.text ?? "")}</p><div class="step-content">${h.render(bodyNodes(node.resolved))}</div></div></div>`;
+    }).join("")}</div>`;
+  },
+});
+/** Each item of an ordered list as a step: its first line heads it, and the rest is its content. */
+async function listedSteps(children: readonly ContentNode[], context: ComponentBuildContext): Promise<ContentNode[]> {
+  const steps: ContentNode[] = [];
+  for (const node of children) {
+    if (node.kind !== "markdown") { steps.push(node); continue; }
+    for (const token of lexMarkdown(node.value)) {
+      if (token.type !== "list" || !(token as Tokens.List).ordered) { steps.push({ kind: "markdown", value: token.raw }); continue; }
+      for (const item of (token as Tokens.List).items) {
+        const lines = item.raw.split("\n");
+        const heading = lines[0].replace(/^\s*\d+[.)]\s+/, "");
+        const body = dedent(lines.slice(1).join("\n"));
+        steps.push({ kind: "component", name: "Step", id: context.id("step"), definition: Step,
+          resolved: { content: [label(heading), ...await context.parseMarkdown(body)], data: { props: {} } satisfies ContainerData } });
+      }
+    }
+  }
+  return steps;
+}
+
+/**
+ * Panels behind a bar of tabs: a `<Tabs>`'s own `<Tab>`s, each named by its
+ * heading, or a code group's blocks, each named by its title or language.
+ * Content holding no panel reads as written.
+ */
+function drawTabs(result: ResolvedComponent, h: ComponentRenderHelpers, code: boolean): string {
+  const panels = bodyNodes(result).filter(n => code ? n.kind === "code" : named(n, "Tab"));
+  const outside = bodyNodes(result).filter(n => !panels.includes(n));
+  if (!panels.length) return h.render(bodyNodes(result));
+  const id = text((result.data as ContainerData).props.id);
+  // A code group's tabs name its panels, so a panel's code carries no title of its own.
+  const panel = (n: ContentNode) => n.kind === "component" ? h.render(bodyNodes(n.resolved)) : h.render([n.kind === "code" ? { ...n, title: undefined, metadata: n.metadata && { ...n.metadata, title: undefined } } : n]);
+  return `${h.render(outside)}<div class="directive-tabs${code ? " directive-code-group" : ""} not-prose" data-sourcey-tabs><div class="directive-tab-bar" role="tablist">${panels.map((n, i) => {
+    const name = n.kind === "component" ? title(n.resolved)?.text : n.kind === "code" ? n.title || n.language : "";
+    return `<button type="button" role="tab" id="${id}-tab-${i}" aria-controls="${id}-panel-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" class="directive-tab${i === 0 ? " active" : ""}" data-tab-group="${id}" data-tab-index="${i}">${escapeHtml(name || `Example ${i + 1}`)}</button>`;
+  }).join("")}</div>${panels.map((n, i) => `<section role="tabpanel" id="${id}-panel-${i}" aria-labelledby="${id}-tab-${i}" class="directive-tab-panel${i === 0 ? " active" : ""}" data-tab-group="${id}" data-tab-index="${i}">${panel(n)}</section>`).join("")}</div>`;
+}
+const Tab = container(contentAlone);
+const Tabs = container((result, h) => drawTabs(result, h, false));
+/** Code blocks behind tabs: each block it holds is a panel. */
+const CodeGroup = defineComponent({
+  parseProps: attributes => attributes,
+  resolve: ({ props, children }, context) => ({
+    content: headed(props, children.flatMap(node => node.kind !== "markdown" ? [node] : codeChildren(node.value, context.location))),
+    data: { props } satisfies ContainerData,
+  }),
+  renderHtml: (result, h) => drawTabs(result, h, true),
+});
+
+const PageCards = defineComponent({
   parseProps(attributes) {
     if (attributes.section !== undefined && typeof attributes.section !== "string") throw new Error("PageCards section must be a navigation group ID");
     if (attributes.layout !== undefined && attributes.layout !== "cards" && attributes.layout !== "list") throw new Error("PageCards layout must be cards or list");
@@ -213,10 +276,10 @@ export function resolveSectionIndexes(nodes: readonly ContentNode[], navigation:
     if (node.layout === "list") return [{ kind: "markdown", value: `\n\n${list(groups)}\n\n` }];
     const cards: ContentNode[] = groups.flatMap(group => group.items.flatMap(item => {
       if (!isNavGroup(item) && item.documentId === documentId) return [];
-      return [{ kind: "component" as const, name: "Card", id: "", definition: builtins.Card,
+      return [{ kind: "component" as const, name: "Card", id: "", definition: Card,
         resolved: { data: { props: { href: isNavGroup(item) ? "" : item.href ?? "" } } satisfies ContainerData, content: [label(item.label, isNavGroup(item) ? item.href : undefined), ...(isNavGroup(item) ? [{ kind: "markdown" as const, value: list([item]) }] : [])] } }];
     }));
-    return [{ kind: "component", name: "CardGroup", id: "", definition: builtins.CardGroup, resolved: { data: { props: { cols: 2 } } satisfies ContainerData, content: cards } }];
+    return [{ kind: "component", name: "CardGroup", id: "", definition: CardGroup, resolved: { data: { props: { cols: 2 } } satisfies ContainerData, content: cards } }];
   });
 }
 export function sectionIndexDependencies(nodes: readonly ContentNode[], navigation: SiteTab, documentId: string): string {
@@ -238,7 +301,7 @@ async function authoredIcon(value: string, presentation: IconPresentation, conte
 }
 
 /** An icon in a sentence, sized to the text. Its label names what it shows; without one it is decorative and leaves readable output. */
-builtins.Icon = defineComponent({
+const Icon = defineComponent({
   inline: true,
   parseProps(attributes, location) {
     const at = `${location.file}:${location.offset}`;
@@ -255,7 +318,7 @@ builtins.Icon = defineComponent({
   renderHtml: result => result.data as string,
 });
 
-builtins.Badge = defineComponent({
+const Badge = defineComponent({
   inline: true,
   parseProps: attributes => attributes,
   resolve: ({ props, children }) => ({ content: [...(props.text || props.label ? [label(text(props.text ?? props.label))] : []), ...children], data: props }),
@@ -264,7 +327,7 @@ builtins.Badge = defineComponent({
 /** An authored field: a name with its type, constraints and prose, drawn as the reference draws parameters. */
 interface FieldData { id: string; explicit: boolean; name: string; type?: string; required: boolean; deprecated: boolean; default?: JsonValue; min?: number; max?: number }
 const FIELD_ATTRIBUTES = new Set(["id", "name", "type", "required", "deprecated", "default", "min", "max", "anchor"]);
-builtins.Field = defineComponent({
+const Field = defineComponent({
   parseProps(attributes, location) {
     const at = `${location.file}:${location.offset}`;
     // `id` is the component's own identity, which every component receives.
@@ -297,7 +360,7 @@ builtins.Field = defineComponent({
       return rendered.trim() ? h("div", { ...(prose ? { class: "prose prose-gray dark:prose-invert prose-sm" } : {}), dangerouslySetInnerHTML: { __html: rendered } }) : undefined;
     };
     // Child fields nest directly, or in titled groups (an `<Expandable>` per shape a field can take).
-    const groups = result.content.filter(node => node.kind === "component" && node.definition === builtins.Expandable) as ComponentNode[];
+    const groups = result.content.filter(node => node.kind === "component" && node.definition === Expandable) as ComponentNode[];
     const nested = [
       ...(fieldsOf(result.content).length ? [{ content: html(fieldsOf(result.content)) }] : []),
       ...groups.map(group => ({ label: title(group.resolved)?.text, content: html(bodyNodes(group.resolved)) })),
@@ -308,11 +371,10 @@ builtins.Field = defineComponent({
     }));
   },
 });
-type ComponentNode = Extract<ContentNode, { kind: "component" }>;
-const isField = (node: ContentNode): boolean => node.kind === "component" && node.definition === builtins.Field;
+const isField = (node: ContentNode): boolean => node.kind === "component" && node.definition === Field;
 const fieldsOf = (nodes: readonly ContentNode[]) => nodes.filter(isField) as ComponentNode[];
 /** The field's facts in the reference's schema terms, so its row draws type, range and default the same way. */
-function fieldSchema(field: FieldData): import("./types.js").NormalizedSchema | undefined {
+function fieldSchema(field: FieldData): NormalizedSchema | undefined {
   if (field.type === undefined && field.default === undefined && field.min === undefined && field.max === undefined) return undefined;
   return { type: field.type, default: field.default, minimum: field.min, maximum: field.max };
 }
@@ -327,7 +389,7 @@ function fieldMarkdown(node: ComponentNode, audience: Audience, links?: ContentL
   return [`- \`${field.name}\` (${facts.join(", ")})`, description && indent(description), nested && indent(nested)].filter(Boolean).join("\n");
 }
 /** Content only agents read: machine exports carry it, the page and human search never do. */
-builtins.ForAgents = defineComponent({
+const ForAgents = defineComponent({
   parseProps(attributes, location) {
     const unknown = Object.keys(attributes).filter(key => key !== "id");
     if (unknown.length) throw new Error(`ForAgents attribute ${unknown.join(", ")} is not supported at ${location.file}:${location.offset}`);
@@ -336,7 +398,7 @@ builtins.ForAgents = defineComponent({
   resolve: ({ children }) => ({ content: children }),
   renderHtml: () => "",
 });
-const forAgents = (node: ContentNode) => node.kind === "component" && node.definition === builtins.ForAgents;
+const forAgents = (node: ContentNode) => node.kind === "component" && node.definition === ForAgents;
 /** Whether content holds agent-only blocks, so readers' projection differs from machines'. */
 export function hasAgentContent(nodes: readonly ContentNode[]): boolean {
   return nodes.some(node => forAgents(node) || (node.kind === "component" && hasAgentContent(node.resolved.content)));
@@ -354,48 +416,59 @@ export function openingHasComponent(nodes: readonly ContentNode[]): boolean {
   }
   return false;
 }
-builtins.FileTree = defineComponent({
+const FileTree = defineComponent({
   parseProps: attributes => attributes,
   resolve: ({ children }) => ({ content: children }),
   renderHtml: (result, helpers) => `<div class="sourcey-file-tree">${helpers.render(result.content)}</div>`,
 });
-for (const name of ["Video", "Iframe"]) builtins[name] = defineComponent({
-  parseProps(attributes) {
-    if (!safeUrl(text(attributes.src)) && !(name === "Video" && Array.isArray(attributes.sources) && attributes.sources.length)) throw new Error(`${name} requires a safe src or video sources`);
-    if (attributes.sources !== undefined && (!Array.isArray(attributes.sources) || attributes.sources.some(source => !source || typeof source !== "object" || Array.isArray(source) || !safeUrl(text(source.src))))) throw new Error("Video sources require safe src values");
-    return attributes;
-  },
-  async resolve({ props, children }, context) {
-    const src = props.src ? await context.asset(text(props.src)) : undefined;
-    const poster = props.poster ? await context.asset(text(props.poster)) : undefined;
-    const sources = Array.isArray(props.sources) ? await Promise.all(props.sources.map(async value => {
-      const source = value as Record<string, JsonValue>;
-      return { src: await context.asset(text(source.src)), type: text(source.type) };
-    })) : [];
-    return { content: [label(text(props.title) || name, src), ...sources.map(source => label(source.type || "Video", source.src)), ...children], data: { ...props, src, poster, sources } };
-  },
-  renderHtml(result, helpers) {
-    const attributes = result.data as StaticAttributes;
-    // A frame shows a page from the web or this site, never a script or inline document.
-    if (name === "Iframe") return `<iframe loading="lazy" src="${escapeAttr(safeUrl(text(attributes.src), { allowedProtocols: ["http:", "https:"] }) ?? "about:blank")}" title="${escapeAttr(text(attributes.title) || "Embedded content")}" height="${escapeAttr(text(attributes.height) || "400")}" allowfullscreen></iframe>`;
-    const sources = attributes.sources as { src: string; type: string }[];
-    if (!sources.length && /(?:youtube\.com|youtu\.be|vimeo\.com)/i.test(text(attributes.src))) return renderMarkdown(`::video[${text(attributes.src)}]{title="${text(attributes.title).replace(/"/g, "&quot;")}"}`);
-    const flags = ["muted", "loop", "autoplay", "playsinline"].filter(key => attributes[key] === true).join(" ");
-    return `<video controls preload="metadata" ${flags}${attributes.src ? ` src="${escapeAttr(text(attributes.src))}"` : ""}${attributes.poster ? ` poster="${escapeAttr(text(attributes.poster))}"` : ""} aria-label="${escapeAttr(text(attributes.title) || "Video")}">${sources.map(source => `<source src="${escapeAttr(source.src)}"${source.type ? ` type="${escapeAttr(source.type)}"` : ""}>`).join("")}${helpers.render(bodyNodes(result))}</video>`;
-  },
+/**
+ * Media embedded where it is written, its files published as the site's own
+ * assets, drawn by `draw` from its attributes as published. A video may give
+ * its sources in place of one file.
+ */
+function embedded(name: string, sourced: boolean, draw: (media: StaticAttributes, result: ResolvedComponent, helpers: ComponentRenderHelpers) => string): NativeComponentDefinition {
+  return defineComponent({
+    parseProps(attributes) {
+      if (!safeUrl(text(attributes.src)) && !(sourced && Array.isArray(attributes.sources) && attributes.sources.length)) throw new Error(`${name} requires a safe src or video sources`);
+      if (attributes.sources !== undefined && (!Array.isArray(attributes.sources) || attributes.sources.some(source => !source || typeof source !== "object" || Array.isArray(source) || !safeUrl(text(source.src))))) throw new Error("Video sources require safe src values");
+      return attributes;
+    },
+    async resolve({ props, children }, context) {
+      const src = props.src ? await context.asset(text(props.src)) : undefined;
+      const poster = props.poster ? await context.asset(text(props.poster)) : undefined;
+      const sources = Array.isArray(props.sources) ? await Promise.all(props.sources.map(async value => {
+        const source = value as Record<string, JsonValue>;
+        return { src: await context.asset(text(source.src)), type: text(source.type) };
+      })) : [];
+      return { content: [label(text(props.title) || name, src), ...sources.map(source => label(source.type || "Video", source.src)), ...children], data: { ...props, src, poster, sources } };
+    },
+    renderHtml: (result, helpers) => draw(result.data as StaticAttributes, result, helpers),
+  });
+}
+const Video = embedded("Video", true, (media, result, helpers) => {
+  const sources = media.sources as { src: string; type: string }[];
+  if (!sources.length && /(?:youtube\.com|youtu\.be|vimeo\.com)/i.test(text(media.src))) return renderMarkdown(`::video[${text(media.src)}]{title="${text(media.title).replace(/"/g, "&quot;")}"}`);
+  const flags = ["muted", "loop", "autoplay", "playsinline"].filter(key => media[key] === true).join(" ");
+  return `<video controls preload="metadata" ${flags}${media.src ? ` src="${escapeAttr(text(media.src))}"` : ""}${media.poster ? ` poster="${escapeAttr(text(media.poster))}"` : ""} aria-label="${escapeAttr(text(media.title) || "Video")}">${sources.map(source => `<source src="${escapeAttr(source.src)}"${source.type ? ` type="${escapeAttr(source.type)}"` : ""}>`).join("")}${helpers.render(bodyNodes(result))}</video>`;
 });
-builtins.Include = defineComponent({
+// A frame shows a page from the web or this site, never a script or inline document.
+const Iframe = embedded("Iframe", false, media => `<iframe loading="lazy" src="${escapeAttr(safeUrl(text(media.src), { allowedProtocols: ["http:", "https:"] }) ?? "about:blank")}" title="${escapeAttr(text(media.title) || "Embedded content")}" height="${escapeAttr(text(media.height) || "400")}" allowfullscreen></iframe>`);
+
+/** Another file's content, as part of the page that includes it. The parser reads the file, where the chain of files including it is known. */
+const Include = defineComponent({
   parseProps: a => { if (typeof a.src !== "string") throw new Error("Include requires src"); return a; },
-  async resolve({ props }, context) { return { content: await context.parseMarkdown(await context.readText(text(props.src))) }; },
+  resolve: ({ children }) => ({ content: children }),
 });
 
-builtins.Figure = defineComponent({
+/** A figure's picture in each scheme, as published, with its text. */
+interface FigureData { light: ImageVariant[]; dark: ImageVariant[]; alt: string; caption: string; loading: "eager" | "lazy" }
+const Figure = defineComponent({
   parseProps(a) {
     if (typeof a.src !== "string" || typeof a.alt !== "string") throw new Error("Figure requires src and alt");
     if (a.width !== undefined && !(Number(a.width) > 0)) throw new Error("Figure width must be positive");
     return a;
   },
-  async resolve({ props: a, children }, context) {
+  async resolve({ props: a, children }, context): Promise<ResolvedComponent<FigureData>> {
     const transform = { width: a.width ? Number(a.width) : undefined, quality: a.quality ? Number(a.quality) : undefined,
       densities: a.densities as number[] | undefined, formats: a.formats as ("avif"|"webp"|"png")[] | undefined };
     const light = await context.figure(text(a.src), transform);
@@ -404,17 +477,17 @@ builtins.Figure = defineComponent({
   },
   renderHtml({ data }) {
     const { light, dark, alt, caption, loading } = data!;
-    const source = (images: import("./media.js").ImageVariant[], format: string) => images.filter(i => i.format === format).map(i => `${i.src} ${i.width}w`).join(", ");
-    const fallback = light.find((i: import("./media.js").ImageVariant) => i.format === "png") ?? light[0];
+    const source = (images: ImageVariant[], format: string) => images.filter(i => i.format === format).map(i => `${i.src} ${i.width}w`).join(", ");
+    const fallback = light.find(i => i.format === "png") ?? light[0];
     // The image shows at its own width, or the viewport's when narrower; without
     // sizes a browser assumes the full viewport and fetches the 2x file at 1x.
     const sizes = `min(${fallback.width}px, 100vw)`;
-    return `<figure class="sourcey-figure"><picture data-sourcey-picture>${[...new Set(light.map((i: import("./media.js").ImageVariant) => i.format))].map(format => pictureSources(source(light, String(format)), source(dark, String(format)), `image/${format}`, sizes)).join("")}<img src="${fallback.src}" width="${fallback.width}" height="${fallback.height}" alt="${escapeAttr(alt)}" loading="${loading}" decoding="async" /></picture>${caption ? `<figcaption>${renderMarkdownInline(caption)}</figcaption>` : ""}</figure>`;
+    return `<figure class="sourcey-figure"><picture data-sourcey-picture>${[...new Set(light.map(i => i.format))].map(format => pictureSources(source(light, format), source(dark, format), `image/${format}`, sizes)).join("")}<img src="${fallback.src}" width="${fallback.width}" height="${fallback.height}" alt="${escapeAttr(alt)}" loading="${loading}" decoding="async" /></picture>${caption ? `<figcaption>${renderMarkdownInline(caption)}</figcaption>` : ""}</figure>`;
   },
 });
 /** A drawn diagram's light and dark pictures, or why the renderer could not draw it and where it is written. */
 type DiagramData = { light: string; dark: string } | { failure: string; location: SourceLocation; explanation: string };
-builtins.Diagram = defineComponent({
+const Diagram = defineComponent({
   parseProps: a => a,
   async resolve({ children }, context): Promise<ResolvedComponent<DiagramData>> {
     const code = readableContent(children).replace(/^\s*```mermaid\s*\n|\n```\s*$/g, "");
@@ -429,6 +502,13 @@ builtins.Diagram = defineComponent({
   },
   renderHtml: ({ data, content }, helpers) => "failure" in data! ? `<figure class="sourcey-diagram sourcey-diagram-unrendered"><figcaption>${escapeHtml(data.explanation)}</figcaption>${helpers.render(content)}</figure>` : `<figure class="sourcey-diagram"><div class="sourcey-diagram-scroll" tabindex="0" aria-label="Diagram"><picture data-sourcey-picture>${pictureSources(data!.light, data!.dark)}<img src="${data!.light}" alt="Diagram; its source is available below" loading="lazy" /></picture></div><details class="sourcey-diagram-source"><summary>Diagram source</summary>${helpers.render(content)}</details></figure>`,
 });
+
+/** Sourcey's own components, by the name a page writes them by; a site's components of the same name take their place. */
+const builtins: Readonly<Record<string, NativeComponentDefinition>> = {
+  ...Object.fromEntries(Object.keys(CALLOUTS).map(kind => [kind, callout(kind as CalloutKind)])),
+  Tabs, Tab, Steps, Step, CardGroup, Card, AccordionGroup, Accordion, Expandable, CodeGroup,
+  PageCards, Icon, Badge, Field, ForAgents, FileTree, Video, Iframe, Include, Figure, Diagram,
+};
 
 /** Only literals are accepted. Foreign executable expressions must be converted once. */
 export function parseStaticAttributes(source: string, location: SourceLocation): StaticAttributes {
@@ -465,7 +545,6 @@ export function parseStaticAttributes(source: string, location: SourceLocation):
   }
   return result;
 }
-
 
 /**
  * CommonMark indented code, as the native Markdown lexer reads it: each block
@@ -524,6 +603,12 @@ function closingComponent(input: string, start: number, name: string, indented: 
   return undefined;
 }
 
+/** The component each `:::name` directive opens. */
+const DIRECTIVES: ReadonlyMap<string, string> = new Map(Object.entries({
+  note: "Note", warning: "Warning", tip: "Tip", info: "Info", caution: "Caution", danger: "Danger", tabs: "Tabs", tab: "Tab", steps: "Steps",
+  "code-group": "CodeGroup", "card-group": "CardGroup", card: "Card", accordion: "Accordion", expandable: "Expandable",
+}));
+
 function closingDirective(input: string, start: number, marker: string, indented: ReadonlyMap<number, number>): { start: number; end: number } | undefined {
   let depth = 1;
   for (let cursor = start; cursor < input.length;) {
@@ -570,6 +655,14 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
     if (rel.startsWith("..") || isAbsolute(rel)) throw new Error(`Component input outside allowed root: ${file}`);
     return target;
   }
+  /** An included file's content, whole or one region of it: code in the language named, or Markdown parsed as part of this page. */
+  async function included(attrs: StaticAttributes): Promise<ContentNode[]> {
+    const file = await local(text(attrs.src));
+    if (stack.includes(file)) throw new Error(`Include cycle: ${[...stack, file].join(" -> ")}`);
+    let content = await options.input.readText(file, options.dependent);
+    if (attrs.region) content = codeRegion(content, text(attrs.region), file);
+    return attrs.language ? [{ kind: "code", value: content, language: text(attrs.language) }] : parseComponents(content, { ...options, source: file, stack: [...stack, file], normalize: false });
+  }
   const icons = options.context?.icons ?? "heroicons";
   function icon(value: string, presentation: IconPresentation | undefined, offset?: number): string {
     const { source, name } = iconSource(icons, value);
@@ -612,14 +705,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
     if (!definition) throw new Error(`Unknown component <${name}> at ${options.source}:${offset}`);
     const id = context.id(name);
     const props = definition.parseProps({ ...attrs, id }, { file: options.source, offset });
-    if (name === "Include") {
-      const file = await local(text(attrs.src));
-      if (stack.includes(file)) throw new Error(`Include cycle: ${[...stack, file].join(" -> ")}`);
-      let content = await options.input.readText(file, options.dependent);
-      if (attrs.region) content = codeRegion(content, text(attrs.region), file);
-      const nodes = attrs.language ? [{ kind: "code" as const, value: content, language: text(attrs.language) }] : await parseComponents(content, { ...options, source: file, stack: [...stack, file], normalize: false });
-      return { kind: "component", name, id, definition, resolved: { content: nodes } };
-    }
+    if (definition === Include) children = await included(attrs);
     const resolved = await definition.resolve({ props, children }, { ...context, location: { file: options.source, offset }, icon: (name, presentation) => icon(name, presentation, offset) });
     if (!Array.isArray(resolved.content)) throw new Error(`Component ${name} must return semantic content`);
     let client: { entry: string; css: string[] } | undefined;
@@ -659,7 +745,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
         const end = inlineCodeEnd(input, cursor);
         if (end !== undefined) { plain += input.slice(cursor, end); cursor = end; continue; }
       }
-      const alert =(cursor === 0 || input[cursor - 1] === "\n") && input.slice(cursor).match(ALERT);
+      const alert = (cursor === 0 || input[cursor - 1] === "\n") && input.slice(cursor).match(ALERT);
       if (alert) {
         flush(); const callout = alertCallout(alert[1], options.context?.messages ?? english);
         nodes.push(await component(callout.kind, callout.title ? { title: callout.title } : {}, await parse(alertBody(alert[2])), cursor));
@@ -672,8 +758,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
       }
       const directive = (cursor === 0 || input[cursor - 1] === "\n") && input.slice(cursor).match(/^ {0,3}(:{2,})([\w-]+)([^\n]*)\n/);
       if (directive) {
-        const names: Record<string, string> = { note: "Note", warning: "Warning", tip: "Tip", info: "Info", caution: "Caution", danger: "Danger", tabs: "Tabs", tab: "Tab", steps: "Steps", "code-group": "CodeGroup", "card-group": "CardGroup", card: "Card", accordion: "Accordion", expandable: "Expandable" };
-        const name = names[directive[2]];
+        const name = DIRECTIVES.get(directive[2]);
         if (!name) throw new Error(`Unknown directive ${directive[2]} at ${options.source}:${cursor}`);
         const marker = directive[1], after = cursor + directive[0].length;
         const closing = closingDirective(input, after, marker, indented);
@@ -681,7 +766,6 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
         const rawMeta = directive[3].trim();
         const attrs = rawMeta.startsWith("{") ? parseStaticAttributes(rawMeta.slice(1, -1), { file: options.source, offset: cursor }) : rawMeta ? { title: rawMeta.replace(/^\[|\]$/g, "") } : {};
         const children = await parse(dedent(input.slice(after, closing.start)));
-        
         flush(); nodes.push(await component(name, attrs, children, cursor));
         cursor = closing.end; continue;
       }
@@ -777,8 +861,8 @@ export function readableContent(nodes: readonly ContentNode[], audience: Audienc
   const marked = (value: string, linked?: true) => (links && linked ? links.markdown(value) : value);
   return nodes.map(node => {
     if (forAgents(node)) return audience === "agents" ? `\n\n${read((node as ComponentNode).resolved.content)}\n\n` : "";
-    if (node.kind === "component" && node.name === "Steps") {
-      const steps = node.resolved.content.filter((child): child is Extract<ContentNode, { kind: "component" }> => child.kind === "component" && child.name === "Step");
+    if (named(node, "Steps")) {
+      const steps = node.resolved.content.filter(child => named(child, "Step"));
       if (steps.length) return "\n\n" + steps.map((step, index) => `${index + 1}. **${prose(title(step.resolved)?.text ?? "")}**\n\n${read(bodyNodes(step.resolved)).trim().split("\n").map(line => "   " + line).join("\n")}`).join("\n\n") + "\n\n";
     }
     if (node.kind === "component" && isField(node)) return `\n\n${fieldMarkdown(node, audience, links)}\n\n`;
@@ -799,12 +883,12 @@ export function readableContent(nodes: readonly ContentNode[], audience: Audienc
     return `\n\n${read(node.resolved.content)}\n\n`;
   }).join("");
 }
-const renderOptions = new WeakMap<NonNullable<NativeContentContext["messages"]>, MarkdownRenderOptions>();
+const renderOptions = new WeakMap<UiMessages, MarkdownRenderOptions>();
 let builtinDefinitions: ReadonlySet<NativeComponentDefinition> | undefined;
 /** Sourcey's own components, which draw their HTML from escaped and checked values. */
 const isBuiltin = (definition: NativeComponentDefinition) => (builtinDefinitions ??= new Set(Object.values(builtins))).has(definition);
 
-export function renderContent(nodes: readonly ContentNode[], messages?: NativeContentContext["messages"], headingLevel = 1): string {
+export function renderContent(nodes: readonly ContentNode[], messages?: UiMessages, headingLevel = 1): string {
   let options = messages ? renderOptions.get(messages) : PAGE_CONTENT;
   if (messages && !options) { options = { ...PAGE_CONTENT, copyLabel: messages.copyCode }; renderOptions.set(messages, options); }
   // Components learn the level of the heading they sit under, read in document order.
@@ -844,7 +928,7 @@ function assertJson(value: unknown, seen = new WeakSet<object>()): void {
 export function contentDiagnostics(nodes: readonly ContentNode[]): { severity: "warning"; code: "diagram"; file: string; message: string }[] {
   return nodes.flatMap(node => {
     if (node.kind !== "component" || forAgents(node)) return [];
-    const data = node.definition === builtins.Diagram ? node.resolved.data as DiagramData : undefined;
+    const data = node.definition === Diagram ? node.resolved.data as DiagramData : undefined;
     const own = data && "failure" in data ? [{ severity: "warning" as const, code: "diagram" as const, file: data.location.file, message: `${data.location.file} at offset ${data.location.offset}: the diagram could not be drawn (${data.failure}); the page shows its source instead` }] : [];
     return [...own, ...contentDiagnostics(node.resolved.content)];
   });
@@ -854,14 +938,13 @@ export function contentAnchors(nodes: readonly ContentNode[]): string[] {
 }
 /** An accordion's own anchor, as a list of none or one. */
 function accordionAnchor(node: ComponentNode): string[] {
-  const anchor = node.definition === builtins.Accordion ? (node.resolved.data as ContainerData).props.anchor : undefined;
+  const anchor = node.definition === Accordion ? (node.resolved.data as ContainerData).props.anchor : undefined;
   return anchor === undefined ? [] : [text(anchor)];
 }
 export function componentStyles(nodes: readonly ContentNode[]): string[] {
   return [...new Set(nodes.flatMap(node => node.kind === "component" ? [...(node.client?.css ?? []), ...componentStyles(node.resolved.content)] : []))];
 }
 
-/** Resolve heading and field identity once, in document order, before any output is rendered. */
 /** A destination the site resolves: none on the web, in the page, or to mail. */
 const resolvable = (href: string) => !/^(?:https?:\/\/|#|mailto:)/.test(href);
 /** Whether a token holds a link or image the site resolves. */
@@ -871,6 +954,7 @@ function linksIn(token: Token): boolean {
   return found;
 }
 
+/** Resolve heading and field identity once, in document order, before any output is rendered. */
 function normalizeHeadings(nodes: readonly ContentNode[], lex: (node: Extract<ContentNode, { kind: "markdown" }>) => Token[], linked: (token: Token) => boolean): ContentNode[] {
   const pending: { node: { id: string; aliases?: string[] }; automatic: boolean; previousId?: string }[] = [];
   function expand(nodes: readonly ContentNode[]): ContentNode[] {
@@ -918,6 +1002,6 @@ function normalizeHeadings(nodes: readonly ContentNode[], lex: (node: Extract<Co
   return result;
 }
 
-export function contentHeadings(nodes: readonly ContentNode[]): import("../utils/markdown.js").PageHeading[] {
+export function contentHeadings(nodes: readonly ContentNode[]): PageHeading[] {
   return nodes.flatMap(node => forAgents(node) ? [] : node.kind === "component" ? contentHeadings(node.resolved.content) : node.kind === "heading" && (node.level === 2 || node.level === 3) ? [{ level: node.level as 2 | 3, text: headingInfo({ type: "heading", raw: "", depth: node.level, text: node.text, tokens: [] }).text, id: node.id }] : []);
 }
