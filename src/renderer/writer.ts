@@ -181,16 +181,31 @@ export async function openOutput(outputDir: string): Promise<OutputWriter> {
   return { put, commit, abort: discard };
 }
 
-/** Write a whole generation at once; see `openOutput`. */
+/** Writes staged at once while the next artifact is produced. */
+const WRITES_IN_FLIGHT = 16;
+
+/**
+ * Write a generation as its artifacts are produced: each is staged to disk
+ * and let go, with a few writes in flight, and the output changes all at once
+ * when every one is staged. See `openOutput`.
+ */
 export async function writeArtifacts(
   outputDir: string,
-  files: ReadonlyMap<string, ArtifactBody>,
+  artifacts: Iterable<[string, ArtifactBody]> | AsyncIterable<[string, ArtifactBody]>,
 ): Promise<void> {
   const output = await openOutput(outputDir);
+  const writing = new Set<Promise<void>>();
   try {
-    for (const [path, body] of files) await output.put(path, body);
+    for await (const [path, body] of artifacts) {
+      const write: Promise<void> = output.put(path, body).finally(() => writing.delete(write));
+      write.catch(() => {});
+      writing.add(write);
+      if (writing.size >= WRITES_IN_FLIGHT) await Promise.race(writing);
+    }
+    await Promise.all(writing);
     await output.commit();
   } catch (error) {
+    await Promise.allSettled(writing);
     await output.abort();
     throw error;
   }

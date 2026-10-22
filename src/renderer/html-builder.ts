@@ -10,7 +10,7 @@ import { escapeHtml as escapeXml } from "../utils/html.js";
 import { buildAssets } from "./assets.js";
 import type { RenderAssetPaths, RenderOptions, SiteConfig } from "./context.js";
 import { renderPage } from "./static-renderer.js";
-import { openOutput } from "./writer.js";
+import { writeArtifacts } from "./writer.js";
 
 /** Snapshot-local artifacts: unchanged HTML is shared across immutable compilations. */
 export type PageRenderCache = Map<string, { key: string; html: Buffer }>;
@@ -135,7 +135,7 @@ export async function buildSite(
   pages: SitePage[], navigation: SiteNavigation, outputDir: string, site: SiteConfig,
   options: SiteArtifactOptions,
 ): Promise<BuildOutput> {
-  await writeSiteArtifacts(outputDir, siteArtifacts(pages, navigation, site, options));
+  await writeArtifacts(outputDir, siteArtifacts(pages, navigation, site, options));
   return { htmlPath: resolve(outputDir, "index.html"), outputDir: resolve(outputDir) };
 }
 
@@ -147,29 +147,6 @@ export async function renderSiteArtifacts(
   const files = new Map<string, string | Buffer>();
   for await (const [path, body] of siteArtifacts(pages, navigation, site, options)) files.set(path, await artifactBytes(body));
   return files;
-}
-
-/**
- * Write artifacts as they are produced: each is staged to disk and dropped,
- * with a few writes in flight while the next page renders.
- */
-export async function writeSiteArtifacts(outputDir: string, artifacts: AsyncIterable<[string, ArtifactBody]>): Promise<void> {
-  const output = await openOutput(outputDir);
-  const writing = new Set<Promise<void>>();
-  try {
-    for await (const [path, body] of artifacts) {
-      const write: Promise<void> = output.put(path, body).finally(() => writing.delete(write));
-      write.catch(() => {});
-      writing.add(write);
-      if (writing.size >= 16) await Promise.race(writing);
-    }
-    await Promise.all(writing);
-    await output.commit();
-  } catch (error) {
-    await Promise.allSettled(writing);
-    await output.abort();
-    throw error;
-  }
 }
 
 /**
