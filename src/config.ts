@@ -758,14 +758,8 @@ export async function resolveConfigFromRaw(
     titleSeparator: raw.titleSeparator ?? " - ",
     theme,
     logo,
-    favicon:
-      raw.favicon && !raw.favicon.startsWith("http") && !raw.favicon.startsWith("data:")
-        ? resolve(configDir, raw.favicon)
-        : raw.favicon,
-    ogImage:
-      raw.ogImage && !raw.ogImage.startsWith("http") && !raw.ogImage.startsWith("data:")
-        ? resolve(configDir, raw.ogImage)
-        : raw.ogImage,
+    favicon: configFile(raw.favicon, configDir),
+    ogImage: configFile(raw.ogImage, configDir),
     repo: raw.repo,
     editBranch: raw.editBranch,
     editBasePath: raw.editBasePath,
@@ -863,11 +857,14 @@ function resolveTheme(raw: SourceyConfig, configDir: string): ResolvedTheme {
 
 function resolveLogo(logo: SourceyConfig["logo"], readerMark: boolean | undefined, configDir: string): ResolvedConfig["logo"] {
   if (!logo) return undefined;
-  const resolvePath = (p?: string) =>
-    p && !p.startsWith("http") && !p.startsWith("data:") ? resolve(configDir, p) : p;
   const { light, dark, href, mark } = typeof logo === "string" ? { light: logo } : logo;
   // The reader theme's earlier `logoMark` says the same of its logo.
-  return { light: resolvePath(light), dark: resolvePath(dark), href, ...((mark ?? readerMark) ? { mark: true } : {}) };
+  return { light: configFile(light, configDir), dark: configFile(dark, configDir), href, ...((mark ?? readerMark) ? { mark: true } : {}) };
+}
+
+/** A file the config names, from the config's directory; a web or data address stays as written. */
+function configFile(path: string | undefined, configDir: string): string | undefined {
+  return path && !isAbsoluteHttpUrl(path) && !path.startsWith("data:") ? resolve(configDir, path) : path;
 }
 
 function resolveChangelog(raw: SourceyConfig["changelog"]): ResolvedChangelogConfig {

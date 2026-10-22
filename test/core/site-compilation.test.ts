@@ -38,6 +38,19 @@ describe("native compilation", () => {
     } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
   }));
 
+  it("shows a site's own social image on every page, from the config's folder, written and served alike", () => fixture(async root => {
+    await file(root, "guide.md", "# Guide\n\nUseful content.\n");
+    await file(root, "httpdocs/card.png", "card bytes");
+    const config = await resolveConfigFromRaw({ ogImage: "httpdocs/card.png", theme: { fonts: { google: false } }, navigation: { tabs: [{ tab: "Docs", groups: [{ group: "Guide", pages: ["guide"] }] }] } }, root);
+    const site = await buildSourceySite({ config, outputDir: join(root, "out"), copyFromSource: true });
+    await writeSourceySite(site);
+    expect(await readFile(join(root, "out", "_og", "static.png"), "utf8")).toBe("card bytes");
+    const guide = site.pages.find(page => page.identity.document === "guide")!.outputPath;
+    expect(await readFile(join(root, "out", guide), "utf8")).toMatch(/<meta property="og:image" content="[^"]*\/_og\/static\.png"/);
+    const served = await sourceyArtifacts(await buildSourceySite({ config }));
+    expect(served.get("_og/static.png")?.toString()).toBe("card bytes");
+  }));
+
   it("renders system-font pages without third-party font requests in every theme", () => fixture(async root => {
     await file(root, "guide.md", "# Guide\n\nUseful content.\n");
     for (const name of ["default", "minimal", "api-first", "reader"] as const) {

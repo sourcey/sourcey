@@ -108,7 +108,7 @@ export async function buildSourceySite(
   const cache: CompilationCache = {
     pages: new Map(previousCache?.pages),
     searches: publishSearch(config, pages, rowsByContext, extraFiles, previousCache?.searches),
-    cards: options.generateOgImages === false ? undefined : await planCards(pages, config, site, extraFiles),
+    cards: options.generateOgImages === false ? undefined : await planCards(pages, config, site, assembled.cache.reader, extraFiles),
   };
 
   const result: SourceySiteArtifacts = {

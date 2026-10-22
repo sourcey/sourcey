@@ -1,9 +1,9 @@
-import { readFile, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { dirname, extname, isAbsolute, posix, relative, resolve } from "node:path";
 import { load } from "js-yaml";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { convertSwagger } from "./converter.js";
-import type { InputReader } from "./loader.js";
+import { InputReader } from "./loader.js";
 import type { LoadedSpec, OpenApiDocument, ParsedSpec } from "./types.js";
 
 /**
@@ -40,7 +40,7 @@ async function dereferenceSpec(
   const { $RefParser } = await import("@apidevtools/json-schema-ref-parser");
   try {
     const parser = new $RefParser();
-    const resolver = { http: false as const, file: createConfinedFileResolver(loaded, options.input) };
+    const resolver = { http: false as const, file: createConfinedFileResolver(loaded, options.input ?? new InputReader()) };
     const publicDocument = options.publishBundle
       ? ((await new $RefParser().bundle(
           resolveDocumentUri(loaded),
@@ -81,7 +81,7 @@ async function dereferenceSpec(
   }
 }
 
-function createConfinedFileResolver(loaded: LoadedSpec, input?: InputReader):
+function createConfinedFileResolver(loaded: LoadedSpec, input: InputReader):
   | false
   | {
       order: number;
@@ -96,7 +96,7 @@ function createConfinedFileResolver(loaded: LoadedSpec, input?: InputReader):
   const readLocal = async (path: string): Promise<Buffer> => {
     const canonical = await realpath(path);
     if (!isWithinRoot(await realpath(root), canonical)) throw new Error(`External $ref resolves outside the spec directory: ${path}`);
-    const bytes = documents.get(path) ?? (input ? (await input.read(path, loaded.source)).body : await readFile(path));
+    const bytes = documents.get(path) ?? (await input.read(path, loaded.source)).body;
     documents.set(path, bytes);
     return bytes;
   };

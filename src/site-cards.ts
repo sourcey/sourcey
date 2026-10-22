@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import type { ResolvedConfig } from "./config.js";
+import type { InputReader } from "./core/loader.js";
 import { pageMetadata } from "./core/page-metadata.js";
 import type { SitePage } from "./core/site-model.js";
 import { artifactBytes, type ArtifactBody } from "./core/source-file.js";
@@ -17,11 +17,11 @@ export type SiteCards = Map<SitePage, () => Promise<Buffer | undefined>>;
  * site's artifacts are produced, just before its page, so the build never
  * holds every card at once.
  */
-export async function planCards(pages: readonly SitePage[], config: ResolvedConfig, site: SiteConfig, files: Map<string, ArtifactBody>): Promise<SiteCards | undefined> {
+export async function planCards(pages: readonly SitePage[], config: ResolvedConfig, site: SiteConfig, input: InputReader, files: Map<string, ArtifactBody>): Promise<SiteCards | undefined> {
   if (config.ogImage) {
     const remote = /^(?:https?:\/\/|data:)/.test(config.ogImage);
     const image = remote ? config.ogImage : `_og/static${extname(config.ogImage) || ".png"}`;
-    if (!remote) files.set(image, await readFile(config.ogImage));
+    if (!remote) files.set(image, (await input.file(config.ogImage, "site")).body);
     for (const page of pages) page.ogImagePath = image;
     return undefined;
   }
