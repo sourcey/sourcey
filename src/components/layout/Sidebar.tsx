@@ -1,4 +1,5 @@
 import { useContext } from "preact/hooks";
+import { renderToString } from "preact-render-to-string";
 import { Breakable } from "../ui/Breakable.js";
 import { NavigationContext, OptionsContext, PageContext, SiteContext } from "../../renderer/context.js";
 import { changelogNavigation } from "../changelog/navigation.js";
@@ -64,12 +65,32 @@ function NavGroups({ groups, activePageSlug, base }: {
   base: string;
 }) {
   const shown = groups.filter(leadsAnywhere);
-  return <>{shown.map((group, index) => (
-    <div key={group.id ?? group.label} class={index === 0 ? undefined : flows(group) && flows(shown[index - 1]) ? "mt-px" : "mt-6 lg:mt-8"}>
-      <NavGroup group={group} activePageSlug={activePageSlug} base={base} />
-    </div>
-  ))}</>;
+  return <>{shown.map((group, index) => {
+    const spacing = index === 0 ? undefined : flows(group) && flows(shown[index - 1]) ? "mt-px" : "mt-6 lg:mt-8";
+    return holds(group, activePageSlug)
+      ? <div key={group.id ?? group.label} class={spacing}><NavGroup group={group} activePageSlug={activePageSlug} base={base} /></div>
+      : <div key={group.id ?? group.label} class={spacing} dangerouslySetInnerHTML={{ __html: drawnAtRest(group, base) }} />;
+  })}</>;
 }
+
+/** Whether a group draws differently on a page: it holds the page, a section of it, or its own link is the page. */
+function holds(group: SiteNavGroup, activePageSlug: string | null): boolean {
+  return group.id === activePageSlug || group.page === activePageSlug
+    || group.items.some(item => isNavGroup(item) ? holds(item, activePageSlug) : item.id === activePageSlug);
+}
+
+/**
+ * A group as every page that is not in it draws it, drawn once: a site's
+ * navigation is the same on each of its pages but around the current one.
+ */
+function drawnAtRest(group: SiteNavGroup, base: string): string {
+  let drawn = atRest.get(group);
+  if (!drawn) atRest.set(group, drawn = new Map());
+  let html = drawn.get(base);
+  if (html === undefined) drawn.set(base, html = renderToString(<NavGroup group={group} activePageSlug={null} base={base} />));
+  return html;
+}
+const atRest = new WeakMap<SiteNavGroup, Map<string, string>>();
 
 function NavGroup({ group, activePageSlug, base }: {
   group: SiteNavGroup;
