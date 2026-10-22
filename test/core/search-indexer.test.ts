@@ -42,7 +42,7 @@ describe("buildSearchIndex", () => {
     };
 
     const documents = new Map([["api-reference", pages.get("api-reference")!.map(page => ({ page, url: "/api-reference/icy-Application.html" }))]]);
-    const entries = buildSearchIndex(new Map(), documents, navigation);
+    const entries = buildSearchIndex(new Map(), documents, navigation, new Map());
     const member = entries.find((entry) => entry.qualifiedName === "icy::Application::setSinkVolume");
 
     expect(member).toMatchObject({
@@ -83,13 +83,13 @@ describe("buildSearchIndex", () => {
         { label: "Models", items: [item("Pet", "/api/pet/")] },
       ] },
     ] };
-    const entries = buildSearchIndex(new Map([["api", spec]]), documents, navigation, "/", ["faq"], false, targets);
+    const entries = buildSearchIndex(new Map([["api", spec]]), documents, navigation, targets, ["faq"]);
     const opened = entries.filter(entry => entry.start !== undefined).sort((a, b) => a.start! - b.start!);
     expect(opened.map(entry => entry.title)).toEqual(["faq", "a", "community", "b", "c", "d", "Pets API", "List pets", "List stores", "Add a pet"]);
     expect(opened.find(entry => entry.title === "Pets API")).toMatchObject({ url: "/api/", tab: "API", category: "Pages" });
     // Navigation that lists no introduction still opens the reference at the page its tab leads to.
     const authored: SiteNavigation = { ...navigation, tabs: [navigation.tabs[0], { ...navigation.tabs[1], groups: navigation.tabs[1].groups.slice(1) }] };
-    const reference = buildSearchIndex(new Map([["api", spec]]), documents, authored, "/", [], false, targets)
+    const reference = buildSearchIndex(new Map([["api", spec]]), documents, authored, targets)
       .filter(entry => entry.start !== undefined && entry.tab === "API").sort((a, b) => a.start! - b.start!);
     expect(reference.map(entry => entry.title)).toEqual(["Pets API", "List pets", "List stores", "Add a pet"]);
   });

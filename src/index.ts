@@ -3,6 +3,7 @@ import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
 import type { ResolvedConfig } from "./config.js";
 import { loadConfig, configFromSpec } from "./config.js";
 import { buildSourceySite, writeSourceySite } from "./site.js";
+import type { BuildDiagnostics } from "./core/build-diagnostics.js";
 
 // ---------------------------------------------------------------------------
 // Build options
@@ -51,15 +52,9 @@ export interface SiteBuildOptions {
   generateOgImages?: boolean;
 }
 
-export interface SiteBuildResult {
+export interface SiteBuildResult extends BuildDiagnostics {
   outputDir: string;
   pageCount: number;
-  changelogDiagnostics: ChangelogDiagnostic[];
-  godocDiagnostics: import("./core/godoc-loader.js").GodocLoaderDiagnostic[];
-  rustdocDiagnostics: import("./core/rustdoc-loader.js").RustdocLoaderDiagnostic[];
-  overlayDiagnostics: import("./core/overlay.js").OverlayDiagnostic[];
-  contentDiagnostics: import("./core/markdown-loader.js").ContentDiagnostic[];
-  anchorDiagnostics: import("./core/site-model.js").AnchorDiagnostic[];
   /** Publishing checks: the public origin, page summaries, canonical and language links, and link fragments. */
   siteDiagnostics: import("./core/site-diagnostics.js").SiteDiagnostic[];
 }
@@ -96,7 +91,7 @@ export { defineConfig } from "./config.js";
 export type { DiscoveryConfig, DiscoveryResource, ExportsConfig } from "./exports/config.js";
 export type { DocumentationIndex, DocumentationEntry } from "./exports/documents.js";
 export { doxygen, godoc, markdown, mcp, openapi, rustdoc } from "./adapters/index.js";
-export { buildSourceySite, collectSourceyWatchPaths, writeSourceySite } from "./site.js";
+export { buildSourceySite, collectSourceyWatchPaths, updateSourceySite, writeSourceySite } from "./site.js";
 export type { SourceySiteArtifacts, SourceySiteOptions, SourceySiteWriteOptions } from "./site.js";
 
 // Re-export types for consumers
@@ -145,7 +140,7 @@ export type {
 export type { OverlayDiagnostic } from "./core/overlay.js";
 export type { ContentDiagnostic } from "./core/markdown-loader.js";
 export type { AnchorDiagnostic } from "./core/site-model.js";
+export type { BuildDiagnostics } from "./core/build-diagnostics.js";
 
 export { defineComponent } from "./core/markdown-components.js";
 export type { NativeComponentDefinition, ContentNode, ComponentBuildContext, NativeContentContext, ResolvedComponent, StaticAttributes } from "./core/markdown-components.js";
-export { updateSourceySite } from "./site.js";

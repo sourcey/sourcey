@@ -44,6 +44,8 @@ export interface SiteAssembly extends BuildDiagnostics {
   references: Map<string, NormalizedSpec>;
   pageMap: Map<string, SitePage>;
   routes: RouteTable;
+  /** Where the routes publish each reference's overview, operations and models, by its tab. */
+  referenceTargets: Map<string, ReferenceTargets>;
   cache: AssemblyCache;
   extraFiles: Map<string, ArtifactBody>;
 }
@@ -358,7 +360,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   const extraFiles = attachChangelogFeeds(pages, config);
   await attachSiteFiles(extraFiles, pages, tabs, config, reader);
   const contentDiagnostics = [...new Map(pages.flatMap(page => page.currentPage.kind === "markdown" ? page.currentPage.markdown.diagnostics ?? [] : []).map(diagnostic => [JSON.stringify(diagnostic), diagnostic])).values()];
-  return { publicSpecs, siteTabs, references, pageMap, routes, cache, changelogDiagnostics, godocDiagnostics, rustdocDiagnostics, overlayDiagnostics, contentDiagnostics, anchorDiagnostics, extraFiles };
+  return { publicSpecs, siteTabs, references, pageMap, routes, referenceTargets: targetsByTab, cache, changelogDiagnostics, godocDiagnostics, rustdocDiagnostics, overlayDiagnostics, contentDiagnostics, anchorDiagnostics, extraFiles };
 }
 
 /** A page still to draw from its content: its source, and the navigation and document its page lists read. */

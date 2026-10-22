@@ -1,6 +1,4 @@
 import { canonicalInputPath } from "./core/loader.js";
-import { createHash } from "node:crypto";
-import { buildSearchArtifacts } from "./core/search-artifacts.js";
 import { markdownPages } from "./adapters/shared.js";
 import { readFile, access } from "node:fs/promises";
 import { toPublicPath } from "./site-url.js";
@@ -22,13 +20,14 @@ import { collectSiteDiagnostics, type SiteDiagnostic } from "./core/site-diagnos
 import { closeDiagramRenderer } from "./core/diagrams.js";
 import { contentTypeForPath, outputPathFromRequestPath } from "./renderer/static-files.js";
 import { assembleSite } from "./site-assembly.js";
+import { publishSearch, type SearchCache } from "./site-search.js";
 import { buildSiteConfig } from "./site-assets.js";
 import { enforceBuildDiagnostics } from "./core/build-diagnostics.js";
 import { artifactBytes, type ArtifactBody } from "./core/source-file.js";
 
 interface CompilationCache {
   pages: PageRenderCache;
-  searches: Map<string, { key: string } & ReturnType<typeof buildSearchArtifacts>>;
+  searches: SearchCache;
   /** Social cards, drawn as the site's artifacts are produced. */
   cards?: Map<SitePage, () => Promise<Buffer | undefined>>;
 }
@@ -89,7 +88,6 @@ export async function buildSourceySite(
   const outputDir = resolve(options.outputDir ?? "dist");
   const config = options.config ?? (await loadConfig(options.configDir));
   const previousCache = options.previous && compilationCaches.get(options.previous);
-  const cache: CompilationCache = { pages: new Map(previousCache?.pages), searches: new Map() };
 
   const assembled = await assembleSite(config, options.previous?.assembly.cache, options.changedPaths, options.signal, { copyFromSource: options.copyFromSource });
   // Diagrams are drawn as pages load; their renderer's memory goes with it.
@@ -102,16 +100,7 @@ export async function buildSourceySite(
 
   enforceBuildDiagnostics(assembled, options.strictChangelog);
 
-  const docsPagesByTab = searchDocuments(assembled.pageMap.values());
-  const allSearchRows = buildSearchIndex(
-    assembled.references,
-    docsPagesByTab,
-    navigation,
-    config.baseUrl || "/",
-    config.search.featured,
-    config.prettyUrls,
-    new Map(pages.filter(p => p.referenceTargets).map(p => [p.tabSlug, p.referenceTargets!])),
-  );
+  const allSearchRows = buildSearchIndex(assembled.references, searchDocuments(pages), navigation, assembled.referenceTargets, config.search.featured);
   const defaults = pages.filter(p => p.context.isDefaultVersion && p.context.locale === p.context.defaultLocale);
   const defaultUrls = new Set(defaults.map(p => toPublicPath(p.outputPath, config.baseUrl, config.prettyUrls)));
   const searchRows = allSearchRows.filter(row => defaultUrls.has(row.url.split("#")[0]));
@@ -119,38 +108,11 @@ export async function buildSourceySite(
 
   const extraFiles = new Map(assembled.extraFiles);
   for (const [path, body] of exports.files) extraFiles.set(path, body);
-  const contextByUrl = new Map(pages.map(page => [toPublicPath(page.outputPath, config.baseUrl, config.prettyUrls), page.context.key]));
-  const rowsByContext = new Map<string, typeof allSearchRows>();
-  for (const row of allSearchRows) {
-    const key = contextByUrl.get(row.url.split("#")[0]);
-    if (key === undefined) continue;
-    const rows = rowsByContext.get(key) ?? [];
-    rows.push(row); rowsByContext.set(key, rows);
-  }
-  const manifests = new Map<string, string>();
-  for (const context of config.contexts) {
-    const rows = rowsByContext.get(context.key) ?? [];
-    const hash = createHash("sha256");
-    for (const row of rows) hash.update(JSON.stringify(row)).update("\0");
-    const key = hash.digest("hex");
-    let search = previousCache?.searches.get(context.key);
-    if (search?.key !== key) {
-      search = { key, ...buildSearchArtifacts(rows) };
-    }
-    cache.searches.set(context.key, search);
-    for (const [path, body] of search.files) extraFiles.set(path, body);
-    // One address for every build: a page names it, and it names this build's files.
-    const manifest = `_search/context-${createHash("sha256").update(context.key).digest("hex").slice(0,16)}.json`;
-    extraFiles.set(manifest, JSON.stringify(search.entry));
-    manifests.set(context.key, manifest);
-  }
-  const searchSelections = new Map(config.contexts.map(context => [context.key, [...new Set(config.contexts
-    .filter(c => c.locale === context.locale && (c.scope === context.scope ? c.version.id === context.version.id : c.isDefaultVersion))
-    .flatMap(c => manifests.get(c.key) ?? []))]]));
-  for (const page of pages) {
-    page.searchIndexes = searchSelections.get(page.context.key) ?? [];
-  }
-  if (options.generateOgImages !== false) cache.cards = await planOgImages(pages, config, site, extraFiles);
+  const cache: CompilationCache = {
+    pages: new Map(previousCache?.pages),
+    searches: publishSearch(config, pages, allSearchRows, extraFiles, previousCache?.searches),
+    cards: options.generateOgImages === false ? undefined : await planOgImages(pages, config, site, extraFiles),
+  };
 
   const result: SourceySiteArtifacts = {
     config,

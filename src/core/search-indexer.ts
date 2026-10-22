@@ -1,11 +1,7 @@
 import type { MediaTypeContent, NormalizedOperation, NormalizedParameter, NormalizedSchema, NormalizedSpec } from "./types.js";
 import type { ChangelogPage, DocsPage, MarkdownPage } from "./markdown-loader.js";
-import { isMainChangelogPage, type SitePage } from "./site-model.js";
+import { isMainChangelogPage, type ReferenceTargets, type SitePage } from "./site-model.js";
 import { readingOrder, type SiteNavigation } from "./navigation.js";
-import type { PrettyUrls } from "../site-url.js";
-import { toPublicPath } from "../site-url.js";
-import { tabIndexOutputPath } from "../config.js";
-import { operationAnchor, definitionAnchor } from "./reference-identity.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,12 +72,10 @@ export function buildSearchIndex(
   specs: Map<string, NormalizedSpec>,
   pages: Map<string, SearchDocument[]>,
   navigation: SiteNavigation,
-  assetBase = "/",
+  /** Where the routes publish each reference's overview, operations and models, by its tab. */
+  targets: ReadonlyMap<string, ReferenceTargets>,
   featuredSlugs: string[] = [],
-  prettyUrls: PrettyUrls = false,
-  targets?: Map<string, import("./site-model.js").ReferenceTargets>,
 ): SearchEntry[] {
-  const base = assetBase.endsWith("/") ? assetBase : assetBase + "/";
   const featuredSet = new Set(featuredSlugs);
   const entries: SearchEntry[] = [];
   const owners = new Map<SearchEntry, string>();
@@ -95,7 +89,8 @@ export function buildSearchIndex(
   for (const [tabSlug, spec] of specs) {
     const tab = navigation.tabs.find((t) => t.slug === tabSlug);
     const tabLabel = tab?.label ?? tabSlug;
-    const tabBase = toPublicPath(tabIndexOutputPath(tabSlug, prettyUrls), base, prettyUrls);
+    const destinations = targets.get(tabSlug);
+    if (!destinations) throw new Error(`Search: the routes publish no reference for tab ${JSON.stringify(tabSlug)}`);
 
     // The reference's own page, titled as it is: an MCP server's by its tab.
     const mcp = spec.operations.some((op) => op.mcpExtras?.connection);
@@ -103,7 +98,7 @@ export function buildSearchIndex(
       title: mcp ? tabLabel : spec.info.title,
       content: (spec.info.summary ?? spec.info.description ?? "").slice(0, 200),
       searchText: [spec.info.title, spec.info.summary, spec.info.description].filter(Boolean).join(" "),
-      url: targets?.get(tabSlug)?.overview.href ?? tabBase,
+      url: destinations.overview.href,
       tab: tabLabel,
       category: "Pages",
     });
@@ -115,7 +110,7 @@ export function buildSearchIndex(
         title: op.summary ?? `${op.method.toUpperCase()} ${op.path}`,
         content: op.description?.slice(0, 200) ?? "",
         searchText: referenceSearchText(op),
-        url: targets?.get(tabSlug)?.operations[`${op.method.toUpperCase()} ${op.path}`]?.href ?? `${tabBase}#${operationAnchor(op, spec)}`,
+        url: destinations.operations[`${op.method.toUpperCase()} ${op.path}`].href,
         method: op.method,
         path: op.path,
         tab: tabLabel,
@@ -131,7 +126,7 @@ export function buildSearchIndex(
         title: name,
         content: spec.schemas[name].description?.slice(0, 200) ?? "",
         searchText: referenceSearchText(spec.schemas[name]),
-        url: targets?.get(tabSlug)?.schemas[name]?.href ?? `${tabBase}#${definitionAnchor(name, spec)}`,
+        url: destinations.schemas[name].href,
         tab: tabLabel,
         category: "Models",
       });

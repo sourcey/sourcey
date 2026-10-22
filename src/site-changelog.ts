@@ -51,10 +51,7 @@ export function attachChangelogFeeds(
   if (!config.changelog.feed) return extraFiles;
 
   const changelogPages = pages.filter(isMainChangelogPage);
-  const globalFeedLinks =
-    changelogPages.length === 1
-      ? createFeedLinks("feed.xml", "feed.rss", changelogPages[0].currentPage.changelog.title)
-      : null;
+  const single = changelogPages.length === 1;
 
   for (const page of changelogPages) {
     const changelog = page.currentPage.changelog;
@@ -71,14 +68,8 @@ export function attachChangelogFeeds(
       return `${toPublicUrl(page.outputPath, config.siteUrl, config.baseUrl, config.prettyUrls)}#${version.id}`;
     };
 
-    const atomPath =
-      globalFeedLinks && changelogPages.length === 1
-        ? "feed.xml"
-        : tabPath(page.tabSlug, `${changelog.slug}/feed.xml`);
-    const rssPath =
-      globalFeedLinks && changelogPages.length === 1
-        ? "feed.rss"
-        : tabPath(page.tabSlug, `${changelog.slug}/feed.rss`);
+    const atomPath = single ? "feed.xml" : tabPath(page.tabSlug, `${changelog.slug}/feed.xml`);
+    const rssPath = single ? "feed.rss" : tabPath(page.tabSlug, `${changelog.slug}/feed.rss`);
 
     const feedConfig = config.changelog.feed || undefined;
     const feeds = generateChangelogFeeds(changelog, {
@@ -94,24 +85,13 @@ export function attachChangelogFeeds(
     extraFiles.set(atomPath, feeds.atom);
     extraFiles.set(rssPath, feeds.rss);
 
+    // The changelog's pages name its feeds, its releases' pages among them; with one changelog, every page does.
     const feedLinks = createFeedLinks(atomPath, rssPath, changelog.title);
-    page.alternateLinks = feedLinks;
-
     for (const candidate of pages) {
-      if (candidate.currentPage.kind !== "changelog") continue;
-      if (candidate.currentPage.changelog.sourcePath !== changelog.sourcePath) continue;
-      candidate.alternateLinks = feedLinks;
+      if (candidate.currentPage.kind === "changelog" && candidate.currentPage.changelog.sourcePath === changelog.sourcePath) candidate.alternateLinks = feedLinks;
+      else if (single && !candidate.alternateLinks?.length) candidate.alternateLinks = feedLinks;
     }
   }
-
-  if (globalFeedLinks) {
-    for (const page of pages) {
-      if (!page.alternateLinks?.length) {
-        page.alternateLinks = globalFeedLinks;
-      }
-    }
-  }
-
   return extraFiles;
 }
 
