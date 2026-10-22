@@ -11,7 +11,7 @@ import { parseSpec } from "./core/parser.js";
 import { normalizeSpec } from "./core/normalizer.js";
 import { normalizeMcpSpec } from "./core/mcp-normalizer.js";
 import { shareReferenceSnapshot } from "./core/reference-snapshot.js";
-import { docsExport, drawDocsSource, loadDocsSource, slugFromPath, type ContentDiagnostic, type LoadDocsPageOptions, type MarkdownSource } from "./core/markdown-loader.js";
+import { docsExport, drawDocsSource, loadDocsSource, outlineDocsSource, slugFromPath, type ContentDiagnostic, type LoadDocsPageOptions, type MarkdownSource } from "./core/markdown-loader.js";
 import { loadDoxygenTab } from "./core/doxygen-loader.js";
 import { loadGodocTab, type GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import { loadRustdocTab, type RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
@@ -45,9 +45,9 @@ import type { ArtifactBody } from "./core/source-file.js";
 export interface AssemblyCache {
   reader: InputReader;
   documents: Map<string, DocsSource>;
-  renderedDocuments: Map<string, DocsPage>;
   references: Map<string, { key: string; spec: NormalizedSpec; publicDocument?: Record<string, unknown>; diagnostics?: OverlayDiagnostic[] }>;
-  linkedDocuments: Map<string, { source: DocsPage; key: string; page: DocsPage }>;
+  /** Each page as drawn and linked, by output path, with the source and the routes it was drawn from. */
+  pages: Map<string, { source: DocsSource | DocsPage; key: string; page: DocsPage }>;
 }
 export interface SiteAssembly {
   publicSpecs: Map<string, Record<string, unknown>>;
@@ -67,7 +67,7 @@ export interface SiteAssembly {
 
 export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCache, changed: string[] = [], signal?: AbortSignal, reading: InputReaderOptions = {}): Promise<SiteAssembly> {
   const reader = previous?.reader.fork(changed, signal) ?? new InputReader(signal, reading);
-  const cache: AssemblyCache = { reader, documents: new Map(), renderedDocuments: new Map(), references: new Map(), linkedDocuments: new Map() };
+  const cache: AssemblyCache = { reader, documents: new Map(), references: new Map(), pages: new Map() };
   const publicSpecs = new Map<string, Record<string, unknown>>();
   const references = new Map<string, NormalizedSpec>();
   const pageMap = new Map<string, SitePage>();
@@ -78,15 +78,11 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   const overlayDiagnostics: OverlayDiagnostic[] = [];
   const anchorDiagnostics: AnchorDiagnostic[] = [];
   const tabs = config.contexts.flatMap(context => context.tabs);
-  const pendingDocuments: { source: DocsSource; sourceKey: string; renderKey: string; page: SitePage; navigation: SiteTab; document: string }[] = [];
+  // A page drawn from content is outlined as it is added and drawn once the site's routes and
+  // navigation are compiled, so its HTML and export are written with their final links.
+  const drafts: PageDrafts = new Map();
   const referenceRedirects = new Map<string, Redirect>();
   const sectionRenders: { page: MarkdownPage; content: () => string }[] = [];
-  // A page is drawn as soon as its navigation is known; its Markdown export is written once the site's routes resolve its links.
-  const exportsOf: PendingExports = new Map();
-  function draw(source: DocsSource, navigation: SiteTab | undefined, document: string): DocsPage {
-    const drawn = drawDocsSource(source, navigation, document);
-    return drawn.kind === "changelog" ? drawn : { ...drawn, markdown: "" };
-  }
   function localizeNavigation(nav: SiteTab, context: ResolvedSiteContext): void {
     const messages = context.localeConfig.messages;
     nav.label = messages?.navigation?.[nav.label] ?? nav.label;
@@ -118,13 +114,13 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
         if (source.kind !== "markdown" || source.draft) continue;
         if (source.layout === "doc") throw new Error(`${source.sourcePath}: a site page is drawn as page or blank, not doc`);
         const sitePage: MarkdownSource = { ...source, layout: source.layout ?? "page" };
-        const markdown = draw(sitePage, undefined, sitePage.slug) as MarkdownPage;
-        exportsOf.set(markdown, { source: sitePage, document: sitePage.slug });
+        const markdown = outlineDocsSource(sitePage) as MarkdownPage;
         const page: SitePage = { outputPath: status ? statusPath : pageOutputPath(context.localePath, markdown.slug, config.prettyUrls), currentPage: { kind: "markdown", markdown },
           tabSlug: context.localePath ? `${context.localePath}/${SITE_PAGES}` : SITE_PAGES, pageSlug: markdown.slug, identity: { tab: SITE_PAGES, kind: "markdown", document: slug },
           context, contentLocale, source: file, ...(status ? { status: 404 as const } : {}) };
         if (pageMap.has(identityKey(page))) throw new Error(`Duplicate document: ${identityKey(page)}`);
         pageMap.set(identityKey(page), page);
+        drafts.set(page, { source: sitePage, document: sitePage.slug });
       }
     }
   }
@@ -227,8 +223,6 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       for (const [id, page] of result.pages) add(context, tab, { kind: "markdown", markdown: page }, id, page.sourcePath);
       siteTabs.push(tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : result.navTab); continue;
     }
-    const sources = new Map<string, DocsSource>();
-    const sourceKeys = new Map<string, string>();
     // A tab's pages load together, so one page's media and diagram work overlaps another's
     // (the heavy-job budget bounds it); they are kept in navigation order, first listing wins.
     const listed = new Set<string>();
@@ -243,29 +237,19 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       }
       return { rp, key, source };
     }));
-    for (const { rp, key, source } of loaded) {
-      cache.documents.set(key, source);
-      if (source.kind === "markdown" && source.draft) continue;
-      sources.set(rp.slug, source); sourceKeys.set(rp.slug, key);
-    }
+    for (const { key, source } of loaded) cache.documents.set(key, source);
+    const published = loaded.filter(({ source }) => source.kind !== "markdown" || !source.draft);
+    const sources = new Map(published.map(({ rp, source }) => [rp.slug, source]));
     const navTab = tab.navigation ? buildAuthoredNavigation(tab, tab.navigation) : buildNavFromPages(tab, sources, config.prettyUrls, (source, reference) => {
       const documentId = source.id ?? slugFromPath(reference, tab.source.kind === "markdown" ? tab.source.slugs : "normalized");
       return toPublicUrl(outputPathFor(tab, documentId, source.slug), undefined, config.baseUrl, config.prettyUrls);
     }, context.localeConfig.messages?.navigation);
-    // Resolve navigation-derived content only after every page's actual metadata is known.
-    for (const rp of markdownPages(tab.source.groups)) {
-      const source = sources.get(rp.slug);
-      if (!source || !sourceKeys.has(rp.slug)) continue;
-      const documentId = source.kind === "markdown" ? source.id ?? slugFromPath(rp.slug, tab.source.slugs) : slugFromPath(rp.slug, tab.source.slugs);
-      const dependency = source.kind === "markdown" ? sectionIndexDependencies(source.nodes, navTab, documentId) : "";
-      const key = JSON.stringify([sourceKeys.get(rp.slug), dependency]);
-      let rendered = previous?.documents.get(sourceKeys.get(rp.slug)!) === source ? previous.renderedDocuments.get(key) : undefined;
-      if (!rendered) rendered = draw(source, navTab, documentId);
-      const page = rendered;
+    for (const { rp, source } of published) {
+      const documentId = source.kind === "markdown" ? source.id ?? slugFromPath(rp.slug, slugs) : slugFromPath(rp.slug, slugs);
+      const page = outlineDocsSource(source);
       if (page.kind === "changelog") changelogDiagnostics.push(...page.changelog.diagnostics);
       const record = add(context, tab, page.kind === "markdown" ? { kind: "markdown", markdown: page } : { kind: "changelog", changelog: page }, documentId, rp.file, rp.contentLocale ?? context.locale);
-      pendingDocuments.push({ source, sourceKey: sourceKeys.get(rp.slug)!, renderKey: key, page: record, navigation: navTab, document: documentId });
-      sourceKeys.delete(rp.slug);
+      drafts.set(record, { source, navigation: navTab, document: documentId });
     }
     siteTabs.push(navTab);
   }
@@ -335,20 +319,6 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   const root = toPublicPath("index.html", config.baseUrl, config.prettyUrls);
   if (!config.host && home && !routes.match(root) && !routes.redirectFor(root)) routes.addRedirects({ [root]: { to: joinHref(normalizeBaseUrl(config.baseUrl) || "/", home.href), status: 302 } });
   for (const { page, content } of sectionRenders) { const body = content(); page.markdown = `# ${page.title}\n\n${body}\n`; page.html = renderMarkdown(body); }
-  for (const pending of pendingDocuments) {
-    const { source, sourceKey, page, navigation, document } = pending;
-    const dependency = source.kind === "markdown" ? sectionIndexDependencies(source.nodes, navigation, document) : "";
-    const key = JSON.stringify([sourceKey, dependency]);
-    let rendered = previous?.documents.get(sourceKey) === source ? previous.renderedDocuments.get(key) : undefined;
-    if (!rendered) rendered = key === pending.renderKey ? (page.currentPage.kind === "markdown" ? page.currentPage.markdown : page.currentPage.kind === "changelog" ? page.currentPage.changelog : undefined) : undefined;
-    rendered ??= draw(source, navigation, document);
-    if (rendered.kind === "markdown") exportsOf.set(rendered, { source: source as MarkdownSource, navigation, document });
-    const anchors = rendered.kind === "markdown" ? rendered.anchors ?? rendered.headings.map(heading => heading.id) : rendered.headings.map(heading => heading.id);
-    const compiled = routes.byKey.get(identityKey(page))!;
-    if (new Set(anchors).size !== compiled.anchors.size || anchors.some(anchor => !compiled.anchors.has(anchor))) throw new Error(`Navigation-derived content changed route anchors: ${page.outputPath}`);
-    page.currentPage = rendered.kind === "markdown" ? { kind: "markdown", markdown: rendered } : { kind: "changelog", changelog: rendered };
-    cache.renderedDocuments.set(key, rendered);
-  }
   for (const page of pages) if (page.currentPage.kind === "not-found" && home) page.currentPage.homeHref = home.href;
   const navigationByContext = new Map<string, ReturnType<typeof buildSiteNavigation>>();
   for (const page of pages) {
@@ -389,12 +359,12 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     }
     page.navigation = nav;
   }
-  // Links are projected from cloned semantic pages, never the cached source. A
-  // page names operations in the references its navigation can reach.
+  // Pages are drawn, and linked, one language and version at a time. A page
+  // names operations in the references its navigation can reach.
   for (const context of config.contexts) {
     const members = config.contexts.filter(c => c.locale === context.locale && (c.scope === context.scope ? c.version.id === context.version.id : c.isDefaultVersion));
     const linked = members.flatMap(member => member.tabs).flatMap(tab => targetsByTab.has(tab.slug) ? [{ id: tab.id, targets: targetsByTab.get(tab.slug)! }] : []);
-    resolveInternalLinks(pages.filter(p => p.context.key === context.key), config, cache.linkedDocuments, previous?.linkedDocuments, linked, exportsOf);
+    drawPages(pages.filter(p => p.context.key === context.key), config, routes, drafts, cache.pages, previous?.pages, linked);
   }
   const extraFiles = attachChangelogFeeds(pages, config);
   const emittedConsoles = new Set<string>();
@@ -597,16 +567,20 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
   };
 }
 
-/** The pages drawn from content whose Markdown export is still to write, and what it is written from. */
-type PendingExports = Map<MarkdownPage, { source: MarkdownSource; navigation?: SiteTab; document: string }>;
+/** A page still to draw from its content: its source, and the navigation and document its page lists read. */
+interface PageDraft { source: DocsSource; navigation?: SiteTab; document: string }
+type PageDrafts = Map<SitePage, PageDraft>;
 
 /**
- * Resolve each page's links against the site's routes: a page drawn from
- * content has its Markdown export written now, resolving only what its
- * content marked as links; HTML and an adapter's text are rewritten.
+ * Draw one language and version's pages against the site's routes. A page
+ * from content is drawn now, its HTML, summary and Markdown export linking
+ * where the routes publish each page; its export resolves only what its
+ * content marked as links. A page an adapter drew has its HTML and text
+ * relinked. A page whose source and routes are the previous build's is that
+ * build's page.
  */
-export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig,
-  cache?: AssemblyCache["linkedDocuments"], previous?: AssemblyCache["linkedDocuments"], references: readonly LinkedReference[] = [], exportsOf: PendingExports = new Map()): void {
+function drawPages(pages: SitePage[], config: ResolvedConfig, routes: RouteTable, drafts: ReadonlyMap<SitePage, PageDraft>,
+  cache: AssemblyCache["pages"], previous: AssemblyCache["pages"] | undefined, references: readonly LinkedReference[]): void {
   const pathMap = new Map<string, string>();
   addSourceAssetAliases(pathMap, config.contexts.flatMap(c => c.tabs), config.configDir);
   for (const page of pages) {
@@ -632,55 +606,59 @@ export function resolveInternalLinks(pages: SitePage[], config: ResolvedConfig,
   const repoBase = config.repo?.replace(/\/$/, "");
   const linkDigest = createHash("sha256").update(JSON.stringify([[...pathMap], config.baseUrl, config.prettyUrls, references])).digest("hex");
   for (const page of pages) {
-    const docsSourcePath = getDocsSourcePath(page);
-    const drawn = page.currentPage.kind === "markdown" ? exportsOf.get(page.currentPage.markdown) : undefined;
-    if (!docsSourcePath) {
-      // A page with no source of its own names nothing to resolve: its export is its content as written.
-      if (drawn && page.currentPage.kind === "markdown") page.currentPage = { kind: "markdown", markdown: { ...page.currentPage.markdown, ...docsExport(drawn.source, drawn.navigation, drawn.document) } };
-      continue;
-    }
+    const draft = drafts.get(page);
+    const source = draft?.source ?? (page.currentPage.kind === "markdown" ? page.currentPage.markdown : page.currentPage.kind === "changelog" ? page.currentPage.changelog : undefined);
+    if (!source) continue;
+    const sourcePath = getDocsSourcePath(page);
+    // A page with no source of its own, such as a long section's index, links as it was written.
+    if (!sourcePath && !draft) continue;
     const branch = page.context.version.revision ?? config.editBranch;
     const sourceBase = repoBase && branch ? { href: `${repoBase}/tree/${branch}`, root: page.context.version.revision ? page.context.version.content : undefined } : undefined;
-    const source = page.currentPage.kind === "markdown" ? page.currentPage.markdown : page.currentPage.kind === "changelog" ? page.currentPage.changelog : undefined;
-    if (!source) continue;
-    const key = JSON.stringify([linkDigest, sourceBase]);
-    const scope: LinkScope = { outputPath: page.outputPath, sourcePath: docsSourcePath, pathMap, sourceBase, links: config, references, root: config.baseUrl || "/" };
+    const scope: LinkScope | undefined = sourcePath ? { outputPath: page.outputPath, sourcePath, pathMap, sourceBase, links: config, references, root: config.baseUrl || "/" } : undefined;
+    // A page list's content follows the navigation it lists.
+    const lists = draft?.navigation && draft.source.kind === "markdown" ? sectionIndexDependencies(draft.source.nodes, draft.navigation, draft.document) : "";
+    const key = JSON.stringify([linkDigest, sourceBase, lists]);
     const cached = previous?.get(page.outputPath);
-    const projected = cached?.source === source && cached.key === key ? cached.page : undefined;
-    const document = projected ?? (source.kind === "markdown" ? { ...source } : structuredClone(source));
+    const document = cached?.source === source && cached.key === key ? cached.page
+      : draft ? drawDraft(draft, scope, routes.byKey.get(identityKey(page))!.anchors, page.outputPath)
+      : relinked(source as DocsPage, scope!);
     page.currentPage = document.kind === "markdown" ? { kind: "markdown", markdown: document } : { kind: "changelog", changelog: document };
-    cache?.set(page.outputPath, { source, key, page: document });
-    if (projected) continue;
+    cache.set(page.outputPath, { source, key, page: document });
+  }
+}
 
-    if (page.currentPage.kind === "markdown") {
-      const markdown = page.currentPage.markdown;
-      if (drawn) Object.assign(markdown, docsExport(drawn.source, drawn.navigation, drawn.document, pageLinks(scope, drawn.source.definitions)));
-      else {
-        // A page an adapter drew, such as Doxygen's, holds its export as text.
-        markdown.markdown = rewriteMarkdownLinks(markdown.markdown, scope);
-        if (markdown.readerMarkdown !== undefined) markdown.readerMarkdown = rewriteMarkdownLinks(markdown.readerMarkdown, scope);
-      }
-      markdown.description = rewriteMarkdownLinks(markdown.description, scope);
-      markdown.html = rewriteHtmlLinks(markdown.html, scope);
-      continue;
-    }
+/** A page drawn from its content, its links resolved where it has a source to resolve them from. */
+function drawDraft({ source, navigation, document }: PageDraft, scope: LinkScope | undefined, anchors: ReadonlySet<string>, outputPath: string): DocsPage {
+  const drawn = drawDocsSource(source, navigation, document);
+  if (drawn.kind === "changelog") return scope ? relinked(drawn, scope) : drawn;
+  // Its routes were compiled from its outline; what its page lists draw must not move them.
+  const ids = drawn.anchors ?? drawn.headings.map(heading => heading.id);
+  if (new Set(ids).size !== anchors.size || ids.some(anchor => !anchors.has(anchor))) throw new Error(`Navigation-derived content changed route anchors: ${outputPath}`);
+  const markdown = source as MarkdownSource;
+  if (!scope) return { ...drawn, ...docsExport(markdown, navigation, document) };
+  return { ...drawn, ...docsExport(markdown, navigation, document, pageLinks(scope, markdown.definitions)),
+    description: rewriteMarkdownLinks(drawn.description, scope), html: rewriteHtmlLinks(drawn.html, scope) };
+}
 
-    if (page.currentPage.kind !== "changelog") continue;
-
-    const changelog = page.currentPage.changelog;
-    for (const version of changelog.changelog.versions) {
-      if (version.summary) {
-        version.summary = rewriteMarkdownLinks(version.summary, scope);
-      }
-
-      for (const section of version.sections) {
-        for (const entry of section.entries) {
-          entry.html = rewriteHtmlLinks(entry.html, scope);
-          entry.links = entry.links.map((link) => ({ ...link, href: resolveInternalHref(link.href, scope) ?? link.href }));
-        }
+/** A page drawn elsewhere, an adapter's or a changelog's, with its links resolved; the drawn page is left as it was. */
+function relinked(source: DocsPage, scope: LinkScope): DocsPage {
+  if (source.kind === "markdown") {
+    // A page an adapter drew, such as Doxygen's, holds its export as text.
+    return { ...source, markdown: rewriteMarkdownLinks(source.markdown, scope),
+      ...(source.readerMarkdown !== undefined && { readerMarkdown: rewriteMarkdownLinks(source.readerMarkdown, scope) }),
+      description: rewriteMarkdownLinks(source.description, scope), html: rewriteHtmlLinks(source.html, scope) };
+  }
+  const changelog = structuredClone(source);
+  for (const version of changelog.changelog.versions) {
+    if (version.summary) version.summary = rewriteMarkdownLinks(version.summary, scope);
+    for (const section of version.sections) {
+      for (const entry of section.entries) {
+        entry.html = rewriteHtmlLinks(entry.html, scope);
+        entry.links = entry.links.map((link) => ({ ...link, href: resolveInternalHref(link.href, scope) ?? link.href }));
       }
     }
   }
+  return changelog;
 }
 
 function attachChangelogFeeds(

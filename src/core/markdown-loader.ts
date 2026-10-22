@@ -284,6 +284,23 @@ async function loadMarkdownSourceFromBody(
 export type DrawnDocsPage = Omit<MarkdownPage, "markdown" | "readerMarkdown"> | ChangelogPage;
 
 /**
+ * A page as the site's routes and navigation know it before it is drawn: its
+ * title, summary, headings and anchors, read from its content. It is drawn
+ * once those are compiled, so its HTML and export carry their final links.
+ */
+export function outlineDocsSource(source: DocsSource): DocsPage {
+  if (source.kind === "changelog") return source;
+  const { nodes, metadata } = sourceParts(source);
+  return { ...metadata, html: "", markdown: "", headings: contentHeadings(nodes), anchors: contentAnchors(nodes) };
+}
+
+/** A source's content, how it is drawn, and the rest: what the page says of itself. */
+function sourceParts(source: MarkdownSource) {
+  const { nodes, explicitDescription, messages, smartypants, definitions, ...metadata } = source;
+  return { nodes, explicitDescription, messages, smartypants, definitions, metadata };
+}
+
+/**
  * A page and its Markdown export, drawn from its source, with the export's
  * links as written. A site draws the page with `drawDocsSource` and writes
  * the export with `docsExport` once its routes resolve the links.
@@ -296,9 +313,7 @@ export function renderDocsSource(source: DocsSource, navigation?: import("./navi
 /** A page's HTML, and its title, headings, anchors, styles and diagnostics as its content gives them. */
 export function drawDocsSource(source: DocsSource, navigation?: import("./navigation.js").SiteTab, documentId = source.slug): DrawnDocsPage {
   if (source.kind === "changelog") return source;
-  const { nodes: sourceNodes, explicitDescription, messages, smartypants: smart, ...metadata } = source;
-  // The export reads the page's link definitions from its source.
-  delete metadata.definitions;
+  const { nodes: sourceNodes, explicitDescription, messages, smartypants: smart, metadata } = sourceParts(source);
   const nodes = resolveSectionIndexes(sourceNodes, navigation, documentId);
   let html: string;
   // Content that cannot render, such as a code fence's unknown metadata, names its page.
