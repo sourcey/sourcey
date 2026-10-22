@@ -13,7 +13,7 @@ import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, 
 import { iconDrawing, iconSource, iconSvg, isImageIcon, type IconPresentation } from "../utils/icons.js";
 import { ALERT, ALERT_TYPE, CALLOUTS, alertBody, alertCallout, isCallout, renderCallout, type CalloutKind } from "../utils/callouts.js";
 import type { IconSet } from "../config.js";
-import { english, type UiMessages } from "./messages.js";
+import type { UiMessages } from "./messages.js";
 import { h } from "preact";
 import { renderToString } from "preact-render-to-string";
 import { FieldRow } from "../components/schema/FieldRow.js";
@@ -58,7 +58,8 @@ export interface NativeContentContext {
   icons: IconSet;
 }
 export interface ComponentBuildContext {
-  context?: Readonly<NativeContentContext>;
+  /** The language and version the content is read in. */
+  context: Readonly<NativeContentContext>;
   /** The icon set this page draws from. */
   icons: IconSet;
   /** Where the component being resolved is written. */
@@ -93,7 +94,7 @@ interface ParseOptions {
   /** Filled with the page's reference link definitions, as a page-wide lexing reads them. */
   definitions?: Links;
   normalize?: false;
-  context?: NativeContentContext;
+  context: NativeContentContext;
   source: string; root: string; input: InputReader; baseUrl?: string;
   components?: Record<string, NativeComponentDefinition>;
   stack?: string[];
@@ -137,7 +138,7 @@ function callout(kind: CalloutKind): NativeComponentDefinition {
   return defineComponent({
     parseProps: attributes => attributes,
     resolve: ({ props, children }, context) => ({
-      content: headed(props, children, props.title ?? props.label ?? context.context?.messages[CALLOUTS[kind].label] ?? kind),
+      content: headed(props, children, props.title ?? props.label ?? context.context.messages[CALLOUTS[kind].label]),
       data: { props, icons: context.icons } satisfies ContainerData,
     }),
     renderHtml: (result, h) => renderCallout(kind, { title: renderMarkdownInline(title(result)?.text || kind), content: h.render(bodyNodes(result)), icons: (result.data as ContainerData).icons! }),
@@ -497,7 +498,7 @@ const Diagram = defineComponent({
     } catch (error) {
       // A type the renderer does not draw, or invalid syntax: the source stays, without a picture claiming otherwise.
       if ((error as Error).name !== "DiagramSourceError") throw error;
-      return { content, data: { failure: (error as Error).message, location: context.location, explanation: (context.context?.messages ?? english).diagramUnrendered } };
+      return { content, data: { failure: (error as Error).message, location: context.location, explanation: context.context.messages.diagramUnrendered } };
     }
   },
   renderHtml: ({ data, content }, helpers) => "failure" in data! ? `<figure class="sourcey-diagram sourcey-diagram-unrendered"><figcaption>${escapeHtml(data.explanation)}</figcaption>${helpers.render(content)}</figure>` : `<figure class="sourcey-diagram"><div class="sourcey-diagram-scroll" tabindex="0" aria-label="Diagram"><picture data-sourcey-picture>${pictureSources(data!.light, data!.dark)}<img src="${data!.light}" alt="Diagram; its source is available below" loading="lazy" /></picture></div><details class="sourcey-diagram-source"><summary>Diagram source</summary>${helpers.render(content)}</details></figure>`,
@@ -663,7 +664,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
     if (attrs.region) content = codeRegion(content, text(attrs.region), file);
     return attrs.language ? [{ kind: "code", value: content, language: text(attrs.language) }] : parseComponents(content, { ...options, source: file, stack: [...stack, file], normalize: false });
   }
-  const icons = options.context?.icons ?? "heroicons";
+  const icons = options.context.icons;
   function icon(value: string, presentation: IconPresentation | undefined, offset?: number): string {
     const { source, name } = iconSource(icons, value);
     const drawing = iconDrawing(source, name);
@@ -747,7 +748,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
       }
       const alert = (cursor === 0 || input[cursor - 1] === "\n") && input.slice(cursor).match(ALERT);
       if (alert) {
-        flush(); const callout = alertCallout(alert[1], options.context?.messages ?? english);
+        flush(); const callout = alertCallout(alert[1], options.context.messages);
         nodes.push(await component(callout.kind, callout.title ? { title: callout.title } : {}, await parse(alertBody(alert[2])), cursor));
         cursor += alert[0].length; continue;
       }
@@ -888,9 +889,9 @@ let builtinDefinitions: ReadonlySet<NativeComponentDefinition> | undefined;
 /** Sourcey's own components, which draw their HTML from escaped and checked values. */
 const isBuiltin = (definition: NativeComponentDefinition) => (builtinDefinitions ??= new Set(Object.values(builtins))).has(definition);
 
-export function renderContent(nodes: readonly ContentNode[], messages?: UiMessages, headingLevel = 1): string {
-  let options = messages ? renderOptions.get(messages) : PAGE_CONTENT;
-  if (messages && !options) { options = { ...PAGE_CONTENT, copyLabel: messages.copyCode }; renderOptions.set(messages, options); }
+export function renderContent(nodes: readonly ContentNode[], messages: UiMessages, headingLevel = 1): string {
+  let options = renderOptions.get(messages);
+  if (!options) { options = { ...PAGE_CONTENT, copyLabel: messages.copyCode }; renderOptions.set(messages, options); }
   // Components learn the level of the heading they sit under, read in document order.
   let level = headingLevel;
   // What the build draws itself goes in as markers, so Markdown never reads it again.

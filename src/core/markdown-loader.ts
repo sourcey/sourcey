@@ -16,7 +16,7 @@ import { InputReader } from "./loader.js";
 import { hasAgentContent, openingHasComponent, parseComponents, readableContent, renderContent, componentStyles, contentHeadings, contentAnchors, contentDiagnostics, resolveSectionIndexes, type ContentLinks, type ContentNode, type NativeComponentDefinition, type NativeContentContext } from "./markdown-components.js";
 import type { Links } from "marked";
 import type { NormalizedChangelog } from "./types.js";
-import type { UiMessages } from "./messages.js";
+import { english, type UiMessages } from "./messages.js";
 import type { SiteTab } from "./navigation.js";
 import type { ArtifactBody } from "./source-file.js";
 
@@ -109,7 +109,7 @@ export interface ChangelogPage {
 export type DocsPage = MarkdownPage | ChangelogPage;
 /** Parsed and resolved content, before navigation-dependent projections. */
 export interface MarkdownSource extends Omit<MarkdownPage, "html" | "markdown" | "headings" | "anchors" | "hideLede" | "componentStyles" | "diagnostics"> {
-  messages?: UiMessages;
+  messages: UiMessages;
   nodes: readonly ContentNode[];
   /** The page's reference link definitions, which its `[text][name]` links read. */
   definitions?: Links;
@@ -142,7 +142,8 @@ export interface LoadDocsPageOptions {
   configDir?: string;
   /** Source tree at the selected repository revision, when content is a local snapshot. */
   editRoot?: string;
-  context?: NativeContentContext;
+  /** The language and version the page is read in. */
+  context: NativeContentContext;
   baseUrl?: string;
   components?: Record<string, NativeComponentDefinition>;
   /** Typographer's quotes, dashes and ellipses in the page's prose. */
@@ -176,15 +177,18 @@ export async function loadMarkdownPage(filePath: string, slug: string): Promise<
   return await loadDocsPage(filePath, slug, { changelog: false }) as MarkdownPage;
 }
 
+/** The language and version a page drawn on its own is read in: English, and the current version. */
+const STANDALONE: NativeContentContext = { locale: "en", lang: "en", dir: "ltr", contentLocale: "en", version: { id: "current", label: "Current" }, versionScope: "", messages: english, icons: "heroicons" };
+
 /** A page drawn on its own, outside a site, with its Markdown export's links as written. */
-export async function loadDocsPage(filePath: string, slug: string, options: LoadDocsPageOptions = {}): Promise<DocsPage> {
-  return renderDocsSource(await loadDocsSource(filePath, slug, options));
+export async function loadDocsPage(filePath: string, slug: string, options: Partial<LoadDocsPageOptions> = {}): Promise<DocsPage> {
+  return renderDocsSource(await loadDocsSource(filePath, slug, { ...options, context: options.context ?? STANDALONE }));
 }
 
 export async function loadDocsSource(
   filePath: string,
   slug: string,
-  options: LoadDocsPageOptions = {},
+  options: LoadDocsPageOptions,
 ): Promise<DocsSource> {
   // A page read outside a build reads through a reader of its own, which its components read through too.
   const input = options.input ?? new InputReader();
@@ -260,7 +264,7 @@ async function loadMarkdownSourceFromBody(
     slug: typeof meta.slug === "string" ? meta.slug.replace(/^\/+|\/+$/g, "") || "index" : slug,
     id: typeof meta.id === "string" ? meta.id : undefined, draft: meta.draft === true, hideInMenu: meta.hideInMenu === true,
     ...(layout ? { layout } : {}), ...(css.length ? { css: css.map(path => resolve(dirname(filePath), path as string)) } : {}),
-    assets, nodes, ...(Object.keys(definitions).length && { definitions }), messages: options.context?.messages, explicitDescription: description !== undefined, ...(options.smartypants ? { smartypants: true } : {}),
+    assets, nodes, ...(Object.keys(definitions).length && { definitions }), messages: options.context.messages, explicitDescription: description !== undefined, ...(options.smartypants ? { smartypants: true } : {}),
     sourcePath, editPath: relative(options.editRoot ?? options.configDir ?? process.cwd(), filePath), sourceRoot: options.sourceRoot ? relative(options.configDir ?? process.cwd(), options.sourceRoot) : undefined,
   };
 }

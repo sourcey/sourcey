@@ -10,6 +10,9 @@ import { messagesFor } from "../../src/core/messages.js";
 import { InputReader } from "../../src/core/loader.js";
 import { diagramSvgs } from "../../src/core/diagrams.js";
 
+/** Content read in English, at the current version, as a page drawn on its own is. */
+const ENGLISH = { locale: "en", lang: "en", dir: "ltr" as const, contentLocale: "en", version: { id: "current", label: "Current" }, versionScope: "", messages: messagesFor("en"), icons: "heroicons" as const };
+
 async function guide(body: string) {
   const root = await mkdtemp(join(tmpdir(), "sourcey-components-"));
   try {
@@ -161,9 +164,10 @@ describe("diagrams the renderer cannot draw", () => {
     try {
       const file = join(root, "guide.md");
       await writeFile(file, gitGraph);
-      const nodes = await parseComponents(gitGraph, { source: file, root, input: new InputReader() });
-      const french = await parseComponents(gitGraph, { source: file, root, input: new InputReader(), context: { locale: "fr", lang: "fr", dir: "ltr", contentLocale: "fr", version: { id: "current", label: "Current" }, versionScope: "", messages: messagesFor("fr"), icons: "heroicons" } });
-      expect(renderContent(french)).toContain("<figcaption>Ce diagramme n’a pas pu être dessiné ; sa source est affichée.</figcaption>");
+      const nodes = await parseComponents(gitGraph, { source: file, root, input: new InputReader(), context: ENGLISH });
+      const context = { ...ENGLISH, locale: "fr", lang: "fr", contentLocale: "fr", messages: messagesFor("fr") };
+      const french = await parseComponents(gitGraph, { source: file, root, input: new InputReader(), context });
+      expect(renderContent(french, context.messages)).toContain("<figcaption>Ce diagramme n’a pas pu être dessiné ; sa source est affichée.</figcaption>");
       expect(contentDiagnostics(nodes)).toEqual([
         { severity: "warning", code: "diagram", file: await realpath(file), message: expect.stringMatching(/guide\.md at offset 12: the diagram could not be drawn \(Unsupported diagram type: "gitgraph"[^)]*\); the page shows its source instead$/) },
       ]);
@@ -258,7 +262,7 @@ describe("included files", () => {
     const root = await mkdtemp(join(tmpdir(), "sourcey-include-"));
     try {
       const source = join(root, "guide.md");
-      await run((markdown, components) => parseComponents(markdown, { source, root, input: new InputReader(), components }), root);
+      await run((markdown, components) => parseComponents(markdown, { source, root, input: new InputReader(), context: ENGLISH, components }), root);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -269,7 +273,7 @@ describe("included files", () => {
     await writeFile(join(root, "shared", "intro.md"), "Shared **intro**.\n\n<Note>Inside the include.</Note>\n");
     await writeFile(join(root, "example.ts"), "const skipped = 0;\n// #region main\nconst answer = 42;\n// #endregion main\n");
     await writeFile(join(root, "loop.md"), '<Include src="./loop.md" />\n');
-    const html = renderContent(await parse('<Include src="./shared/intro.md" />\n\n<Include src="./example.ts" region="main" language="ts" />\n'));
+    const html = renderContent(await parse('<Include src="./shared/intro.md" />\n\n<Include src="./example.ts" region="main" language="ts" />\n'), ENGLISH.messages);
     expect(html).toContain("Shared <strong>intro</strong>.");
     expect(html).toMatch(/class="callout[^"]*"[\s\S]*Inside the include\./);
     expect(html).toContain("answer");
@@ -279,7 +283,7 @@ describe("included files", () => {
 
   it("are a site's own to draw when it defines an Include of its own", () => inFolder(async parse => {
     const Include = defineComponent({ parseProps: attributes => attributes, resolve: ({ children }) => ({ content: children }), renderHtml: (result, helpers) => `<aside>${helpers.render(result.content)}</aside>` });
-    expect(renderContent(await parse('<Include src="./missing.md">\n\nKept as written.\n\n</Include>\n', { Include }))).toContain("<aside><p>Kept as written.</p>\n</aside>");
+    expect(renderContent(await parse('<Include src="./missing.md">\n\nKept as written.\n\n</Include>\n', { Include }), ENGLISH.messages)).toContain("<aside><p>Kept as written.</p>\n</aside>");
   }));
 });
 
@@ -287,7 +291,7 @@ describe("directives", () => {
   it("name the directive a page writes that opens no component, whatever it is called", async () => {
     const root = await mkdtemp(join(tmpdir(), "sourcey-directive-"));
     try {
-      await expect(parseComponents(":::constructor\nBody.\n:::\n", { source: join(root, "guide.md"), root, input: new InputReader() })).rejects.toThrow(/^Unknown directive constructor at /);
+      await expect(parseComponents(":::constructor\nBody.\n:::\n", { source: join(root, "guide.md"), root, input: new InputReader(), context: ENGLISH })).rejects.toThrow(/^Unknown directive constructor at /);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

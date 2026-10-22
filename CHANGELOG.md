@@ -51,6 +51,7 @@
 - A site that defines a component named `Include` has its own drawn where a page writes `<Include>`, as a site's component named after any other built-in is, rather than Sourcey reading the file the tag names and passing over the site's component. A directive that opens no component fails the build naming the directive, whatever it is called: `:::constructor` had failed naming an internal function instead.
 - An MCP tab whose spec is a web address builds. The spec is read once, through the build's reader, as an OpenAPI spec is, rather than read a second time by the MCP parser, which took the address for a file name and failed. A file the build reads and cannot find fails naming it, as `File not found: <path>`.
 - A logo, favicon or social image whose path starts with `http`, such as `httpdocs/card.png`, is read from the config's folder, as any other path is, rather than taken for a web address and looked for in the working directory. A site's own social image is read as its logo and favicon are, through the build's reader, and `sourcey build` copies it from its source rather than holding it in memory.
+- A component a site defines is given the language and version its page is read in, as `context.context`, and its type says so: it no longer types that context as possibly missing, which it never was in a build.
 
 ## 3.8.3 - 2026-10-21
 
