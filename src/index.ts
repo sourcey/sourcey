@@ -1,9 +1,8 @@
-import { resolve } from "node:path";
-import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
-import type { ResolvedConfig } from "./config.js";
-import { loadConfig, configFromSpec } from "./config.js";
-import { buildSourceySite, writeSourceySite } from "./site.js";
+import { configFromSpec, loadConfig, type ResolvedConfig } from "./config.js";
 import type { BuildDiagnostics } from "./core/build-diagnostics.js";
+import type { SiteDiagnostic } from "./core/site-diagnostics.js";
+import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
+import { buildSourceySite, writeSourceySite } from "./site.js";
 
 // ---------------------------------------------------------------------------
 // Build options
@@ -56,15 +55,14 @@ export interface SiteBuildResult extends BuildDiagnostics {
   outputDir: string;
   pageCount: number;
   /** Publishing checks: the public origin, page summaries, canonical and language links, and link fragments. */
-  siteDiagnostics: import("./core/site-diagnostics.js").SiteDiagnostic[];
+  siteDiagnostics: SiteDiagnostic[];
 }
 
 export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<SiteBuildResult> {
-  const outputDir = resolve(options.outputDir ?? "dist");
   const config = options.config ?? (await loadConfig(options.configDir));
   const sourceySite = await buildSourceySite({
     config,
-    outputDir,
+    outputDir: options.outputDir,
     strictChangelog: options.strictChangelog,
     generateOgImages: options.generateOgImages,
     copyFromSource: !options.skipWrite,
@@ -75,7 +73,7 @@ export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<Sit
   }
 
   return {
-    outputDir,
+    outputDir: sourceySite.outputDir,
     pageCount: sourceySite.pageCount,
     changelogDiagnostics: sourceySite.changelogDiagnostics,
     godocDiagnostics: sourceySite.godocDiagnostics,
