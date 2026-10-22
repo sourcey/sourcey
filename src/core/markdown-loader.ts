@@ -1,4 +1,3 @@
-import { readFile as readFileAsync } from "node:fs/promises";
 import { basename, dirname, relative, resolve } from "node:path";
 import { load as parseYaml } from "js-yaml";
 import { normalizeChangelog } from "./changelog-normalizer.js";
@@ -14,8 +13,11 @@ import {
   type PageHeading,
 } from "../utils/markdown.js";
 import { InputReader } from "./loader.js";
-import { hasAgentContent, openingHasComponent, parseComponents, readableContent, renderContent, componentStyles, contentHeadings, contentAnchors, contentDiagnostics, resolveSectionIndexes, type ContentLinks, type ContentNode, type NativeComponentDefinition } from "./markdown-components.js";
+import { hasAgentContent, openingHasComponent, parseComponents, readableContent, renderContent, componentStyles, contentHeadings, contentAnchors, contentDiagnostics, resolveSectionIndexes, type ContentLinks, type ContentNode, type NativeComponentDefinition, type NativeContentContext } from "./markdown-components.js";
+import type { Links } from "marked";
 import type { NormalizedChangelog } from "./types.js";
+import type { UiMessages } from "./messages.js";
+import type { SiteTab } from "./navigation.js";
 import type { ArtifactBody } from "./source-file.js";
 
 // ---------------------------------------------------------------------------
@@ -107,10 +109,10 @@ export interface ChangelogPage {
 export type DocsPage = MarkdownPage | ChangelogPage;
 /** Parsed and resolved content, before navigation-dependent projections. */
 export interface MarkdownSource extends Omit<MarkdownPage, "html" | "markdown" | "headings" | "anchors" | "hideLede" | "componentStyles" | "diagnostics"> {
-  messages?: import("./messages.js").UiMessages;
+  messages?: UiMessages;
   nodes: readonly ContentNode[];
   /** The page's reference link definitions, which its `[text][name]` links read. */
-  definitions?: import("marked").Links;
+  definitions?: Links;
   explicitDescription: boolean;
   smartypants?: boolean;
 }
@@ -140,7 +142,7 @@ export interface LoadDocsPageOptions {
   configDir?: string;
   /** Source tree at the selected repository revision, when content is a local snapshot. */
   editRoot?: string;
-  context?: import("./markdown-components.js").NativeContentContext;
+  context?: NativeContentContext;
   baseUrl?: string;
   components?: Record<string, NativeComponentDefinition>;
   /** Typographer's quotes, dashes and ellipses in the page's prose. */
@@ -169,30 +171,12 @@ function parseFrontmatter(raw: string): { meta: Frontmatter; body: string } {
   return { meta, body: match[2] };
 }
 
-
-function isFenceStart(line: string): { char: string; length: number } | null {
- const m = line.match(/^ {0,3}(`{3,}|~{3,})/); return m ? { char: m[1][0], length: m[1].length } : null;
-}
-function closesFence(line: string, fence: { char: string; length: number }): boolean {
- return new RegExp(`^ {0,3}${fence.char}{${fence.length},} *$`).test(line);
-}
-export function closeMarkdownFence(markdown: string): string {
-  let fence: {char: string; length: number} | null = null;
-  for (const line of markdown.split("\n")) {
-    if (fence) { if (closesFence(line, fence)) fence = null; }
-    else fence = isFenceStart(line);
-  }
-  return fence ? `${markdown.trimEnd()}\n${fence.char.repeat(fence.length)}\n` : markdown;
-}
-
-/** Build tabbed UI HTML (shared by :::tabs and :::code-group). */
+/** A Markdown file drawn as a page on its own, outside a site: never read as a changelog. */
 export async function loadMarkdownPage(filePath: string, slug: string): Promise<MarkdownPage> {
-  const raw = await readFileAsync(filePath, "utf-8");
-  const { meta, body } = parseFrontmatter(raw);
-
-  return renderDocsSource(await loadMarkdownSourceFromBody(filePath, slug, body, meta)) as MarkdownPage;
+  return await loadDocsPage(filePath, slug, { changelog: false }) as MarkdownPage;
 }
 
+/** A page drawn on its own, outside a site, with its Markdown export's links as written. */
 export async function loadDocsPage(filePath: string, slug: string, options: LoadDocsPageOptions = {}): Promise<DocsPage> {
   return renderDocsSource(await loadDocsSource(filePath, slug, options));
 }
@@ -202,8 +186,9 @@ export async function loadDocsSource(
   slug: string,
   options: LoadDocsPageOptions = {},
 ): Promise<DocsSource> {
-  const raw = options.input ? await options.input.readText(filePath, filePath) : await readFileAsync(filePath, "utf-8");
-  const { meta, body } = parseFrontmatter(raw);
+  // A page read outside a build reads through a reader of its own, which its components read through too.
+  const input = options.input ?? new InputReader();
+  const { meta, body } = parseFrontmatter(await input.readText(filePath, filePath));
 
   if (shouldTreatAsChangelog(filePath, meta, options)) {
     const sourcePath = relative(options.configDir ?? process.cwd(), filePath);
@@ -232,7 +217,7 @@ export async function loadDocsSource(
     };
   }
 
-  return loadMarkdownSourceFromBody(filePath, slug, body, meta, options);
+  return loadMarkdownSourceFromBody(filePath, slug, body, meta, { ...options, input });
 }
 
 function shouldTreatAsChangelog(
@@ -250,12 +235,12 @@ async function loadMarkdownSourceFromBody(
   slug: string,
   body: string,
   meta: Frontmatter,
-  options: LoadDocsPageOptions = {},
+  options: LoadDocsPageOptions & { input: InputReader },
 ): Promise<MarkdownSource> {
   let sourcePreprocessed = body;
   for (const preprocess of options.preprocess ?? []) sourcePreprocessed = preprocess(sourcePreprocessed, { filePath, sourceRoot: options.sourceRoot });
-  const assets = new Map<string, ArtifactBody>(), definitions: import("marked").Links = {};
-  const nodes = await parseComponents(sourcePreprocessed, { source: filePath, root: options.configDir ?? options.sourceRoot ?? process.cwd(), input: options.input ?? new InputReader(), components: options.components, assets, definitions, baseUrl: options.baseUrl, context: options.context });
+  const assets = new Map<string, ArtifactBody>(), definitions: Links = {};
+  const nodes = await parseComponents(sourcePreprocessed, { source: filePath, root: options.configDir ?? options.sourceRoot ?? process.cwd(), input: options.input, components: options.components, assets, definitions, baseUrl: options.baseUrl, context: options.context });
   // What the frontmatter leaves out, a title or a summary, is read once from
   // the page as its readers see it: lexed, so a `#` comment inside a fenced
   // code block is not a heading.
@@ -305,13 +290,13 @@ function sourceParts(source: MarkdownSource) {
  * links as written. A site draws the page with `drawDocsSource` and writes
  * the export with `docsExport` once its routes resolve the links.
  */
-export function renderDocsSource(source: DocsSource, navigation?: import("./navigation.js").SiteTab, documentId = source.slug): DocsPage {
+export function renderDocsSource(source: DocsSource, navigation?: SiteTab, documentId = source.slug): DocsPage {
   const drawn = drawDocsSource(source, navigation, documentId);
   return drawn.kind === "changelog" ? drawn : { ...drawn, ...docsExport(source as MarkdownSource, navigation, documentId) };
 }
 
 /** A page's HTML, and its title, headings, anchors, styles and diagnostics as its content gives them. */
-export function drawDocsSource(source: DocsSource, navigation?: import("./navigation.js").SiteTab, documentId = source.slug): DrawnDocsPage {
+export function drawDocsSource(source: DocsSource, navigation?: SiteTab, documentId = source.slug): DrawnDocsPage {
   if (source.kind === "changelog") return source;
   const { nodes: sourceNodes, explicitDescription, messages, smartypants: smart, metadata } = sourceParts(source);
   const nodes = resolveSectionIndexes(sourceNodes, navigation, documentId);
@@ -343,7 +328,7 @@ export function drawDocsSource(source: DocsSource, navigation?: import("./naviga
  * A page's Markdown export: for agents, and for readers where the two
  * differ. `links` resolves the links its content marked as resolvable.
  */
-export function docsExport(source: MarkdownSource, navigation?: import("./navigation.js").SiteTab, documentId = source.slug, links?: ContentLinks): Pick<MarkdownPage, "markdown" | "readerMarkdown"> {
+export function docsExport(source: MarkdownSource, navigation?: SiteTab, documentId = source.slug, links?: ContentLinks): Pick<MarkdownPage, "markdown" | "readerMarkdown"> {
   const nodes = resolveSectionIndexes(source.nodes, navigation, documentId);
   try {
     return { markdown: readableContent(nodes, "agents", links), ...(hasAgentContent(nodes) && { readerMarkdown: readableContent(nodes, "people", links) }) };

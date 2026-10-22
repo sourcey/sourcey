@@ -10,7 +10,7 @@ import { collectReadableDocuments, type DocumentationIndex } from "../src/export
 import { marked } from "marked";
 import { openDocumentation } from "../src/exports/document-index.js";
 import { writeSourceySite } from "../src/site.js";
-import { closeMarkdownFence } from "../src/core/markdown-loader.js";
+import { closeMarkdownFence } from "../src/renderer/llms.js";
 import { openapi } from "../src/adapters/index.js";
 
 const fixture = resolve(import.meta.dirname, "fixtures");
