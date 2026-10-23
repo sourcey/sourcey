@@ -117,9 +117,9 @@ export async function loadSite(project: ProjectFiles, diagnostics: Diagnostics):
   // Configuration code resolves paths (`require.resolve`) against the real directory.
   const realRoot = await realpath(project.root);
   const local = (path: string) => (isAbsolute(path) ? relative(path.startsWith(realRoot) ? realRoot : project.root, path).split("\\").join("/") : relativePath(path));
-  const presets = entries(config.presets);
+  const presets = entries(config.presets, local);
   const classic = presets.find((preset) => /(^|\/)(classic|preset-classic)$/.test(preset.name) || preset.name.includes("preset-classic"))?.options ?? {};
-  const plugins = [...entries(config.plugins), ...entries(config.themes)];
+  const plugins = [...entries(config.plugins, local), ...entries(config.themes, local)];
   const instances = [
     ...(classic.docs === false ? [] : [{ ...((classic.docs as Options | undefined) ?? {}) }]),
     ...plugins.filter((plugin) => plugin.name.includes("plugin-content-docs")).map((plugin) => plugin.options),
@@ -143,7 +143,7 @@ export async function loadSite(project: ProjectFiles, diagnostics: Diagnostics):
     },
     staticDirectories: ((config.staticDirectories as string[] | undefined) ?? ["static"]).map(relativePath),
     docs: instances.map((options) => docsInstance(options, local)),
-    customCss: [((classic.theme as Options | undefined)?.customCss ?? [])].flat().map(String).map(relativePath),
+    customCss: [((classic.theme as Options | undefined)?.customCss ?? [])].flat().map(String).map(local),
     plugins: plugins.filter((plugin) => !plugin.name.includes("plugin-content-docs")),
     pages,
     pageAdmonitions: admonitionKeywords((classic.pages as Options | undefined)?.admonitions),
@@ -171,17 +171,19 @@ async function production<T>(run: () => Promise<T> | T): Promise<T> {
 }
 
 /** Plugin, preset and theme entries: a name, `[name, options]`, or a falsy value a condition left. */
-function entries(list: unknown): SitePlugin[] {
+function entries(list: unknown, local: (path: string) => string): SitePlugin[] {
+  const name = (entry: string) => packageName(entry) ?? local(entry);
   return (Array.isArray(list) ? list : []).flatMap((entry): SitePlugin[] => {
-    if (typeof entry === "string") return [{ name: packageName(entry), options: {} }];
-    if (Array.isArray(entry) && typeof entry[0] === "string") return [{ name: packageName(entry[0]), options: (entry[1] ?? {}) as Options }];
+    if (typeof entry === "string") return [{ name: name(entry), options: {} }];
+    if (Array.isArray(entry) && typeof entry[0] === "string") return [{ name: name(entry[0]), options: (entry[1] ?? {}) as Options }];
     if (typeof entry === "function") return [{ name: (entry as { name?: string }).name || "an inline plugin", options: {} }];
     return [];
   });
 }
 
-/** The package a `require.resolve`d entry names. */
-function packageName(name: string): string {
+/** The package a `require.resolve`d entry names, or a package name as written; undefined for the project's own file. */
+function packageName(name: string): string | undefined {
+  if (/^(?:\.{1,2}\/|\/)/.test(name) && !name.includes("/node_modules/")) return undefined;
   return name.match(/.*node_modules\/((?:@[^/]+\/)?[^/]+)/)?.[1] ?? name;
 }
 

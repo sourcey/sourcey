@@ -397,6 +397,22 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("names a plugin and custom CSS the configuration resolves to a project file by its path in the project", async () => {
+    const resolved = {
+      ...site,
+      "docusaurus.config.js": (site["docusaurus.config.js"] as string)
+        .replace("customCss: './src/css/custom.css'", "customCss: require.resolve('./src/css/custom.css')")
+        .replace("plugins: [", "plugins: [require.resolve('./src/plugins/llms.js'), "),
+      "src/plugins/llms.js": "module.exports = () => ({ name: 'llms' });\n",
+    };
+    await withProject(resolved, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root, dryRun: true });
+      const messages = report.diagnostics.map((item) => item.message);
+      expect(messages).toContain('Plugin "src/plugins/llms.js" is not carried over');
+      expect(messages).toContain("Custom CSS in src/css/custom.css is not carried over; brand colours are mapped from --ifm-color-primary and fonts from --ifm-font-family-base");
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
