@@ -86,9 +86,9 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
 
   // Markdown pages are the site's own: its header and footer around them, and no sidebar.
   const pageDialect = docsDialect(site, site.pageAdmonitions, globals);
-  const pageConversion = docusaurusConversion(site.pageAdmonitions, site.mdx1Compat);
+  const pageConversion = docusaurusConversion(site.pageAdmonitions, site.mdx1Compat, site.preprocessor);
   for (const page of markdownPages)
-    documents.push({ file: page.file, route: `${base}/${page.path}${page.path && pretty === "slash" ? "/" : ""}`, dialect: pageDialect(page.file), ...pageConversion, frontmatter: { set: {}, remove: [] } });
+    documents.push({ file: page.file, route: `${base}/${page.path}${page.path && pretty === "slash" ? "/" : ""}`, dialect: pageDialect(page.file), ...pageConversion(page.file), frontmatter: { set: {}, remove: [] } });
 
   const theme = site.themeConfig;
   const navbar = (theme.navbar ?? {}) as Record<string, unknown>;
@@ -198,7 +198,7 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
   ];
   const markdown = markdownSource(version.contentDir, navigation.groups, published);
   const dialect = docsDialect(site, instance.admonitions, globals);
-  const convert = docusaurusConversion(instance.admonitions, site.mdx1Compat);
+  const convert = docusaurusConversion(instance.admonitions, site.mdx1Compat, site.preprocessor);
   for (const entry of published) {
     const slug = markdown.slugs.get(entry);
     if (entry.doc) {
@@ -208,7 +208,7 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
         route: route(entry.doc.slug, entry.locale),
         ...(entry.locale ? { locale: entry.locale } : {}),
         dialect: dialect(entry.doc.file),
-        ...convert,
+        ...convert(entry.doc.file),
         frontmatter: documentFrontmatter(entry.doc, slug, await project.readText(entry.doc.file), diagnostics),
       });
     }
@@ -262,7 +262,7 @@ async function mdxComponents(project: ProjectFiles): Promise<Map<string, string>
 
 /** How the docs plugin reads one of this instance's documents, and how verification reads it back. */
 function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonitions"], globals: ReadonlyMap<string, string>): (file: string) => SourceDialect {
-  const preprocess = docusaurusPreprocess(admonitions, site.mdx1Compat);
+  const preprocess = docusaurusPreprocess(admonitions, site.mdx1Compat, site.preprocessor);
   const calls = siteCalls(site);
   return (file) => ({
     fragments: "github",
@@ -272,7 +272,7 @@ function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonition
     htmlComments: true,
     headingIds: site.mdx1Compat.headingIds,
     globals,
-    preprocess,
+    preprocess: preprocess(file),
     calls,
     codeElements: CODE_ELEMENTS,
     statics: { base: site.baseUrl, directories: site.staticDirectories },

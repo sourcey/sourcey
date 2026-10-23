@@ -4,6 +4,7 @@
  * admonition keywords as the native callouts they render as.
  */
 import { parseMarkdown, walk } from "../mdx.js";
+import { diffArrays } from "diff";
 import type { Rewrite } from "../plan.js";
 import { applyEdits, lineAt, type TextEdit } from "../text-edits.js";
 
@@ -61,13 +62,44 @@ function admonitionLabels(content: string, keywords: readonly string[]): string 
   });
 }
 
+/** The site's `markdown.preprocessor`, which Docusaurus runs on a document before anything else reads it. */
+export type SitePreprocessor = (file: string, content: string) => string;
+
+/**
+ * A document's text after the site's preprocessor, and the line of the
+ * source each of its lines was: a line the preprocessor put in is the line
+ * it took the place of.
+ */
+function sitePreprocessed(preprocessor: SitePreprocessor | undefined, file: string, content: string): Rewrite {
+  const text = preprocessor ? preprocessor(file, content) : content;
+  if (text === content) return { text, line: (line) => line };
+  const lines: number[] = [];
+  let source = 1;
+  let replaced: number | undefined;
+  for (const part of diffArrays(content.split("\n"), text.split("\n"))) {
+    if (part.removed) {
+      replaced = source;
+      source += part.count;
+    } else if (part.added) for (let index = 0; index < part.count; index++) lines.push(replaced ?? source);
+    else {
+      for (let index = 0; index < part.count; index++) lines.push(source + index);
+      source += part.count;
+      replaced = undefined;
+    }
+  }
+  return { text, line: (line) => lines[line - 1] ?? line };
+}
+
 /**
  * How Docusaurus reads a document's text before parsing it, in
- * `preprocessContent`'s order. Its heading ids are the dialect's
- * (`headingIds`), which reads them where they are written.
+ * `preprocessContent`'s order: the site's preprocessor, then its own. Its
+ * heading ids are the dialect's (`headingIds`), which reads them where they are written.
  */
-export function docusaurusPreprocess(keywords: readonly string[], compat: Mdx1Compat): (source: string) => string {
-  return (source) => (compat.admonitions ? admonitionLabels(unwrapMdxCodeBlocks(source).text, keywords) : unwrapMdxCodeBlocks(source).text);
+export function docusaurusPreprocess(keywords: readonly string[], compat: Mdx1Compat, preprocessor?: SitePreprocessor): (file: string) => (source: string) => string {
+  return (file) => (source) => {
+    const unwrapped = unwrapMdxCodeBlocks(sitePreprocessed(preprocessor, file, source).text).text;
+    return compat.admonitions ? admonitionLabels(unwrapped, keywords) : unwrapped;
+  };
 }
 
 /** The MDX 1 syntax Docusaurus 3 reads before parsing, as `markdown.mdx1Compat` turns it on. */
@@ -76,9 +108,20 @@ export interface Mdx1Compat {
   admonitions: boolean;
 }
 
-/** The conversion's rewrites around parsing a document: before, the code blocks Docusaurus unwraps; after, admonitions as native callouts. */
-export function docusaurusConversion(keywords: readonly string[], compat: Mdx1Compat): { before(source: string): Rewrite; after(text: string): Promise<string> } {
-  return { before: unwrapMdxCodeBlocks, after: (text) => nativeAdmonitions(text, keywords, compat) };
+/**
+ * The conversion's rewrites around parsing a document: before, the site's
+ * preprocessor and the code blocks Docusaurus unwraps; after, admonitions as
+ * native callouts.
+ */
+export function docusaurusConversion(keywords: readonly string[], compat: Mdx1Compat, preprocessor?: SitePreprocessor): (file: string) => { before(source: string): Rewrite; after(text: string): Promise<string> } {
+  return (file) => ({
+    before: (source) => {
+      const preprocessed = sitePreprocessed(preprocessor, file, source);
+      const unwrapped = unwrapMdxCodeBlocks(preprocessed.text);
+      return { text: unwrapped.text, line: (line) => preprocessed.line(unwrapped.line(line)) };
+    },
+    after: (text) => nativeAdmonitions(text, keywords, compat),
+  });
 }
 
 /**

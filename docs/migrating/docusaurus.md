@@ -24,6 +24,7 @@ Docusaurus configuration and sidebar files are programs: they can read files, br
 | `i18n.locales`, `localeConfigs` | `i18n` with the same URL prefixes, labels, language and direction |
 | `editUrl` (a string) | `repo`, `editBranch`, `editBasePath` |
 | frontmatter `custom_edit_url` | frontmatter `editUrl` (`null` becomes `false`) |
+| `markdown.preprocessor` | run on each document as Docusaurus runs it; its result is written as the native page |
 | `staticDirectories` | `publicDir`; several directories are merged into one |
 | `themeConfig.navbar` logo, links, doc links and dropdowns, `footer` links and copyright | `logo`, `navbar.links` (dropdowns as menus), `footer.links`, `footer.text` |
 | `colorMode`, `--ifm-color-primary` in custom CSS | `theme.appearance`, `theme.colors` |

@@ -562,6 +562,19 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("reads a page through the site's markdown.preprocessor, as Docusaurus does, naming lines as written", async () => {
+    const preprocessor = "markdown: { preprocessor: ({ filePath, fileContent }) => filePath.startsWith('/') ? fileContent.replace('<shared-note />', 'Back up first.\\n\\nThen run it.') : fileContent },";
+    const shared = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("baseUrl: '/',", `baseUrl: '/', ${preprocessor}`) };
+    await withProject({ ...shared, "docs/start/02-install.mdx": "# Installation\n\n<shared-note />\n\nDone.\n" }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/02-install.mdx")).toContain("# Installation\n\nBack up first.\n\nThen run it.\n\nDone.\n");
+    });
+    await withProject({ ...shared, "docs/start/02-install.mdx": "# Installation\n\n<shared-note />\n\n<Widget />\n" }, async (root) => {
+      const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
+      expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => [item.line, item.message])).toEqual([[5, "<Widget> is not imported in this file"]]);
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

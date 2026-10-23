@@ -72,6 +72,8 @@ export interface DocusaurusSite {
   markdownFormat: "mdx" | "md" | "detect";
   /** The MDX 1 syntax Docusaurus 3 still reads before parsing (`markdown.mdx1Compat`), each on unless the site turns it off. */
   mdx1Compat: { headingIds: boolean; admonitions: boolean };
+  /** The site's own `markdown.preprocessor`, called as Docusaurus calls it: with a document's absolute path and its text. */
+  preprocessor?: (file: string, content: string) => string;
   staticDirectories: string[];
   docs: DocsInstance[];
   customCss: string[];
@@ -141,6 +143,9 @@ export async function loadSite(project: ProjectFiles, diagnostics: Diagnostics):
       headingIds: (markdown.mdx1Compat as Options | undefined)?.headingIds !== false,
       admonitions: (markdown.mdx1Compat as Options | undefined)?.admonitions !== false,
     },
+    ...(typeof markdown.preprocessor === "function"
+      ? { preprocessor: (file: string, fileContent: string) => String((markdown.preprocessor as (input: { filePath: string; fileContent: string }) => unknown)({ filePath: project.absolute(file), fileContent })) }
+      : {}),
     staticDirectories: ((config.staticDirectories as string[] | undefined) ?? ["static"]).map(relativePath),
     docs: instances.map((options) => docsInstance(options, local)),
     customCss: [((classic.theme as Options | undefined)?.customCss ?? [])].flat().map(String).map(local),
