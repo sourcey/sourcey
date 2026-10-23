@@ -494,12 +494,13 @@ describe("sourcey migrate docusaurus", () => {
   });
 
   it("writes Markdown inside an HTML block as the HTML MDX made of it, where native reads the block as raw HTML", async () => {
-    const page = "# Installation\n\n<details>\n<summary><strong>Using `edit-config` (*recommended*) with [the guide](/start/setup/) \\<here\\></strong></summary>\n\nThe body stays **Markdown**.\n\n</details>\n";
+    const page = "# Installation\n\n<details>\n<summary><strong>Using `edit-config` (*recommended*) with [the guide](/start/setup/) \\<here\\></strong></summary>\n\nThe body stays **Markdown**.\n\n</details>\n\n<table>\n<tr><td><pre>\n\\{\\{ .Chart.AppVersion }}\n</pre></td></tr>\n</table>\n";
     await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
       await migrateProject({ framework: "docusaurus", root });
       const converted = await read(root, "docs/start/02-install.mdx");
       expect(converted).toContain('<summary><strong>Using <code>edit-config</code> (<em>recommended</em>) with <a href="/start/setup/">the guide</a> &lt;here&gt;</strong></summary>');
       expect(converted).toContain("The body stays **Markdown**.");
+      expect(converted).toContain("<pre>\n&#123;&#123; .Chart.AppVersion }}\n</pre>");
     });
   });
 

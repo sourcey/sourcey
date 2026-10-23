@@ -640,8 +640,9 @@ function rawBlockMarkdown(source: string, element: SyntaxNode): TextEdit[] {
           visit(child);
         }
       } else if (child.type === "text") {
+        // A brace is a character reference, which MDX and HTML both read as the brace.
         for (const escape of written.matchAll(/\\([!-/:-@[-`{-~])/g))
-          edits.push({ start: at.start + escape.index, end: at.start + escape.index + 2, text: escapeHtml(escape[1]) });
+          edits.push({ start: at.start + escape.index, end: at.start + escape.index + 2, text: escape[1] === "{" ? "&#123;" : escape[1] === "}" ? "&#125;" : escapeHtml(escape[1]) });
       } else visit(child);
     }
   };
