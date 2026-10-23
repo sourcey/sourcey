@@ -186,9 +186,11 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
     }
     let text = source;
     if (document.dialect.mdx ?? document.file.endsWith(".mdx")) {
-      // A list the page draws from static data, and its own components, convert as the elements they draw.
-      const expanded = await expandStaticJsx(document, source, tree, project);
-      if (expanded !== source) {
+      // A list the page draws from static data, and its own components, convert as the elements they draw,
+      // and so do the lists and components those hold.
+      for (let pass = 0; pass < 8; pass++) {
+        const expanded = await expandStaticJsx(document, source, tree, project);
+        if (expanded === source) break;
         reported = reported.withLines(document.file, lineMap(source, expanded));
         source = expanded;
         tree = await parseDocument(document.file, source, frontmatter.bodyStart, document.dialect);

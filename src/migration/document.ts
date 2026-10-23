@@ -275,24 +275,13 @@ export async function expandStaticJsx(document: DocumentPlace, source: string, t
   const edits: TextEdit[] = [];
   for (const { node } of walk(tree)) {
     if (node.type === "mdxFlowExpression" || node.type === "mdxTextExpression") {
-      const call = staticMapCall(node);
-      if (!call) continue;
-      const items = await reader.read((call.callee as EstreeNode).object as EstreeNode);
-      if (!Array.isArray(items?.value)) continue;
-      const callback = (call.arguments as EstreeNode[])[0];
-      const [param, indexParam] = callback.params as EstreeNode[];
+      const body = node.data?.estree?.body ?? [];
+      const call = body.length === 1 && body[0].type === "ExpressionStatement" ? mapCall(body[0].expression as EstreeNode) : undefined;
+      const made = call && (await eachItem(call, source, NO_BINDINGS, reader));
+      if (!made) continue;
       const start = span(node).start;
       const indent = source.slice(source.lastIndexOf("\n", start - 1) + 1, start).match(/^[ \t]*/)![0];
-      const made: string[] = [];
-      for (const [index, item] of items.value.entries()) {
-        const bindings = new Map<string, JsonValue | undefined>();
-        if (!bindParameter(param, item, bindings)) break;
-        if (indexParam?.type === "Identifier") bindings.set(identifierName(indexParam), index);
-        const text = await instantiate(callback.body as EstreeNode, source, bindings, reader);
-        if (text === undefined) break;
-        made.push(text);
-      }
-      if (made.length === items.value.length) edits.push({ ...span(node), text: made.join(`\n${indent}`) });
+      edits.push({ ...span(node), text: made.join(`\n${indent}`) });
     } else if ((node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") && node.name && reader.component(node.name)) {
       if ((node.children ?? []).some((child) => !(child.type === "text" && !child.value?.trim()))) continue;
       const props: Record<string, JsonValue> = {};
@@ -312,15 +301,31 @@ export async function expandStaticJsx(document: DocumentPlace, source: string, t
 }
 
 /** An expression that is `array.map((item) => <JSX />)`. */
-function staticMapCall(node: SyntaxNode): EstreeNode | undefined {
-  const body = node.data?.estree?.body ?? [];
-  const expression = body.length === 1 && body[0].type === "ExpressionStatement" ? (body[0].expression as EstreeNode) : undefined;
-  const callee = expression?.type === "CallExpression" ? (expression.callee as EstreeNode) : undefined;
+function mapCall(expression: EstreeNode): EstreeNode | undefined {
+  const callee = expression.type === "CallExpression" ? (expression.callee as EstreeNode) : undefined;
   if (callee?.type !== "MemberExpression" || callee.computed || identifierName(callee.property as EstreeNode) !== "map") return undefined;
-  const callback = (expression!.arguments as EstreeNode[])[0];
+  const callback = (expression.arguments as EstreeNode[])[0];
   if (callback?.type !== "ArrowFunctionExpression" || (callback.params as EstreeNode[]).length > 2) return undefined;
   const result = (callback.body as EstreeNode).type;
   return result === "JSXElement" || result === "JSXFragment" ? expression : undefined;
+}
+
+/** A `.map()` call's JSX for each item of the array it reads, or undefined where the array or any item's JSX is not static. */
+async function eachItem(call: EstreeNode, source: string, outer: Bindings, reader: StaticReader, depth = 0): Promise<string[] | undefined> {
+  const items = await reader.read((call.callee as EstreeNode).object as EstreeNode, outer);
+  if (!Array.isArray(items?.value)) return undefined;
+  const callback = (call.arguments as EstreeNode[])[0];
+  const [param, indexParam] = callback.params as EstreeNode[];
+  const made: string[] = [];
+  for (const [index, item] of items.value.entries()) {
+    const bindings = new Map(outer);
+    if (!bindParameter(param, item, bindings)) return undefined;
+    if (indexParam?.type === "Identifier") bindings.set(identifierName(indexParam), index);
+    const text = await instantiate(callback.body as EstreeNode, source, bindings, reader, depth + 1);
+    if (text === undefined) return undefined;
+    made.push(text);
+  }
+  return made;
 }
 
 /** A value bound to a parameter: to its name, to the names it destructures, with defaults where the value has none. */
@@ -403,12 +408,22 @@ async function instantiate(jsx: EstreeNode, source: string, bindings: Bindings, 
         edits.push({ ...range(node), text: "" });
         return true;
       }
+      // An expression naming none of the parameters reads the same outside, so it stays as written for the conversion to read.
+      if (!names(expression).some((name) => bindings.has(name))) return true;
       if (attribute) {
         const value = await reader.read(expression, bindings);
         if (!value) return false;
         // An attribute JS leaves undefined is not set.
         if (value.value === undefined) edits.push({ ...range(attribute, spaceBefore(source, attribute.start as number)), text: "" });
         else edits.push({ ...range(node), text: `{${JSON.stringify(value.value)}}` });
+        return true;
+      }
+      // A list the item holds is each of its items' JSX in turn.
+      const list = mapCall(expression);
+      if (list) {
+        const made = await eachItem(list, source, bindings, reader, depth);
+        if (!made) return false;
+        edits.push({ ...range(node), text: made.join("") });
         return true;
       }
       const child = await shown(expression);

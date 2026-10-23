@@ -636,6 +636,26 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("writes a list inside a list item by item, and leaves what names none of a list's parameters for the conversion to read", async () => {
+    const page = [
+      "import Admonition from '@theme/Admonition';",
+      "import { CIcon } from '@coreui/icons-react';",
+      "import { cilCheckCircle } from '@coreui/icons';",
+      "",
+      "# Installation",
+      "",
+      "{[{ title: 'Fast', items: ['a', 'b'] }, { title: 'Safe', items: ['c'] }].map(({ title, items }) => <Admonition key={title} type=\"tip\" title={title}>{items.map((item) => <span key={item}><CIcon icon={cilCheckCircle} /> {item}</span>)}</Admonition>)}",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      const mapping = join(root, "migration-mapping.ts");
+      // The icon reaches its mapping as the binding it names.
+      await writeFile(mapping, 'export default { components: { "@coreui/icons-react": { CIcon: ({ bindings }) => ({ markdown: bindings.icon === "@coreui/icons#cilCheckCircle" ? "✓" : "?" }) } } };\n');
+      await migrateProject({ framework: "docusaurus", root, mapping });
+      expect(await read(root, "docs/start/02-install.mdx")).toContain('<Tip title="Fast"><span>✓ a</span><span>✓ b</span></Tip>\n<Tip title="Safe"><span>✓ c</span></Tip>');
+    });
+  });
+
   it("writes a Link in raw HTML, or one with an anchor's attributes, as the anchor Docusaurus draws, and a style object as the CSS React writes", async () => {
     const page = [
       "import Link from '@docusaurus/Link';",
