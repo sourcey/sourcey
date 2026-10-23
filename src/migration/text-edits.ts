@@ -1,3 +1,4 @@
+import { diffArrays } from "diff";
 import { load as parseYaml } from "js-yaml";
 
 export interface TextEdit {
@@ -98,6 +99,30 @@ function yamlScalar(value: string): string {
   if (/^[\w./@-][\w ./@-]*$/.test(value) && !/^(true|false|null|yes|no|on|off|~|-?\d[\d.e+-]*)$/i.test(value) && !value.endsWith(" "))
     return value;
   return JSON.stringify(value);
+}
+
+/**
+ * The line of `before` each line of `after` was, for a rewrite that keeps
+ * most lines: a line the rewrite put in is the line it took the place of,
+ * or the line it was put before.
+ */
+export function lineMap(before: string, after: string): (line: number) => number {
+  if (before === after) return (line) => line;
+  const lines: number[] = [];
+  let source = 1;
+  let replaced: number | undefined;
+  for (const part of diffArrays(before.split("\n"), after.split("\n"))) {
+    if (part.removed) {
+      replaced = source;
+      source += part.count;
+    } else if (part.added) for (let index = 0; index < part.count; index++) lines.push(replaced ?? source);
+    else {
+      for (let index = 0; index < part.count; index++) lines.push(source + index);
+      source += part.count;
+      replaced = undefined;
+    }
+  }
+  return (line) => lines[line - 1] ?? line;
 }
 
 /** Offset just past the newline that ends the line containing `offset`. */

@@ -593,6 +593,38 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("writes a list a page draws from static data as the elements it draws, and stops at one that reads anything else", async () => {
+    const steps = "export const steps = [\n  { title: 'Back up first', kind: 'tip' },\n  { title: 'Run it once', kind: 'warning', note: 'Twice resets it.' },\n  { title: 'Check it', kind: 'info', note: null },\n];\n";
+    const page = [
+      "import Admonition from '@theme/Admonition';",
+      "import { steps } from '@site/src/data/steps';",
+      "",
+      "# Installation",
+      "",
+      "{steps.map(({ title, kind, note = 'Once is enough.' }) => (",
+      "  <Admonition key={title} type={kind} title={title}>{note}</Admonition>",
+      "))}",
+      "",
+      "{['npm', 'yarn'].map((name, index) => <Admonition key={name} type=\"note\" title={`${index + 1}. ${name}`} />)}",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "src/data/steps.js": steps, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain('<Tip title="Back up first">Once is enough.</Tip>\n<Warning title="Run it once">Twice resets it.</Warning>\n<Info title="Check it"></Info>');
+      expect(converted).toContain('<Note title="1. npm" />\n<Note title="2. yarn" />');
+      expect(converted).not.toContain(".map(");
+    });
+    // A callback's name is its item's, never the page's constant of that name.
+    for (const title of ["title.toUpperCase()", "useBaseUrl(title)"]) {
+      const live = page.replace("title={title}", `title={${title}}`).replace("\n# Installation", "import useBaseUrl from '@docusaurus/useBaseUrl';\nexport const title = 'Install';\n\n# Installation");
+      await withProject({ ...site, "src/data/steps.js": steps, "docs/start/02-install.mdx": live }, async (root) => {
+        const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
+        expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => item.line)).toEqual([8]);
+      });
+    }
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

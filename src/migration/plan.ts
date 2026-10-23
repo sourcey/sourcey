@@ -8,12 +8,12 @@ import type { GroupConfig, IconSet } from "../config.js";
 import { slugFromPath } from "../core/markdown-loader.js";
 import { Call, type ConfigSource, type ConfigValue } from "./config-writer.js";
 import type { HostDependency } from "./types.js";
-import { convertMdxDocument, type DocumentContext } from "./document.js";
+import { convertMdxDocument, expandStaticMaps, type DocumentContext } from "./document.js";
 import { normaliseFences } from "./code-fences.js";
 import { alertMarker, parseDocument, SourceSyntaxError, walk, type Dialect, type SyntaxNode } from "./mdx.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import type { FragmentRule } from "./slugs.js";
-import { applyEdits, frontmatterEdits, lineAt, readFrontmatter } from "./text-edits.js";
+import { applyEdits, frontmatterEdits, lineAt, lineMap, readFrontmatter } from "./text-edits.js";
 
 /** How the source framework read a document. */
 export interface SourceDialect extends Dialect {
@@ -48,6 +48,8 @@ export interface SourceDialect extends Dialect {
   pageExports?: readonly string[];
   /** The project directories the framework publishes at its base path (`/` or `/docs/`), as `useBaseUrl` addresses them. */
   statics?: { base: string; directories: readonly string[] };
+  /** Module prefixes the framework resolves to a project directory: Docusaurus's `@site` for the site root. */
+  aliases?: Readonly<Record<string, string>>;
 }
 
 /** A document's text as its framework reads it, and the line of the source each of its lines was. */
@@ -155,7 +157,7 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
     const rewrite = document.before?.(original);
     let source = rewrite?.text ?? original;
     // Findings in what the conversion reads name the lines of the file as written.
-    const reported = rewrite ? diagnostics.withLines(document.file, rewrite.line) : diagnostics;
+    let reported = rewrite ? diagnostics.withLines(document.file, rewrite.line) : diagnostics;
     const frontmatter = readFrontmatter(source);
     if (frontmatter.invalid) {
       reported.error({
@@ -184,6 +186,13 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
     }
     let text = source;
     if (document.dialect.mdx ?? document.file.endsWith(".mdx")) {
+      // A list the page draws from static data converts as the elements it draws.
+      const expanded = await expandStaticMaps(document, source, tree, project);
+      if (expanded !== source) {
+        reported = reported.withLines(document.file, lineMap(source, expanded));
+        source = expanded;
+        tree = await parseDocument(document.file, source, frontmatter.bodyStart, document.dialect);
+      }
       const converted = await convertMdxDocument(document, source, tree, { ...context, diagnostics: reported });
       if (converted.failed) continue;
       text = converted.text;

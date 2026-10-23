@@ -4,9 +4,8 @@
  * admonition keywords as the native callouts they render as.
  */
 import { parseMarkdown, walk } from "../mdx.js";
-import { diffArrays } from "diff";
 import type { Rewrite } from "../plan.js";
-import { applyEdits, lineAt, type TextEdit } from "../text-edits.js";
+import { applyEdits, lineAt, lineMap, type TextEdit } from "../text-edits.js";
 
 /** Docusaurus's default admonition keywords; `admonitions.keywords` extends them. */
 export const DEFAULT_ADMONITIONS = ["secondary", "info", "success", "danger", "note", "tip", "warning", "important", "caution"];
@@ -72,22 +71,7 @@ export type SitePreprocessor = (file: string, content: string) => string;
  */
 function sitePreprocessed(preprocessor: SitePreprocessor | undefined, file: string, content: string): Rewrite {
   const text = preprocessor ? preprocessor(file, content) : content;
-  if (text === content) return { text, line: (line) => line };
-  const lines: number[] = [];
-  let source = 1;
-  let replaced: number | undefined;
-  for (const part of diffArrays(content.split("\n"), text.split("\n"))) {
-    if (part.removed) {
-      replaced = source;
-      source += part.count;
-    } else if (part.added) for (let index = 0; index < part.count; index++) lines.push(replaced ?? source);
-    else {
-      for (let index = 0; index < part.count; index++) lines.push(source + index);
-      source += part.count;
-      replaced = undefined;
-    }
-  }
-  return { text, line: (line) => lines[line - 1] ?? line };
+  return { text, line: lineMap(content, text) };
 }
 
 /**

@@ -254,13 +254,25 @@ export async function exportedConstant(
   project: ProjectFiles,
   binding: ImportBinding,
   depth = 0,
+  aliases?: Readonly<Record<string, string>>,
 ): Promise<JsonResult | undefined> {
-  if (depth > 8 || binding.module.startsWith("@") || !/\.(m?[jt]sx?)$/.test(binding.module)) return undefined;
-  if (!(await project.exists(binding.module))) return undefined;
-  const scope = await parseModule(project, binding.module);
+  const file = await aliasedModule(project, binding.module, aliases);
+  if (depth > 8 || file.startsWith("@") || !/\.(m?[jt]sx?)$/.test(file)) return undefined;
+  if (!(await project.exists(file))) return undefined;
+  const scope = await parseModule(project, file);
   const init = binding.export === "default" ? scope.defaultExport : scope.exports.get(binding.export);
   if (!init) return undefined;
   const value = evaluate(init, scope);
-  if (value.kind === "reference") return exportedConstant(project, value.binding, depth + 1);
+  if (value.kind === "reference") return exportedConstant(project, value.binding, depth + 1, aliases);
   return toJson(value);
+}
+
+/**
+ * The project file a module identity names through a framework's alias, such
+ * as Docusaurus's `@site/` for the project root; other identities as they are.
+ */
+async function aliasedModule(project: ProjectFiles, module: string, aliases?: Readonly<Record<string, string>>): Promise<string> {
+  for (const [alias, directory] of Object.entries(aliases ?? {}))
+    if (module === alias || module.startsWith(`${alias}/`)) return resolveModule(project, "", `./${posix.join(directory, module.slice(alias.length))}`);
+  return module;
 }

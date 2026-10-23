@@ -52,6 +52,7 @@ export interface DocumentPlace {
     mdx1?: boolean;
     headingIds?: boolean;
     pageExports?: readonly string[];
+    aliases?: Readonly<Record<string, string>>;
     calls?: ReadonlyMap<string, (args: readonly JsonValue[]) => JsonValue | undefined>;
     statics?: { base: string; directories: readonly string[] };
   };
@@ -67,6 +68,218 @@ export async function documentScope(project: ProjectFiles, file: string, source:
   const program: EstreeNode & { body: EstreeNode[] } = { type: "Program", body: [] };
   for (const node of moduleStatements(tree)) program.body.push(...(node.data?.estree?.body ?? []));
   return scopeFromProgram(project, file, source, program);
+}
+
+/**
+ * A document's static values: literals and its constants, constants it
+ * imports read from their module (through the framework's aliases), and calls
+ * to framework functions whose value the site fixes, such as `useBaseUrl("/img/a.png")`.
+ */
+function staticReader(project: ProjectFiles, scope: ModuleScope, dialect: DocumentPlace["dialect"]): (node: EstreeNode) => Promise<JsonValue | undefined> {
+  const frameworkCall = (call: CallValue): JsonResult | undefined => {
+    const evaluated = call.callee && dialect.calls?.get(identityKey(call.callee.module, call.callee.export));
+    if (!evaluated) return undefined;
+    const args: JsonValue[] = [];
+    for (const argument of call.args) {
+      const json = toJson(argument, frameworkCall);
+      if (!json.ok) return json;
+      args.push(json.value);
+    }
+    const value = evaluated(args);
+    return value === undefined ? undefined : { ok: true, value };
+  };
+  return async (node) => {
+    const value = evaluate(node, scope);
+    const json = value.kind === "reference" ? await exportedConstant(project, value.binding, 0, dialect.aliases) : toJson(value, frameworkCall);
+    return json?.ok ? json.value : undefined;
+  };
+}
+
+/**
+ * A `.map()` over a static array whose callback returns JSX, written where
+ * the page shows it as the JSX it makes: the callback's own text for each
+ * item, each expression in it as the value it reads, `key` left out. A map
+ * that reads anything not static stays as written.
+ */
+export async function expandStaticMaps(document: DocumentPlace, source: string, tree: SyntaxNode, project: ProjectFiles): Promise<string> {
+  const maps = [...walk(tree)].map(({ node }) => node).filter((node) => (node.type === "mdxFlowExpression" || node.type === "mdxTextExpression") && staticMapCall(node));
+  if (!maps.length) return source;
+  const staticValue = staticReader(project, await documentScope(project, document.file, source, tree), document.dialect);
+  const edits: TextEdit[] = [];
+  for (const node of maps) {
+    const call = staticMapCall(node)!;
+    const items = await staticValue(((call.callee as EstreeNode).object) as EstreeNode);
+    if (!Array.isArray(items)) continue;
+    const [param, indexParam] = (call.arguments as EstreeNode[])[0].params as EstreeNode[];
+    const start = span(node).start;
+    const indent = source.slice(source.lastIndexOf("\n", start - 1) + 1, start).match(/^[ \t]*/)![0];
+    const made: string[] = [];
+    for (const [index, item] of items.entries()) {
+      const bindings = new Map<string, JsonValue | undefined>();
+      if (!bindParameter(param, item, bindings)) break;
+      if (indexParam?.type === "Identifier") bindings.set(identifierName(indexParam), index);
+      const text = await instantiate(((call.arguments as EstreeNode[])[0].body) as EstreeNode, source, bindings, staticValue);
+      if (text === undefined) break;
+      made.push(text);
+    }
+    if (made.length === items.length) edits.push({ ...span(node), text: made.join(`\n${indent}`) });
+  }
+  return applyEdits(source, edits);
+}
+
+/** An expression that is `array.map((item) => <JSX />)`. */
+function staticMapCall(node: SyntaxNode): EstreeNode | undefined {
+  const body = node.data?.estree?.body ?? [];
+  const expression = body.length === 1 && body[0].type === "ExpressionStatement" ? (body[0].expression as EstreeNode) : undefined;
+  const callee = expression?.type === "CallExpression" ? (expression.callee as EstreeNode) : undefined;
+  if (callee?.type !== "MemberExpression" || callee.computed || identifierName(callee.property as EstreeNode) !== "map") return undefined;
+  const callback = (expression!.arguments as EstreeNode[])[0];
+  if (callback?.type !== "ArrowFunctionExpression" || (callback.params as EstreeNode[]).length > 2) return undefined;
+  const result = (callback.body as EstreeNode).type;
+  return result === "JSXElement" || result === "JSXFragment" ? expression : undefined;
+}
+
+/** An item bound to the callback's parameter: a name for it, or the names its properties destructure to. */
+function bindParameter(param: EstreeNode, item: JsonValue, bindings: Map<string, JsonValue | undefined>): boolean {
+  if (param.type === "Identifier") {
+    bindings.set(identifierName(param), item);
+    return true;
+  }
+  if (param.type !== "ObjectPattern" || !item || typeof item !== "object" || Array.isArray(item)) return false;
+  for (const property of param.properties as EstreeNode[]) {
+    if (property.type !== "Property" || property.computed) return false;
+    const key = identifierName(property.key as EstreeNode);
+    const target = property.value as EstreeNode;
+    if (target.type === "Identifier") bindings.set(identifierName(target), item[key]);
+    else if (target.type === "AssignmentPattern" && (target.left as EstreeNode).type === "Identifier" && (target.right as EstreeNode).type === "Literal")
+      bindings.set(identifierName(target.left as EstreeNode), item[key] === undefined ? ((target.right as EstreeNode).value as JsonValue) : item[key]);
+    else return false;
+  }
+  return true;
+}
+
+/** The callback's JSX as written, for one item: each expression as the value it reads, or undefined where one is not static. */
+async function instantiate(jsx: EstreeNode, source: string, bindings: ReadonlyMap<string, JsonValue | undefined>, staticValue: (node: EstreeNode) => Promise<JsonValue | undefined>): Promise<string | undefined> {
+  const origin = jsx.start as number;
+  const edits: TextEdit[] = [];
+  /** A value as JS reads it, `{ value }`, where `value` may be JS's undefined; undefined where it is not static. */
+  const read = async (node: EstreeNode): Promise<{ value: JsonValue | undefined } | undefined> => {
+    switch (node.type) {
+      case "Identifier":
+        if (bindings.has(identifierName(node))) return { value: bindings.get(identifierName(node)) };
+        break;
+      case "MemberExpression": {
+        const object = await read(node.object as EstreeNode);
+        const key = node.computed ? await read(node.property as EstreeNode) : { value: identifierName(node.property as EstreeNode) };
+        if (!object || !key || typeof key.value !== "string" && typeof key.value !== "number") return undefined;
+        const container = object.value;
+        if (!container || typeof container !== "object") return undefined;
+        return { value: Object.hasOwn(container, key.value) ? (container as Record<string, JsonValue>)[key.value] : undefined };
+      }
+      case "TemplateLiteral": {
+        let text = "";
+        const quasis = node.quasis as { value: { cooked: string } }[];
+        for (const [index, quasi] of quasis.entries()) {
+          text += quasi.value.cooked;
+          const expression = (node.expressions as EstreeNode[])[index];
+          if (!expression) continue;
+          const part = await read(expression);
+          if (!part || (part.value !== null && typeof part.value === "object")) return undefined;
+          text += String(part.value);
+        }
+        return { value: text };
+      }
+      case "ObjectExpression": {
+        const object: Record<string, JsonValue> = {};
+        for (const property of node.properties as EstreeNode[]) {
+          if (property.type !== "Property" || property.computed || property.kind !== "init" || property.method) return undefined;
+          const value = await read(property.value as EstreeNode);
+          if (!value) return undefined;
+          if (value.value !== undefined) object[identifierName(property.key as EstreeNode)] = value.value;
+        }
+        return { value: object };
+      }
+      case "ArrayExpression": {
+        const items: JsonValue[] = [];
+        for (const element of node.elements as (EstreeNode | null)[]) {
+          const value = element && element.type !== "SpreadElement" ? await read(element) : undefined;
+          if (!value || value.value === undefined) return undefined;
+          items.push(value.value);
+        }
+        return { value: items };
+      }
+      case "BinaryExpression": {
+        if (node.operator !== "+") return undefined;
+        const [left, right] = [await read(node.left as EstreeNode), await read(node.right as EstreeNode)];
+        if (!left || !right) return undefined;
+        const value = typeof left.value === "number" && typeof right.value === "number" ? left.value + right.value : `${left.value}${right.value}`;
+        return { value };
+      }
+    }
+    // The module's scope does not hold the callback's names, so an expression naming one is not static here.
+    if (names(node).some((name) => bindings.has(name))) return undefined;
+    const value = await staticValue(node);
+    return value === undefined ? undefined : { value };
+  };
+  const visit = async (node: EstreeNode, attribute?: EstreeNode): Promise<boolean> => {
+    if (node.type === "JSXAttribute") {
+      if ((node.name as EstreeNode).name === "key") {
+        edits.push({ start: spaceBefore(source, node.start as number) - origin, end: (node.end as number) - origin, text: "" });
+        return true;
+      }
+      return node.value ? visit(node.value as EstreeNode, node) : true;
+    }
+    if (node.type === "JSXSpreadAttribute") return false;
+    if (node.type === "JSXExpressionContainer") {
+      const expression = node.expression as EstreeNode;
+      const range = { start: (node.start as number) - origin, end: (node.end as number) - origin };
+      if (expression.type === "JSXEmptyExpression") {
+        edits.push({ ...range, text: "" });
+        return true;
+      }
+      const value = await read(expression);
+      if (!value) return false;
+      if (attribute) {
+        // An attribute JS leaves undefined is not set.
+        if (value.value === undefined) {
+          edits.push({ start: spaceBefore(source, attribute.start as number) - origin, end: (attribute.end as number) - origin, text: "" });
+        } else edits.push({ ...range, text: `{${JSON.stringify(value.value)}}` });
+        return true;
+      }
+      // A child is text; React writes nothing for undefined, null or a flag.
+      if (value.value !== null && typeof value.value === "object") return false;
+      edits.push({ ...range, text: value.value === undefined || value.value === null || typeof value.value === "boolean" ? "" : `{${JSON.stringify(String(value.value))}}` });
+      return true;
+    }
+    for (const key of ["openingElement", "closingElement", "attributes", "children", "openingFragment", "closingFragment"]) {
+      const child = node[key] as EstreeNode | EstreeNode[] | null | undefined;
+      for (const item of Array.isArray(child) ? child : child ? [child] : []) if (!(await visit(item))) return false;
+    }
+    return true;
+  };
+  if (!(await visit(jsx))) return undefined;
+  return applyEdits(source.slice(origin, jsx.end as number), edits);
+}
+
+/** Where the whitespace before an offset starts, so an attribute left out takes the space before it. */
+function spaceBefore(source: string, offset: number): number {
+  while (offset > 0 && /\s/.test(source[offset - 1])) offset--;
+  return offset;
+}
+
+/** Every identifier an expression names. */
+function names(node: EstreeNode): string[] {
+  const found: string[] = [];
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) value.forEach(visit);
+    else if (value && typeof value === "object") {
+      const child = value as EstreeNode;
+      if (child.type === "Identifier") found.push(child.name as string);
+      for (const [key, nested] of Object.entries(child)) if (key !== "loc" && key !== "range") visit(nested);
+    }
+  };
+  visit(node);
+  return found;
 }
 
 /** The import a component element names: the document's own, else the framework's global component of that name. */
@@ -86,6 +299,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
   };
 
   const scope = await documentScope(project, file, source, tree);
+  const staticValue = staticReader(project, scope, document.dialect);
 
   const edits: TextEdit[] = [];
   const replaced: { start: number; end: number }[] = [];
@@ -364,27 +578,6 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       if ((await staticValue(declarator.init as EstreeNode)) === undefined) return false;
     }
     return true;
-  }
-
-  /** A static value, following imported constants to their authoritative module and evaluating the framework's fixed calls. */
-  async function staticValue(node: EstreeNode): Promise<JsonValue | undefined> {
-    const value = evaluate(node, scope);
-    const json = value.kind === "reference" ? await exportedConstant(project, value.binding) : toJson(value, frameworkCall);
-    return json?.ok ? json.value : undefined;
-  }
-
-  /** A call to a framework function whose value the site fixes, with static arguments: `useBaseUrl("/img/a.png")`. */
-  function frameworkCall(call: CallValue): JsonResult | undefined {
-    const evaluated = call.callee && document.dialect.calls?.get(identityKey(call.callee.module, call.callee.export));
-    if (!evaluated) return undefined;
-    const args: JsonValue[] = [];
-    for (const argument of call.args) {
-      const json = toJson(argument, frameworkCall);
-      if (!json.ok) return json;
-      args.push(json.value);
-    }
-    const value = evaluated(args);
-    return value === undefined ? undefined : { ok: true, value };
   }
 
   /** The static value of children that are one expression, such as a code block's template literal. */

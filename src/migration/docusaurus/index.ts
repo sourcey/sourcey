@@ -277,8 +277,12 @@ function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonition
     codeElements: CODE_ELEMENTS,
     pageExports: PAGE_EXPORTS,
     statics: { base: site.baseUrl, directories: site.staticDirectories },
+    aliases: SITE_ALIASES,
   });
 }
+
+/** Docusaurus resolves `@site/` from the site's directory, where its config sits. */
+const SITE_ALIASES = { "@site": "." };
 
 /** What Docusaurus reads from a document's module, which a page can export to replace: its table of contents, above all. */
 const PAGE_EXPORTS = ["toc", "frontMatter", "contentTitle", "metadata", "assets"];
