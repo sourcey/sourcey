@@ -5,6 +5,10 @@ description: Recent Sourcey releases.
 
 # Changelog
 
+## 3.9.0
+
+A reference publishes in the shape its size calls for: one page while it is small, a page for each section, an OpenAPI tag or an MCP group, where every section fits on one, and otherwise a page for each operation. The build says which it chose, and `reference.split` overrides it. `mcp({ spec, groups })` sections an MCP server as its authors divide it, and an entry's kind shows only where kinds mix. The sidebar shows the section around the page whole, with one entry current; the footer sets its words before its icons, with "Edit this page" at the page's end; an operation's method is drawn alike everywhere; and a coloured header runs the window's width. Large sites build in far less time and memory: an 838-page site builds cold in 14 s where it took 32 s, search reads only what a query needs, and very large schemas draw each type once. The Sourcey skill ships in the package and as a plugin for Claude Code, Gemini CLI, Cursor, Grok Build and ChatGPT/Codex. See the [complete release notes](https://github.com/sourcey/sourcey/blob/main/CHANGELOG.md#390---2026-10-23).
+
 ## 3.8.3
 
 A not-found page no longer names a Markdown view that is never written. Social images draw the site's logo as its header does: a logo named by URL loads, a wordmark keeps its proportions and stands without the name, and the dark logo is used on the dark image. Go and C++ reference indexes have summaries of their own, and a reference's header tab leads to its overview. A C or C++ reference documents global scope, with a page for each type outside every namespace and a Globals page for the functions, variables and macros no group claims, so a C library documented without groups builds; a page is never summarised by its source location. A build directory an earlier Sourcey wrote says how to move on.

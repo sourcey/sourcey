@@ -1,5 +1,5 @@
 {
   "name": "sourcey-docs",
-  "version": "3.8.3",
+  "version": "3.9.0",
   "description": "Build, migrate and review documentation sites with Sourcey: Markdown guides, OpenAPI and MCP references, Doxygen, Go and Rust, from a project's own sources."
 }
