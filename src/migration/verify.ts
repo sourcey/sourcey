@@ -288,6 +288,16 @@ async function codeElement(project: ProjectFiles, document: PlannedDocument, sou
 /** HTML elements that sit in a line of text, which a reader reads straight through. */
 const INLINE_TAGS = new Set(["a", "abbr", "b", "bdi", "bdo", "cite", "code", "data", "del", "dfn", "em", "i", "ins", "kbd", "mark", "q", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var"]);
 
+/**
+ * The text a reader sees in a node: an HTML element that is not inline, such
+ * as a table cell, reads apart from its neighbours, as a block of raw HTML does.
+ */
+function readerText(node: SyntaxNode): string {
+  const block = (node.type === "mdxJsxTextElement" || node.type === "mdxJsxFlowElement") && !!node.name && /^[a-z]/.test(node.name) && !INLINE_TAGS.has(node.name);
+  const text = node.children ? node.children.map(readerText).join("") : textContent(node);
+  return block ? ` ${text} ` : text;
+}
+
 /** Component attributes whose values a reader sees as text. */
 const TEXT_ATTRIBUTES = new Set(["title", "description", "label", "alt", "caption"]);
 
@@ -309,7 +319,7 @@ async function contentBlocks(tree: SyntaxNode, options: { alerts?: string; code?
   const isCode = options.code ?? (() => false);
   for (const { node, parents } of walk(tree)) {
     if (parents.some(isCode)) continue;
-    const text = node.type === "paragraph" ? textContent(node) : "";
+    const text = node.type === "paragraph" ? readerText(node) : "";
     const quote = parents.at(-1);
     const alert = options.alerts !== undefined && quote?.children?.[0] === node && alertMarker(options.alerts, quote) ? text.match(ALERT_MARKER) : null;
     if (alert) prose.push(alert[1].charAt(0) + alert[1].slice(1).toLowerCase(), normalise(text.slice(alert[0].length)));
@@ -318,13 +328,13 @@ async function contentBlocks(tree: SyntaxNode, options: { alerts?: string; code?
       // MDX reads a line opening with an element as a paragraph; each element is its own piece to a reader (two one-line cards).
       let run = "";
       for (const child of node.children)
-        if (child.type !== "mdxJsxTextElement") run += textContent(child);
+        if (child.type !== "mdxJsxTextElement") run += readerText(child);
         else {
-          prose.push(normalise(run), isCode(child) ? "" : normalise(textContent(child)));
+          prose.push(normalise(run), isCode(child) ? "" : normalise(readerText(child)));
           run = "";
         }
       prose.push(normalise(run));
-    } else if (["paragraph", "heading", "tableCell"].includes(node.type)) prose.push(normalise(textContent(node)));
+    } else if (["paragraph", "heading", "tableCell"].includes(node.type)) prose.push(normalise(readerText(node)));
     else if (node.type === "image" && node.alt) prose.push(normalise(node.alt));
     // Comments show nothing; the text between tags does, and an image's alternative text or a title, as a component's.
     else if (node.type === "html") {

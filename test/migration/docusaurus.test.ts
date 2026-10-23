@@ -656,6 +656,14 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("reads a table's cells written on one line apart, as a reader sees them", async () => {
+    const page = "# Installation\n\n<table>\n  <tbody>\n    <tr><td>Setup time</td><td>~ 10 min</td></tr>\n  </tbody>\n</table>\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root });
+      expect(report.applied).toBe(true);
+    });
+  });
+
   it("ends an HTML element's raw lines before the Markdown MDX reads in it, so a heading or a fence inside stays one", async () => {
     const page = [
       "# Installation",
