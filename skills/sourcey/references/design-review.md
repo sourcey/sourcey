@@ -13,7 +13,7 @@ Run `npx sourcey dev` (or serve the built `dist`) and open every kind of page a 
 - search, opened and with a query
 - an address that does not exist (the 404 page)
 
-For each, look at 1440 px and 390 px wide, in light and in dark. Where the site replaces an older one, put each page beside its original.
+For each, look at 1440 px and 390 px wide, in light and in dark, and once at 1920 px or wider, where the page's frame stops and a coloured header must still reach both edges. Where the site replaces an older one, put each page beside its original.
 
 ## What to check
 
@@ -22,12 +22,15 @@ For each, look at 1440 px and 390 px wide, in light and in dark. Where the site 
 - Repetition: a line under a title that restates the title; "On this page" listing what the sidebar beside it lists; a footer link to a page in the sidebar or a link already in the header.
 - Lone navigation: a sidebar group with only the current page, a contents list with one entry, a tab with one page that the header already reaches.
 
+**One thing looks one way.** A method, a kind or a status is drawn alike wherever it appears: the sidebar, a reference's lists, an operation's head, search. Put them side by side; the same label in two weights or colours reads as two things, or as carelessness.
+
 **One thing is current.** Click sidebar entries, section links within a page, and tabs. After each click exactly one sidebar entry should be lit: the place being read, or the page when the reader is at its top.
 
 **Structure matches the project.** Sections and their order are the project's own. A large reference reads in the groups its authors use. Nothing is cut short without saying so.
 
 **Names and assets.**
 - The header shows the product's name, not a site title with a tagline.
+- A page's browser title names the site once: "Argo CD Core", not "Argo CD Core - Argo CD".
 - The logo is whole in light and dark: capture it at 3x and check the right edge of its word. A web font inside an SVG image falls back to another face, which may be wider.
 - Favicons, social cards and images belong to the project.
 
