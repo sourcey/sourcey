@@ -10,7 +10,7 @@ import type { Diagnostics } from "../diagnostics.js";
 import { groupIds, placeUnlisted, topLevelGroups } from "../navigation.js";
 import type { ProjectFiles } from "../project-files.js";
 import { githubSlugs } from "../slugs.js";
-import { isCategoryIndex, numberPrefix, type DocusaurusDoc } from "./docs.js";
+import { frontmatterNumber, isCategoryIndex, numberPrefix, type DocusaurusDoc } from "./docs.js";
 import type { DocsInstance, DocusaurusSite } from "./site.js";
 
 type CategoryLink = { type: "doc"; id: string } | { type: "generated-index"; slug?: string; title?: string; description?: string };
@@ -147,7 +147,10 @@ async function categoriesMetadata(context: SidebarContext): Promise<Map<string, 
   const files = await context.project.list(context.contentDir, (path) => /(^|\/)_category_\.(json|ya?ml)$/.test(path));
   const metadata = new Map<string, CategoryMetadata>();
   // Docusaurus reads JSON category files as YAML too, so a byte order mark is fine.
-  for (const file of files) metadata.set(posix.dirname(file.slice(context.contentDir.length + 1)), parseYaml(await context.project.readText(file)) as CategoryMetadata);
+  for (const file of files) {
+    const read = parseYaml(await context.project.readText(file)) as CategoryMetadata & { position?: unknown };
+    metadata.set(posix.dirname(file.slice(context.contentDir.length + 1)), { ...read, position: frontmatterNumber(read.position) });
+  }
   return metadata;
 }
 

@@ -30,6 +30,14 @@ export interface DocusaurusDoc {
 const IGNORED_PREFIX = /^\d+[-_.]\d+/;
 const NUMBER_PREFIX = /^(?<numberPrefix>\d+)\s*[-_.]+\s*(?<suffix>[^-_.\s].*)$/;
 
+/** A number as Docusaurus validates one, with Joi's `number()` converting: a number, or a string that spells one, such as `"10"`. */
+export function frontmatterNumber(value: unknown): number | undefined {
+  if (typeof value === "number") return value;
+  if (typeof value !== "string" || !/^\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?\s*$/i.test(value)) return undefined;
+  // Joi reads -0 as 0.
+  return parseFloat(value.trim()) || 0;
+}
+
 /** Docusaurus's default number prefix parser: `01-intro` is `intro` at position 1; `7.0-notes` is a version, not a prefix. */
 export function numberPrefix(name: string, enabled = true): { name: string; position?: number } {
   const match = enabled && !IGNORED_PREFIX.test(name) ? NUMBER_PREFIX.exec(name) : null;
@@ -75,7 +83,7 @@ export async function readDocs(project: ProjectFiles, instance: DocsInstance, co
       slug: docSlug(data.slug, source, dirName, baseId),
       title,
       label: typeof data.sidebar_label === "string" ? data.sidebar_label : title,
-      position: typeof data.sidebar_position === "number" ? data.sidebar_position : position,
+      position: frontmatterNumber(data.sidebar_position) ?? position,
       frontmatter: data,
       draft: data.draft === true,
       unlisted: data.unlisted === true,

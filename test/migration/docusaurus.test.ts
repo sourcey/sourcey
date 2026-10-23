@@ -512,6 +512,21 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("orders by a sidebar_position written as a string, as Docusaurus validates it into a number", async () => {
+    const ordered = {
+      ...site,
+      "docs/guides/zeta.md": "---\nsidebar_position: \"2\"\n---\n\n# Zeta\n",
+      "docs/guides/alpha.md": "---\nsidebar_position: \"10\"\n---\n\n# Alpha\n",
+      "docs/guides/reference/_category_.json": "{ \"label\": \"Reference\", \"position\": \"1\" }\n",
+    };
+    await withProject(ordered, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const config = await read(root, "sourcey.config.ts");
+      expect(config.indexOf('group: "Reference"')).toBeLessThan(config.indexOf('"guides/zeta"'));
+      expect(config.indexOf('"guides/zeta"')).toBeLessThan(config.indexOf('"guides/alpha"'));
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
