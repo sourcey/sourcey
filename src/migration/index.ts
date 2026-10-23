@@ -7,7 +7,7 @@ import { prepareDocusaurus } from "./docusaurus/index.js";
 import { prepareMintlify } from "./mintlify/index.js";
 import { prepareMkDocs } from "./mkdocs/index.js";
 import { posix, resolve } from "node:path";
-import { printConfig, Reference } from "./config-writer.js";
+import { printConfig, Reference, type ConfigValue } from "./config-writer.js";
 import { Diagnostics } from "./diagnostics.js";
 import { loadMapping } from "./mapping.js";
 import { parseMarkdown, textContent, walk } from "./mdx.js";
@@ -65,6 +65,7 @@ export async function prepareMigration(options: MigrationOptions): Promise<Migra
 
   for (const plan of plans) {
     keepChangelogsAsPages(plan, diagnostics);
+    await keepOwnAgentIndexes(plan, project, diagnostics);
     registerDefinitions(plan, mapping.definitions);
     const file = configFile(plan);
     if (await project.exists(file))
@@ -151,6 +152,32 @@ function keepChangelogsAsPages(plan: NativePlan, diagnostics: Diagnostics): void
     code: "changelog",
     message: `${changelogs.map((document) => document.file).join(", ")} stay ordinary pages; remove \`changelog: false\` for native changelog pages, feeds and version links`,
   });
+}
+
+/** The agent indexes a native build writes, by the file each is published as. */
+const AGENT_INDEXES = { index: "llms.txt", full: "llms-full.txt" } as const;
+
+/**
+ * A site that publishes its own `llms.txt` or `llms-full.txt` from its public
+ * files keeps it as written: the native build does not generate that index
+ * over it, and the report says so.
+ */
+async function keepOwnAgentIndexes(plan: NativePlan, project: ProjectFiles, diagnostics: Diagnostics): Promise<void> {
+  const { publicDir, exports } = plan.config.config;
+  if (typeof publicDir !== "string" || exports === false) return;
+  const own: (keyof typeof AGENT_INDEXES)[] = [];
+  for (const kind of ["index", "full"] as const) {
+    const path = posix.join(plan.configDir, publicDir, AGENT_INDEXES[kind]);
+    const planned = plan.files.get(path);
+    if (planned ? planned.bytes !== null : await project.exists(path)) own.push(kind);
+  }
+  if (!own.length) return;
+  const written = (exports ?? {}) as Record<string, ConfigValue>;
+  const llms = (typeof written.llms === "object" && written.llms ? written.llms : {}) as Record<string, ConfigValue>;
+  plan.config.config.exports = { ...written, llms: { ...llms, ...Object.fromEntries(own.map((kind) => [kind, false])) } };
+  const names = own.map((kind) => AGENT_INDEXES[kind]).join(" and ");
+  const one = own.length === 1;
+  diagnostics.review({ file: configFile(plan), code: "exports", message: `The site's own ${names} ${one ? "is" : "are"} published as written, and the native build does not generate ${one ? "one" : "them"}` });
 }
 
 /** Native component definitions the project authored for its own components, registered by name. */

@@ -467,6 +467,14 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("publishes the site's own llms.txt as written, and generates only the index it does not have", async () => {
+    await withProject({ ...site, "static/llms.txt": "# Example\n\n> Written by hand.\n" }, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "sourcey.config.ts")).toContain("  exports: {\n    llms: { index: false },\n  },\n");
+      expect(report.diagnostics.map((item) => item.message)).toContain("The site's own llms.txt is published as written, and the native build does not generate one");
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

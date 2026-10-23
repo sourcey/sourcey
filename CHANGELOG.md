@@ -19,6 +19,7 @@
 - A migration's check of each page's prose reads an image's alternative text and a title in HTML, as it reads them on a component: an `<img alt>` kept as written had read as lost.
 - `sourcey migrate docusaurus` keeps a navbar logo or favicon given as a web address.
 - `sourcey migrate docusaurus` writes the client redirects plugin's paths below the site's base URL, where Docusaurus publishes them. On a site with a base URL other than `/`, the native build had stopped at a redirect outside it.
+- A migration keeps a site's own `llms.txt` or `llms-full.txt` from its public files as written, and turns off the native build's generation of that index, where the native build had stopped at the two colliding.
 - A migration finds where an element's opening tag ends from the attributes the parser placed, where an apostrophe in JSX inside an attribute, such as `title={<span>It's quick</span>}`, had stopped it with an internal error.
 - A migration reads an MDX import or export written inside an element, which MDX hoists to the module, where it had stopped at the components it imports as not imported.
 - `sourcey migrate docusaurus` names the line a finding is on as the file is written. After an `mdx-code-block` fence, which Docusaurus unwraps before reading a document, a finding had named a line two earlier for each fence above it.
