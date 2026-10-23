@@ -156,7 +156,8 @@ describe("static documentation exports", () => {
     });
     expect(site.llmsTxt).toBe("");
     expect(site.llmsFullTxt).toBe("");
-    expect([...site.extraFiles.keys()].filter((path) => !path.startsWith("_sourcey/try-it/") && !path.startsWith("_search/"))).toEqual([]);
+    // What remains is the site's own: its consoles, its search and its icon.
+    expect([...site.extraFiles.keys()].filter((path) => !path.startsWith("_sourcey/try-it/") && !path.startsWith("_search/") && !path.startsWith("_media/"))).toEqual([]);
     expect(site.pages[0].alternateLinks).toEqual([]);
   });
 

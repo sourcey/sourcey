@@ -31,7 +31,7 @@ export function collectSiteDiagnostics(
   const origin = config.siteUrl ?? "https://sourcey.invalid";
   if (!config.siteUrl && pages.some(page => routes.byKey.get(identityKey(page))?.index)) diagnostics.push({
     severity: "warning", code: "missing-site-origin",
-    message: "Set siteUrl to the public origin before publishing; canonical, hreflang and sitemap URLs are currently relative.",
+    message: "Set siteUrl to the public origin before publishing: without it, pages name no canonical URL or language alternates and the site has no sitemap.",
   });
   for (const page of pages) {
     const route = routes.byKey.get(identityKey(page));

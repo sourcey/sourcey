@@ -33,6 +33,10 @@ export function Head() {
   const breadcrumbs = !options.noindex && page.kind !== "not-found"
     ? breadcrumbList(nav, metadata.title, options.pageUrl, site.baseUrl)
     : undefined;
+  // A canonical address and language alternates name pages by their absolute URLs, which only a
+  // site that knows its origin has; and a page in one language has no alternate to name.
+  const canonical = options.pageUrl && isAbsoluteHttpUrl(options.pageUrl) ? options.pageUrl : undefined;
+  const languages = options.equivalents?.filter(e => e.kind === "locale" && e.lang && isAbsoluteHttpUrl(e.href)) ?? [];
 
   const { colors, fonts, layout } = site.theme;
   // Desktop: h-16 row + h-12 tabs (when multi-tab) = 7rem, or h-16 alone = 4rem.
@@ -80,14 +84,14 @@ export function Head() {
       <meta name="description" content={pageDescription} />
       {breadcrumbs && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredDataJson(breadcrumbs) }} />}
       {options.noindex && <meta name="robots" content="noindex,follow" />}
-      {options.equivalents?.filter(e => e.kind === "locale" && e.lang).map(e => <link rel="alternate" hrefLang={e.lang} href={e.href} />)}
+      {languages.length > 1 && languages.map(e => <link rel="alternate" hrefLang={e.lang} href={e.href} />)}
       <meta name="generator" content={`Sourcey ${pkg.version}`} />
-      {options.pageUrl && <link rel="canonical" href={options.pageUrl} />}
+      {canonical && <link rel="canonical" href={canonical} />}
       <meta property="og:title" content={pageTitle} />
       <meta property="og:description" content={pageDescription} />
       <meta property="og:type" content="website" />
       {siteName && <meta property="og:site_name" content={siteName} />}
-      {options.pageUrl && isAbsoluteHttpUrl(options.pageUrl) && <meta property="og:url" content={options.pageUrl} />}
+      {canonical && <meta property="og:url" content={canonical} />}
       {options.ogImageUrl && <meta property="og:image" content={options.ogImageUrl} />}
       {options.ogImageUrl && <meta property="og:image:width" content="1200" />}
       {options.ogImageUrl && <meta property="og:image:height" content="630" />}

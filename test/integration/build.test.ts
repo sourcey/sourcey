@@ -376,6 +376,7 @@ describe("buildDocs (integration)", () => {
     try {
       const config = await loadConfig(configDir);
       config.prettyUrls = "slash";
+      config.siteUrl = "https://docs.example.com";
 
       await buildSiteDocs({ config, outputDir });
 
@@ -383,11 +384,11 @@ describe("buildDocs (integration)", () => {
       expect(existsSync(resolve(outputDir, "introduction.html"))).toBe(false);
 
       const sitemap = await readFile(resolve(outputDir, "sitemap.xml"), "utf-8");
-      expect(sitemap).toContain("<loc>/introduction/</loc>");
+      expect(sitemap).toContain("<loc>https://docs.example.com/introduction/</loc>");
       expect(sitemap).not.toContain(".html</loc>");
 
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
-      expect(llms).toContain("(/introduction/index.md)");
+      expect(llms).toContain("(https://docs.example.com/introduction/index.md)");
 
       const searchIndex = JSON.stringify(await publishedSearchRows(outputDir));
       expect(searchIndex).toContain('"url":"/introduction/"');
@@ -429,6 +430,7 @@ describe("buildDocs (integration)", () => {
     try {
       const config = await loadConfig(configDir);
       config.prettyUrls = "strip";
+      config.siteUrl = "https://docs.example.com";
 
       await buildSiteDocs({ config, outputDir });
 
@@ -438,10 +440,10 @@ describe("buildDocs (integration)", () => {
       expect(existsSync(resolve(outputDir, "api/index.html"))).toBe(false);
 
       const sitemap = await readFile(resolve(outputDir, "sitemap.xml"), "utf-8");
-      expect(sitemap).toContain("<loc>/introduction</loc>");
+      expect(sitemap).toContain("<loc>https://docs.example.com/introduction</loc>");
 
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
-      expect(llms).toContain("(/introduction.md)");
+      expect(llms).toContain("(https://docs.example.com/introduction.md)");
 
       const searchIndex = JSON.stringify(await publishedSearchRows(outputDir));
       expect(searchIndex).toContain('"url":"/introduction"');

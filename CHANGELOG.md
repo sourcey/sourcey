@@ -22,6 +22,8 @@
 
 ### Fixed
 
+- A page names its canonical URL and its language alternates only by absolute URLs, so a site without `siteUrl` names neither and has no sitemap, rather than relative ones that search engines and Lighthouse reject; the build's warning says so. A page in one language names no alternate, where it had named itself.
+- A site without a `favicon` shows its logo where that is a mark, or else a square of its primary colour, as its social images draw beside the name. Without an icon, every page's browser asked for `/favicon.ico` and logged the missing file.
 - The header's rows run the window's width, so a site that colours its top bar, as a Material site's app bar is coloured, colours it edge to edge: past 1,472 px it had stopped at the page's frame. Its contents keep to the frame as before.
 - A page title that opens with the site's name is no longer followed by the name again: "Argo CD Core" rather than "Argo CD Core - Argo CD". Names compare as words and without ® or ™, so "Ever® Gauzy™ Platform" is no longer followed by "Ever Gauzy™ Platform".
 - A field's name, an API parameter's, a schema property's or an authentication scheme's, breaks after an underscore, and inside a word only where nothing else fits, rather than widening the page on a phone: `use_external_album_art_when_processing_media` had run 18 px past a 390 px screen.

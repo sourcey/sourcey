@@ -198,11 +198,15 @@ export async function* siteArtifacts(
   for (const route of redirects) yield claim(route.outputPath, redirectPage(route.to, site));
   if (redirects.length) yield claim("_redirects", redirects.map(route => `${route.publicPath} ${route.to} ${route.status}`).join("\n") + "\n");
   for (const [path, body] of assets.files) yield claim(path, body);
-  const urls = pages.flatMap(page => {
-    const route = routes.byOutputPath.get(page.outputPath);
-    return route?.index ? [`  <url><loc>${escapeXml(site.siteUrl ? toAbsoluteUrl(route.publicPath, site.siteUrl) : route.publicPath)}</loc></url>`] : [];
-  });
-  yield claim("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`);
+  // A sitemap names each page by its absolute URL, so only a site that knows its origin has one.
+  if (site.siteUrl) {
+    const siteUrl = site.siteUrl;
+    const urls = pages.flatMap(page => {
+      const route = routes.byOutputPath.get(page.outputPath);
+      return route?.index ? [`  <url><loc>${escapeXml(toAbsoluteUrl(route.publicPath, siteUrl))}</loc></url>`] : [];
+    });
+    yield claim("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`);
+  }
   for (const [path, body] of options.extraFiles ?? []) yield claim(path, body);
   if (cache) for (const path of cache.keys()) if (!written.has(path)) cache.delete(path);
 }

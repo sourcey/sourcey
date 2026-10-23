@@ -303,7 +303,7 @@ describe("native compilation", () => {
   it("compiles redirects once and emits exact standalone fallbacks without indexing them", () => fixture(async root => {
     await file(root, "guide.md", "# Guide\n\n## Install\n\nFollow the instructions.\n");
     const raw = { baseUrl: "/manual", prettyUrls: "slash" as const, theme: { fonts: { google: false as const } }, navigation: { tabs: [{ tab: "Docs", slug: "", groups: [{ group: "Start", pages: ["guide"] }] }] } };
-    const config = await resolveConfigFromRaw({ ...raw, redirects: { "/manual/old": "/manual/guide/#install", "/manual/earlier.html": { to: "/manual/old?from=archive", status: 302 } } }, root);
+    const config = await resolveConfigFromRaw({ ...raw, siteUrl: "https://example.com", redirects: { "/manual/old": "/manual/guide/#install", "/manual/earlier.html": { to: "/manual/old?from=archive", status: 302 } } }, root);
     const site = await buildSourceySite({ config, generateOgImages: false });
     // Both, and the root, which no page publishes.
     expect(site.assembly.routes.redirects.size).toBe(3);
@@ -315,7 +315,7 @@ describe("native compilation", () => {
     expect(files.get("_redirects")).toBe("/manual/old /manual/guide/#install 301\n/manual/earlier.html /manual/old?from=archive 302\n/manual/ /manual/guide/ 302\n");
     expect(files.get("earlier.html")).toBeDefined();
     expect(JSON.stringify(site.searchRows)).not.toContain("earlier");
-    expect(files.get("sitemap.xml")).not.toContain("/old");
+    expect(files.get("sitemap.xml")!.toString()).not.toContain("/old");
     for (const redirects of [
       { "/manual/guide/": "/manual/old" },
       { "/manual/old": "/manual/missing/" },
@@ -586,11 +586,54 @@ describe("native compilation", () => {
     expect(index.documents.some((entry: {url: string}) => entry.url.includes("archive"))).toBe(false);
   }));
 
+  it("names a page by its absolute address only where the site knows its origin, and its languages only where it has several", () => fixture(async root => {
+    await file(root, "guide.md", "# Guide\n\nHello.\n");
+    const build = async (siteUrl?: string) => {
+      const config = await resolveConfigFromRaw({ ...(siteUrl ? { siteUrl } : {}), theme: { fonts: { google: false } },
+        navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Start", pages: ["guide"] }] }) }] } }, root);
+      const site = await buildSourceySite({ config, generateOgImages: false });
+      return { site, files: await sourceyArtifacts(site) };
+    };
+    // Without its origin a site can name no page absolutely: no canonical, alternates or sitemap, and the build says so.
+    const local = await build();
+    const page = local.files.get("guide.html")!.toString();
+    expect(page).not.toContain('rel="canonical"');
+    expect(page).not.toContain("hreflang");
+    expect(page).not.toContain('property="og:url"');
+    expect(local.files.has("sitemap.xml")).toBe(false);
+    expect(local.site.siteDiagnostics).toContainEqual(expect.objectContaining({ code: "missing-site-origin", message: expect.stringContaining("no sitemap") }));
+    // With it, the page names itself; in one language it has no alternate to name.
+    const published = await build("https://docs.example.com");
+    const named = published.files.get("guide.html")!.toString();
+    expect(named).toContain('<link rel="canonical" href="https://docs.example.com/guide.html"/>');
+    expect(named).not.toContain("hreflang");
+    expect(published.files.get("sitemap.xml")!.toString()).toContain("<loc>https://docs.example.com/guide.html</loc>");
+  }));
+
+  it("gives a site without a favicon its logo where that is a mark, or else the square of its colour", () => fixture(async root => {
+    await file(root, "guide.md", "# Guide\n\nHello.\n");
+    await file(root, "mark.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="8" cy="8" r="8" fill="blue"/></svg>');
+    await file(root, "icon.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="red"/></svg>');
+    const icon = async (raw: Record<string, unknown>) => {
+      const config = await resolveConfigFromRaw({ ...raw, theme: { colors: { primary: "#d97706" }, fonts: { google: false } },
+        navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Start", pages: ["guide"] }] }) }] } }, root);
+      const site = await buildSourceySite({ config, generateOgImages: false });
+      const files = await sourceyArtifacts(site);
+      const href = files.get("guide.html")!.toString().match(/<link rel="icon" href="\/([^"]+)"/)?.[1];
+      return href && files.get(href)!.toString();
+    };
+    expect(await icon({})).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#d97706"/></svg>');
+    expect(await icon({ logo: { light: "./mark.svg", mark: true } })).toContain('fill="blue"');
+    // A wordmark is too wide for an icon, so it is not one.
+    expect(await icon({ logo: "./mark.svg" })).toContain('fill="#d97706"');
+    expect(await icon({ logo: { light: "./mark.svg", mark: true }, favicon: "./icon.svg" })).toContain('fill="red"');
+  }));
+
   it("declares each page's language by its tag: its own, or the language it falls back to", () => fixture(async root => {
     await file(root, "guide.md", "# Guide\n\nHello.\n");
     await file(root, "pt/guide.md", "# Guia\n\nOlá.\n");
     await file(root, "second.md", "# Second\n\nOnly in English.\n");
-    const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } },
+    const config = await resolveConfigFromRaw({ siteUrl: "https://docs.example.com", theme: { fonts: { google: false } },
       i18n: { defaultLocale: "en", locales: { en: { label: "English", lang: "en-GB" }, pt: { label: "Português", lang: "pt-BR" } } },
       navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Start", pages: ["guide", "second"] }] }) }] } }, root);
     const files = await sourceyArtifacts(await buildSourceySite({ config, generateOgImages: false }));
@@ -598,7 +641,7 @@ describe("native compilation", () => {
     expect(lang("guide.html")).toBe("en-GB");
     expect(lang("pt/guide.html")).toBe("pt-BR");
     expect(lang("pt/second.html")).toBe("en-GB");
-    expect(files.get("guide.html")!.toString()).toContain('hreflang="pt-BR"');
+    expect(files.get("guide.html")!.toString()).toContain('hreflang="pt-BR" href="https://docs.example.com/pt/guide.html"');
   }));
 
   it("indexes the home of a version, a language and an API version in its own exports, in every URL style", () => fixture(async root => {
@@ -767,7 +810,10 @@ describe("native compilation", () => {
     const site = await buildSourceySite({ config, generateOgImages: false });
     const page = site.pages.find(page => page.currentPage.kind === "markdown")!.currentPage;
     if (page.kind !== "markdown") throw new Error("Expected markdown");
-    expect([...site.extraFiles.keys()].filter(path => path.startsWith("_media/"))).toHaveLength(3);
+    // The page's three files, and the site's icon, the square of its colour.
+    const media = [...site.extraFiles.keys()].filter(path => path.startsWith("_media/"));
+    expect(media).toHaveLength(4);
+    expect(media).toContain(site.site.favicon!.replace("/docs/", ""));
     expect(page.markdown.html).toMatch(/<img src="\/docs\/_media\/[^"]+"[^>]*title="An image title"/);
     expect(page.markdown.html).toMatch(/<a href="\/docs\/_media\/[^"]+"><img/);
     expect(page.markdown.html).toMatch(/<img src="\/docs\/_media\/[^"]+"[^>]*alt="Exact logo"/);

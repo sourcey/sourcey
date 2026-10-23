@@ -30,6 +30,19 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
       }
     : undefined;
 
+  /**
+   * A site without a favicon shows its logo where that is a mark, or else the square of its primary
+   * colour its social cards draw beside its name. Without an icon, every page's browser asks for
+   * /favicon.ico and logs the missing file.
+   */
+  function markIcon(primary: string): string {
+    const fill = `#${primary.split(/\s+/).map(channel => Number(channel).toString(16).padStart(2, "0")).join("")}`;
+    const body = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${fill}"/></svg>`);
+    const path = `_media/${createHash("sha256").update(body).digest("hex").slice(0, 20)}.svg`;
+    assets.set(path, body);
+    return toPublicUrl(path, undefined, config.baseUrl, config.prettyUrls);
+  }
+
   const customCSS = await loadCustomCSS(config.theme.css, input, assetUrl);
 
   return {
@@ -41,7 +54,7 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
     prettyUrls: config.prettyUrls,
     theme: config.theme,
     logo: logo?.light ? logo : undefined,
-    favicon: config.favicon ? await assetUrl(config.favicon) : undefined,
+    favicon: config.favicon ? await assetUrl(config.favicon) : config.logo?.mark && logo?.light ? logo.light : markIcon(config.theme.colors.primary),
     repo: config.repo,
     editBranch: config.editBranch,
     editBasePath: config.editBasePath,

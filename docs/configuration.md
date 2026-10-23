@@ -121,6 +121,8 @@ Local images are published once as content-addressed files shared across pages. 
 
 The logo is taken as a full wordmark, so the site's `name` is not repeated beside it. For a mark without the name, set `logo: { light: "./brand/mark.svg", mark: true }` and the name shows beside it in every theme and in social images.
 
+Without a `favicon`, a site's icon is its logo where that is a mark, or else a square of its primary colour, as its social images draw beside the name. A wordmark is too wide to be an icon.
+
 ## Footer
 
 ```ts
@@ -295,7 +297,7 @@ sourcey dev
 
 The engine's stylesheet and scripts are published under `_assets/<hash>/`, named by their content, so a host can cache them for good: a new release or theme publishes new names. The stylesheet, component and theme styles included, is minified as one file.
 
-`build` and `check` report what publishing needs: a `siteUrl` for canonical, language and sitemap URLs; pages with no summary of their own, or a one-word one (their metadata falls back to the title); canonical or language links to no published page; and links to a fragment the target page does not have. Each kind is reported once, with the pages it affects. With a `siteUrl`, every page carries its place in the navigation as schema.org `BreadcrumbList` data, and its description is plain text drawn from its own summary.
+`build` and `check` report what publishing needs: a `siteUrl`, without which pages name no canonical URL or language alternates and the site has no sitemap, as each needs absolute URLs; pages with no summary of their own, or a one-word one (their metadata falls back to the title); canonical or language links to no published page; and links to a fragment the target page does not have. Each kind is reported once, with the pages it affects. With a `siteUrl`, every page carries its place in the navigation as schema.org `BreadcrumbList` data, and its description is plain text drawn from its own summary.
 
 Search loads when a reader first searches. A large index is split: the first search downloads the list of documents and the shards of the index its words can match, and later searches fetch only the shards they need.
 

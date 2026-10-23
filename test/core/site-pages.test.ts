@@ -29,7 +29,7 @@ const html = (files: Map<string, string | Buffer>, path: string) => files.get(pa
 describe("site pages", () => {
   for (const theme of ["default", "minimal", "api-first", "reader"] as const) it(`${theme}: draws a page layout with the site's header and footer around the page's own body, in no tab`, () => fixture(async root => {
     await file(root, "pages/index.md", "---\ntitle: Pets for everyone\ndescription: Find a pet.\n---\n# Pets for everyone\n\nFind a pet. [Start](<operation:GET /pets>).\n");
-    const { built, files } = await site(root, {}, theme);
+    const { built, files } = await site(root, { siteUrl: "https://pets.example" }, theme);
     const home = html(files, "index.html");
     expect(home).toContain("<title>Pets for everyone");
     // The author's heading and opening stay theirs; there is no sidebar or contents.
@@ -49,7 +49,7 @@ describe("site pages", () => {
     const page = built.pages.find(candidate => candidate.outputPath === "index.html")!;
     expect(page.identity.tab).toBe("@pages");
     expect(built.searchRows.find(row => row.title === "Pets for everyone")).toMatchObject({ url: "/", tab: "" });
-    expect(html(files, "sitemap.xml")).toContain("<loc>/</loc>");
+    expect(html(files, "sitemap.xml")).toContain("<loc>https://pets.example/</loc>");
   }));
 
   it("draws a blank page as its body alone, with its own stylesheet and the fonts it names", () => fixture(async root => {
@@ -82,7 +82,7 @@ describe("site pages", () => {
 
   it("replaces the generated not-found page, naming its assets and links from the root", () => fixture(async root => {
     await file(root, "pages/404.md", "# Lost\n\nTry the [start](../docs/start.md).\n");
-    const { built, files } = await site(root, { baseUrl: "/manual" });
+    const { built, files } = await site(root, { baseUrl: "/manual", siteUrl: "https://pets.example" });
     const page = html(files, "404.html");
     expect(page).toContain("Lost");
     expect(page).not.toContain("Page not found");
