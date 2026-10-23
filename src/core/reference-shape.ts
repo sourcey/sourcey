@@ -5,9 +5,10 @@ import { operationAnchors, sectionBodies } from "./reference-identity.js";
 const PAGE_OPERATIONS = 50;
 /**
  * Field rows, as the operations' parameters, bodies and responses draw them, one
- * page holds: with the examples drawn beside them, about a megabyte of HTML.
+ * page holds: with the examples drawn beside them, about two megabytes of HTML,
+ * a few tens of kilobytes compressed, which still opens at once.
  */
-const PAGE_ROWS = 600;
+const PAGE_ROWS = 1000;
 
 /** How an OpenAPI or MCP reference publishes: one page, a page per section, or a page per operation. */
 export type ReferenceSplit = false | "sections" | "operations";

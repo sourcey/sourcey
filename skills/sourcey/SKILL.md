@@ -86,7 +86,7 @@ An OpenAPI or MCP tab publishes in one of three shapes. Leave `reference.split` 
 
 | Shape | `reference.split` | Chosen when |
 | --- | --- | --- |
-| One page | `false` | The reference holds at most 50 operations and 600 field rows |
+| One page | `false` | The reference holds at most 50 operations and 1,000 field rows |
 | A page per section (an OpenAPI tag, an MCP group) | `"sections"` | It has several sections and each fits those limits |
 | A page per operation | `"operations"` | Otherwise: large APIs, or operations carrying large schemas |
 
