@@ -16,7 +16,7 @@ import { buildAuthoredNavigation, buildNavFromPages, buildNavFromSpec, buildSite
 import { navigationResolver } from "./core/navigation-targets.js";
 import { normalizeSpec } from "./core/normalizer.js";
 import { applyOverlays, type OverlayDiagnostic } from "./core/overlay.js";
-import { automaticSplit } from "./core/reference-shape.js";
+import { automaticSplit, LONG_PAGE_OPERATIONS } from "./core/reference-shape.js";
 import { parseSpec } from "./core/parser.js";
 import { definitionAnchor, operationAnchor, operationKey, operationPagePath, referenceOperation, schemaPagePath, sectionBodies, tagAnchor } from "./core/reference-identity.js";
 import { shareReferenceSnapshot } from "./core/reference-snapshot.js";
@@ -30,9 +30,6 @@ import { slugify } from "./utils/slug.js";
 import { renderMarkdown } from "./utils/markdown.js";
 import { attachSiteFiles } from "./site-assets.js";
 import { addPermalinkPages, attachChangelogFeeds } from "./site-changelog.js";
-
-/** Past this many operations, a reference on one page is slow to open and to search. */
-const LONG_REFERENCE = 100;
 
 export interface AssemblyCache {
   reader: InputReader;
@@ -191,7 +188,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
         message: sections.length ? `Split by section, but every operation is in ${sections[0][0]}, so the reference is one page. Group its operations, or split it by operation.` : "Split by section, but the reference has no operations, so it is one page." });
       split = false;
     }
-    if (!split && operations.length > LONG_REFERENCE) referenceDiagnostics.push({ severity: "warning", code: "long-page", tab: tab.label,
+    if (!split && operations.length > LONG_PAGE_OPERATIONS) referenceDiagnostics.push({ severity: "warning", code: "long-page", tab: tab.label,
       message: `${operations.length} operations on one page are slow to open and to search. Split it with reference.split: "sections", or "operations".` });
     const overview = add(context, tab, { ...current, view: split ? { kind: "overview", split } : undefined }, "introduction", source.spec, tab.contentLocale);
     const page = toPublicPath(overview.outputPath, config.baseUrl, config.prettyUrls);

@@ -10,6 +10,9 @@ const PAGE_OPERATIONS = 50;
  */
 const PAGE_ROWS = 1000;
 
+/** Past this many operations, a reference its config keeps on one page is slow to open and to search, and the build says so. */
+export const LONG_PAGE_OPERATIONS = 100;
+
 /** How an OpenAPI or MCP reference publishes: one page, a page per section, or a page per operation. */
 export type ReferenceSplit = false | "sections" | "operations";
 
