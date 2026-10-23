@@ -229,7 +229,8 @@ export interface SourceyConfig {
     tabs: TabConfig[];
   };
   navbar?: {
-    links?: NavbarLink[];
+    /** Links in the header, and menus of links under one label. */
+    links?: NavbarEntry[];
     primary?: { type: "button"; label: string; href: string };
   };
   footer?: {
@@ -496,6 +497,32 @@ export interface NavbarLink {
   label?: string;
 }
 
+/** Links the header holds under one label, opening as a menu. */
+export interface NavbarMenu {
+  type: "menu";
+  label: string;
+  links: NavbarLink[];
+}
+
+export type NavbarEntry = NavbarLink | NavbarMenu;
+
+/** Every link a navbar leads to, a menu's in its place. */
+export function navbarLinks(entries: readonly NavbarEntry[]): NavbarLink[] {
+  return entries.flatMap((entry) => (entry.type === "menu" ? entry.links : [entry]));
+}
+
+/** A menu holds labelled links, and only links: one level, as a header's menu shows them. */
+function resolveNavbarEntries(entries: readonly NavbarEntry[]): NavbarEntry[] {
+  for (const entry of entries) {
+    if (entry.type !== "menu") continue;
+    if (typeof entry.label !== "string" || !entry.label.trim()) throw new Error("A navbar menu needs a label");
+    if (!Array.isArray(entry.links) || !entry.links.length) throw new Error(`Navbar menu "${entry.label}" needs links`);
+    for (const link of entry.links as NavbarEntry[])
+      if (link.type === "menu" || typeof link.href !== "string") throw new Error(`Navbar menu "${entry.label}" holds links with an href, not ${JSON.stringify(link)}`);
+  }
+  return [...entries];
+}
+
 export function defineConfig(config: SourceyConfig): SourceyConfig {
   return config;
 }
@@ -562,7 +589,7 @@ export interface ResolvedConfig {
   configDependencies?: string[];
   components: Record<string, NativeComponentDefinition>;
   redirects: Record<string, Redirect>;
-  navbar: { links: NavbarLink[]; primary?: { type: "button"; label: string; href: string } };
+  navbar: { links: NavbarEntry[]; primary?: { type: "button"; label: string; href: string } };
   footer: { text?: string; links: NavbarLink[] };
   changelog: ResolvedChangelogConfig;
   markdown: { smartypants: boolean };
@@ -779,7 +806,7 @@ export async function resolveConfigFromRaw(
     notFound: raw.notFound !== false,
     redirects: resolveRedirects(raw.redirects),
     navbar: {
-      links: raw.navbar?.links ?? [],
+      links: resolveNavbarEntries(raw.navbar?.links ?? []),
       primary: raw.navbar?.primary,
     },
     footer: {

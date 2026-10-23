@@ -5,7 +5,7 @@
  * basics and redirects are converted once.
  */
 import { posix } from "node:path";
-import type { NavbarLink } from "../../config.js";
+import { navbarLinks, type NavbarEntry, type NavbarLink } from "../../config.js";
 import type { JsonValue } from "../../core/markdown-components.js";
 import { firstHeadingText, headingInfo, lexMarkdown } from "../../utils/markdown.js";
 import { isAbsoluteHttpUrl } from "../../site-url.js";
@@ -61,7 +61,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
 
   const pretty = site.trailingSlash === false ? "strip" : "slash";
   const base = site.baseUrl.replace(/\/+$/, "");
-  const collected: Collected = { documents: [], routes: [], files: new Map(), sections: new Map(), messages: new Map() };
+  const collected: Collected = { documents: [], routes: [], files: new Map(), sections: new Map(), messages: new Map(), docRoutes: new Map() };
   const { documents, routes, files, sections } = collected;
   const tabs: ConfigValue[] = [];
   const routeBases = new Set<string>();
@@ -94,7 +94,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
   const navbar = (theme.navbar ?? {}) as Record<string, unknown>;
   const statics = await existing(project, site.staticDirectories);
   const publicDir = await mergeStatics(project, statics, files, fail, review);
-  const header = navbarLinks(navbar.items, review);
+  const header = navbarEntries(navbar.items, collected.docRoutes, new Set(site.docs.map((instance) => tabItem(site, instance))), review);
   // The site's pages by the paths links name them: `to` is read below the site's base.
   const pages = new Set(documents.flatMap((document) => [document.route, document.route.slice(base.length) || "/"]).map((route) => route.replace(/\/+$/, "") || "/"));
   if (site.url) for (const route of [...pages]) pages.add(`${new URL(site.url).origin}${base}${route === "/" ? "" : route}`);
@@ -109,7 +109,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
     ...(publicDir ? { publicDir } : {}),
     ...(markdownPages.length ? { pages: `./${site.pages}` } : {}),
     navbar: navbarOption(header),
-    ...footerOptions(theme.footer, header, (href) => pages.has(href.replace(/\/+$/, "") || "/"), review),
+    ...footerOptions(theme.footer, navbarLinks(header), (href) => pages.has(href.replace(/\/+$/, "") || "/"), review),
     ...i18nOptions(site, collected.messages),
     navigation: { tabs },
     ...(await redirectOptions(site, documents)),
@@ -138,6 +138,8 @@ interface Collected {
   sections: Map<string, string>;
   /** Translated navigation labels by locale, keyed by native group ID. */
   messages: Map<string, Record<string, string>>;
+  /** Each document's public path in its instance's default version, by `<instance>#<doc id>`, as a navbar's `doc` item names it. */
+  docRoutes: Map<string, string>;
 }
 
 interface VersionContext {
@@ -163,6 +165,7 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
     return `${prefix}/${path}${path && pretty === "slash" ? "/" : ""}`;
   };
   const docs = (await readDocs(project, instance, version.contentDir)).filter((doc) => !doc.draft);
+  if (version.last) for (const doc of docs) collected.docRoutes.set(`${instance.id}#${doc.id}`, route(doc.slug));
   const reference = (doc: DocusaurusDoc) => doc.source.replace(/\.mdx?$/, "").replace(/(^|\/)index$/, "") || "index";
   const navigation = await convertSidebars({ project, diagnostics, site, instance, sidebarPath: version.sidebarPath, contentDir: version.contentDir, docs, reference, route });
   await writeIndexes(project, version.contentDir, navigation, collected.files, route, collected.routes, fail);
@@ -298,10 +301,15 @@ function siteCalls(site: DocusaurusSite): SourceDialect["calls"] {
   return new Map([[identityKey("@docusaurus/useBaseUrl", "default"), useBaseUrl]]);
 }
 
+/** The navbar item that opens this instance's sidebar, which its native tab stands for. */
+function tabItem(site: DocusaurusSite, instance: DocsInstance): Record<string, unknown> | undefined {
+  const items = ((site.themeConfig.navbar as Record<string, unknown> | undefined)?.items ?? []) as Record<string, unknown>[];
+  return items.find((entry) => (entry.type === "docSidebar" || entry.type === "doc") && (entry.docsPluginId ?? "default") === instance.id);
+}
+
 /** The label of the navbar item that opens this instance's sidebar, else "Documentation". */
 function tabLabel(site: DocusaurusSite, instance: DocsInstance): string {
-  const items = ((site.themeConfig.navbar as Record<string, unknown> | undefined)?.items ?? []) as Record<string, unknown>[];
-  const item = items.find((entry) => (entry.type === "docSidebar" || entry.type === "doc") && (entry.docsPluginId ?? "default") === instance.id);
+  const item = tabItem(site, instance);
   return typeof item?.label === "string" ? item.label : "Documentation";
 }
 
@@ -486,15 +494,41 @@ async function themeOptions(project: ProjectFiles, site: DocusaurusSite, review:
   };
 }
 
-/** Navbar links, to other sites (`href`) and to pages of this one (`to`); sidebar, version, locale and search items are native navigation. */
-function navbarLinks(items: unknown, review: (message: string) => void): NavbarLink[] {
-  const links: NavbarLink[] = [];
-  for (const item of (items ?? []) as Record<string, unknown>[]) {
+/**
+ * Navbar links, to other sites (`href`), to pages of this one (`to`) and to
+ * a document of the default version (`doc`), and dropdowns of them as menus.
+ * Sidebar, version, locale and search items are native navigation.
+ */
+function navbarEntries(items: unknown, docRoutes: ReadonlyMap<string, string>, tabs: ReadonlySet<unknown>, review: (message: string) => void): NavbarEntry[] {
+  const link = (item: Record<string, unknown>): NavbarLink | undefined => {
+    const label = typeof item.label === "string" ? item.label : undefined;
     const href = typeof item.href === "string" ? item.href : typeof item.to === "string" ? item.to : undefined;
-    if (href) links.push(navbarLink(networkOf(href), href, typeof item.label === "string" ? item.label : undefined));
-    else if (Array.isArray(item.items) || item.type === "html") review(`The navbar ${item.type === "html" ? "HTML item" : `menu "${String(item.label ?? "")}"`} is not carried over`);
+    if (href) return navbarLink(networkOf(href), href, label);
+    if (item.type !== "doc" || typeof item.docId !== "string") return undefined;
+    const route = docRoutes.get(`${typeof item.docsPluginId === "string" ? item.docsPluginId : "default"}#${item.docId}`);
+    if (route) return { type: "link", href: route, label: label ?? item.docId };
+    review(`The navbar link to doc "${item.docId}" names no document of the default version, and is not carried over`);
+    return undefined;
+  };
+  const entries: NavbarEntry[] = [];
+  for (const item of (items ?? []) as Record<string, unknown>[]) {
+    // The item that opens a docs instance is its native tab.
+    if (tabs.has(item)) continue;
+    if (Array.isArray(item.items)) {
+      const label = typeof item.label === "string" ? item.label : "";
+      const links = (item.items as Record<string, unknown>[]).flatMap((child) => {
+        if (child.type === "html") review(`An HTML item in the navbar menu "${label}" is not carried over`);
+        return link(child) ?? [];
+      });
+      if (label && links.length) entries.push({ type: "menu", label, links });
+      else review(`The navbar menu "${label}" has no links native can carry, and is not carried over`);
+    } else if (item.type === "html") review("The navbar HTML item is not carried over");
+    else {
+      const entry = link(item);
+      if (entry) entries.push(entry);
+    }
   }
-  return links;
+  return entries;
 }
 
 /**

@@ -51,6 +51,15 @@ describe("resolveConfigFromRaw – validation", () => {
       expect((await resolveConfigFromRaw(baseConfig({ logo: "./mark.svg", theme: { name: "reader", reader: { logoMark: true } } }), dir)).logo?.mark).toBe(true);
     });
   });
+  it("keeps a navbar menu of links, and stops at one without a label or links", async () => {
+    await withTempDir(async (dir) => {
+      const menu = { type: "menu" as const, label: "Community", links: [{ type: "link" as const, href: "https://forum.example.com", label: "Forums" }] };
+      expect((await resolveConfigFromRaw(baseConfig({ navbar: { links: [menu] } }), dir)).navbar.links).toEqual([menu]);
+      await expect(resolveConfigFromRaw(baseConfig({ navbar: { links: [{ ...menu, links: [] }] } }), dir)).rejects.toThrow('Navbar menu "Community" needs links');
+      await expect(resolveConfigFromRaw(baseConfig({ navbar: { links: [{ ...menu, label: " " }] } }), dir)).rejects.toThrow("A navbar menu needs a label");
+      await expect(resolveConfigFromRaw(baseConfig({ navbar: { links: [{ ...menu, links: [menu as never] }] } }), dir)).rejects.toThrow('Navbar menu "Community" holds links with an href');
+    });
+  });
   it("rejects invalid theme names", async () => {
     await withTempDir(async (dir) => {
       await expect(

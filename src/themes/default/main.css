@@ -104,6 +104,12 @@
 .sourcey-context-menu a { display:block; padding:.6rem .7rem; border-radius:.25rem; font-weight:400; }
 .sourcey-context-menu a:hover,.sourcey-context-menu a[aria-current] { background:rgb(var(--color-primary)/.06); color:rgb(var(--color-primary-ink)); }
 .dark .sourcey-context-menu a:hover,.dark .sourcey-context-menu a[aria-current] { color:rgb(var(--color-primary-light)); }
+/* A header menu's label is set as the header's links are, and its list opens from the label's start. */
+.sourcey-header-menu { font-size:inherit; font-weight:inherit; color:inherit; }
+.sourcey-header-menu summary { min-height:2rem; gap:.3rem; padding:0 .5rem; }
+.sourcey-header-menu summary:hover,.sourcey-header-menu[open] summary,.dark .sourcey-header-menu summary:hover,.dark .sourcey-header-menu[open] summary { background:none; }
+.sourcey-header-menu ul { inset-inline-start:0; inset-inline-end:auto; color:rgb(var(--color-gray-700)); }
+.dark .sourcey-header-menu ul { color:rgb(var(--color-gray-300)); }
 .sourcey-nav-context:empty { display:none; }
 .sourcey-nav-context { padding:1.25rem 1rem 0; flex-shrink:0; }
 /* One notice on screen: the sidebar's rail carries it from 1024px, the page wherever there is no rail. */

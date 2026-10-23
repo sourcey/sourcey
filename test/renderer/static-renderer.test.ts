@@ -191,6 +191,27 @@ describe("renderPage (spec)", () => {
     expect(html).toMatch(/<span>Community Forum<\/span>/);
   });
 
+  it("renders a navbar menu as a menu in the header, and its links under its label in the drawer", () => {
+    const tab = buildNavFromSpec(createMinimalSpec(), "api");
+    const site: SiteConfig = {
+      ...defaultSite,
+      navbar: {
+        links: [
+          { type: "link", href: "https://example.com/integrations", label: "Integrations" },
+          { type: "menu", label: "Community", links: [
+            { type: "link", href: "https://forum.example.com", label: "Forums" },
+            { type: "discord", href: "https://discord.gg/example" },
+          ] },
+        ],
+      },
+    };
+    const html = renderPage(createMinimalSpec(), defaultOptions, buildSiteNavigation([tab]), { kind: "spec", spec: createMinimalSpec() }, site);
+    const header = html.slice(html.indexOf("sourcey-header-actions"), html.indexOf("theme-toggle"));
+    expect(header).toMatch(/<details class="sourcey-context-menu sourcey-header-menu" name="sourcey-header-menu"><summary[^>]*><span>Community<\/span><svg[\s\S]*?<\/summary><ul aria-label="Community"><li><a href="https:\/\/forum\.example\.com"[^>]*>Forums<\/a><\/li><li><a href="https:\/\/discord\.gg\/example"[^>]*>Discord<\/a><\/li><\/ul><\/details>/);
+    const drawer = html.slice(html.indexOf('id="mobile-nav"'));
+    expect(drawer).toMatch(/>Community<\/span><ul class="pl-3"><li><a href="https:\/\/forum\.example\.com"[\s\S]*?<span>Forums<\/span>/);
+  });
+
   it("opens a configured link to another site in a new tab and one on this site in place", () => {
     const tab = buildNavFromSpec(createMinimalSpec(), "api");
     const site: SiteConfig = {

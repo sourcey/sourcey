@@ -4,6 +4,7 @@ import { english, type UiMessages } from "../core/messages.js";
 import type { NormalizedSpec } from "../core/types.js";
 import type { SiteNavigation } from "../core/navigation.js";
 import type {
+  NavbarEntry,
   NavbarLink,
   PrettyUrls,
   ResolvedChangelogConfig,
@@ -115,7 +116,7 @@ export interface SiteConfig {
   editBranch?: string;
   editBasePath?: string;
   codeSamples: string[];
-  navbar: { links: NavbarLink[]; primary?: { type: "button"; label: string; href: string } };
+  navbar: { links: NavbarEntry[]; primary?: { type: "button"; label: string; href: string } };
   footer: { text?: string; links: NavbarLink[] };
   customCSS?: string;
   changelog: ResolvedChangelogConfig;

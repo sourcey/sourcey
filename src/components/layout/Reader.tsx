@@ -14,7 +14,7 @@ import {
   SiteContext,
 } from "../../renderer/context.js";
 import { SearchDialog } from "./SearchDialog.js";
-import type { ReaderLink } from "../../config.js";
+import { navbarLinks, type ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
 import { joinHref } from "../../site-url.js";
 
@@ -113,7 +113,8 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
     if (target.startsWith("/") && site.baseUrl) return site.baseUrl.startsWith(target);
     return target === activeHref;
   };
-  const navigationLinks = site.navbar.links.map((link) => ({ ...link, label: linkLabel(link) }));
+  // The mobile lists hold every link, a menu's in its place; the desktop header keeps its menus.
+  const navigationLinks = navbarLinks(site.navbar.links).map((link) => ({ ...link, label: linkLabel(link) }));
   const outline = useReferenceOutline();
   const headings = docPage?.headings ?? (page.kind === "changelog" ? page.changelog.headings : outline);
   const places = headings.filter((heading) => heading.level === Math.min(...headings.map((h) => h.level)));
@@ -191,15 +192,25 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
             </span>
           </a>
           <nav class="desktop-nav" aria-label={messages.mainNavigation}>
-            {navigationLinks.map((link) => (
+            {site.navbar.links.map((link) => link.type === "menu" ? (
+              <details key={link.label} class="sourcey-context-menu sourcey-header-menu" name="sourcey-header-menu">
+                <summary>
+                  <span>{link.label}</span>
+                  <svg class="sourcey-context-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </summary>
+                <ul aria-label={link.label}>{link.links.map((item) => (
+                  <li key={item.href}><a href={safeUrl(item.href) ?? undefined} aria-current={isCurrent(item.href) ? "page" : undefined}>{linkLabel(item)}</a></li>
+                ))}</ul>
+              </details>
+            ) : (
               <a
                 key={link.href}
                 href={safeUrl(link.href) ?? undefined}
                 class={link.type === "link" ? undefined : "desktop-nav-icon"}
-                aria-label={link.type === "link" ? undefined : link.label}
+                aria-label={link.type === "link" ? undefined : linkLabel(link)}
                 aria-current={isCurrent(link.href) ? "page" : undefined}
               >
-                {link.type === "link" ? link.label : <SocialIcon type={link.type} size={18} />}
+                {link.type === "link" ? linkLabel(link) : <SocialIcon type={link.type} size={18} />}
               </a>
             ))}
           </nav>

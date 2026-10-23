@@ -248,6 +248,28 @@ p {
   text-underline-offset: 12px;
   text-decoration-color: var(--lime);
 }
+/* A menu's label reads as the nav's links do; its list opens below it on the page's colours. */
+.desktop-nav .sourcey-header-menu summary {
+  min-height: 0;
+  padding: 30px 0;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--muted-dark);
+}
+.desktop-nav .sourcey-header-menu summary:hover,
+.desktop-nav .sourcey-header-menu[open] summary {
+  color: var(--text-light);
+}
+.desktop-nav .sourcey-header-menu ul {
+  top: calc(100% - 18px);
+  color: var(--reader-text);
+}
+.desktop-nav .sourcey-header-menu ul a {
+  padding: 0.6rem 0.7rem;
+  font-size: 13px;
+  font-weight: 400;
+  color: inherit;
+}
 /* Brand icons keep the nav's rhythm while their target spans the control size. */
 .desktop-nav-icon {
   display: inline-flex;

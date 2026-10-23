@@ -527,6 +527,20 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("carries a navbar dropdown as a menu, with a doc item as the document's address, and the docs' own item as the tab", async () => {
+    const items = "{ type: 'doc', docId: 'intro', label: 'Read me' }, { label: 'Community', position: 'left', items: [{ label: 'Forums', href: 'https://forum.example.com' }, { type: 'doc', docId: 'start/setup', label: 'Configure' }, { type: 'html', value: '<hr/>' }] }, ";
+    const menu = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("label: 'Guides' }, ", `label: 'Guides' }, ${items}`) };
+    await withProject(menu, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root });
+      const config = await read(root, "sourcey.config.ts");
+      expect(config).toContain('{ type: "link", href: "/intro/", label: "Read me" },');
+      expect(config).toMatch(/type: "menu",\s*label: "Community",\s*links: \[\s*\{ type: "link", href: "https:\/\/forum\.example\.com", label: "Forums" \},\s*\{ type: "link", href: "\/start\/setup\/", label: "Configure" \},\s*\]/);
+      expect(config).toContain('tab: "Guides",');
+      expect(config).not.toContain('label: "Guides" }');
+      expect(report.diagnostics.map((item) => item.message)).toContain('An HTML item in the navbar menu "Community" is not carried over');
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

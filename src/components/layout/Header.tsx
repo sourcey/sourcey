@@ -5,6 +5,7 @@ import { SocialIcon, linkLabel } from "../ui/SocialIcon.js";
 import { PrimaryAction } from "../ui/PrimaryAction.js";
 import { Logo, logoHref } from "../ui/Logo.js";
 import type { SiteNavigation } from "../../core/navigation.js";
+import type { NavbarMenu } from "../../config.js";
 import { joinHref } from "../../site-url.js";
 import { linkTarget } from "../../utils/html.js";
 import { ContextControls, hasContextChoices } from "./ContextControls.js";
@@ -83,6 +84,22 @@ function MobileBreadcrumbs({ nav }: { nav: SiteNavigation }) {
   );
 }
 
+/** Links under one label, opening below it as the header's other menus do; one opens at a time. */
+function HeaderMenu({ menu }: { menu: NavbarMenu }) {
+  const site = useContext(SiteContext);
+  return (
+    <details class="sourcey-context-menu sourcey-header-menu" name="sourcey-header-menu">
+      <summary class="sourcey-header-link text-[rgb(var(--color-gray-500))] hover:text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-400))] dark:hover:text-[rgb(var(--color-gray-300))]">
+        <span>{menu.label}</span>
+        <svg class="sourcey-context-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </summary>
+      <ul aria-label={menu.label}>{menu.links.map((link) => (
+        <li key={link.href}><a href={link.href} {...linkTarget(link.href, site.siteUrl)}>{linkLabel(link)}</a></li>
+      ))}</ul>
+    </details>
+  );
+}
+
 /**
  * Site header.
  * Row 1 (h-16): logo, search (desktop), navbar links (desktop), theme toggle (desktop), search + hamburger (mobile)
@@ -140,7 +157,9 @@ export function Header() {
                 <div class="sourcey-header-actions flex-1 relative hidden lg:flex items-center ml-auto justify-end">
                   {(site.navbar.links.length > 0 || site.navbar.primary) && <nav class="text-sm" aria-label={messages.siteLinks}>
                     <ul class="flex gap-x-1 items-center">
-                      {site.navbar.links.map((link) => (
+                      {site.navbar.links.map((link) => link.type === "menu" ? (
+                        <li key={link.label}><HeaderMenu menu={link} /></li>
+                      ) : (
                         <li key={link.href}>
                           <a
                             href={link.href}

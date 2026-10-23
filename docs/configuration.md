@@ -123,6 +123,24 @@ The logo is taken as a full wordmark, so the site's `name` is not repeated besid
 
 Without a `favicon`, a site's icon is its logo where that is a mark, or else a square of its primary colour, as its social images draw beside the name. A wordmark is too wide to be an icon.
 
+## Navbar
+
+```ts
+navbar: {
+  links: [
+    { type: "link", href: "https://example.com/integrations", label: "Integrations" },
+    { type: "menu", label: "Community", links: [
+      { type: "link", href: "https://forum.example.com", label: "Forums" },
+      { type: "discord", href: "https://discord.gg/example" },
+    ] },
+    { type: "github", href: "https://github.com/example/docs" },
+  ],
+  primary: { type: "button", label: "Sign in", href: "https://app.example.com" },
+},
+```
+
+`navbar.links` sit at the header's end: a network's icon (`github`, `discord`, `discourse`, ...), a text link with its `label`, or a `menu`, links under one label that open below it, one menu at a time. A menu holds links only, one level deep; the mobile drawer lists them under its label. `navbar.primary` is the call to action, a button after the links and at the foot of the drawer.
+
 ## Footer
 
 ```ts

@@ -12,6 +12,7 @@ import { kindTells } from "../../core/reference-identity.js";
 import { linkTarget } from "../../utils/html.js";
 import { ContextNotice } from "./ContextControls.js";
 import { MethodBadge } from "../ui/Badge.js";
+import type { NavbarLink } from "../../config.js";
 
 /**
  * Colored method indicator for API sidebar items.
@@ -118,6 +119,19 @@ const hasPages = (group: SiteNavGroup) => !walkNavItems([group]).next().done;
 const leadsAnywhere = (group: SiteNavGroup): boolean => !!group.href || hasPages(group) || group.items.some(item => isNavGroup(item) && leadsAnywhere(item));
 const isDestination = (group: SiteNavGroup): group is SiteNavGroup & { href: string } => !!group.href && !hasPages(group);
 const isCollapsible = (group: SiteNavGroup) => group.collapsed !== undefined && hasPages(group);
+/** A navbar link in the mobile drawer: its network's icon, and its text. */
+function DrawerLink({ link }: { link: NavbarLink }) {
+  const site = useContext(SiteContext);
+  return (
+    <li>
+      <a href={link.href} {...linkTarget(link.href, site.siteUrl)} class="flex items-center gap-2.5 min-h-11 text-[rgb(var(--color-gray-600))] hover:text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-400))] dark:hover:text-[rgb(var(--color-gray-200))]">
+        <SocialIcon type={link.type} />
+        <span>{linkLabel(link)}</span>
+      </a>
+    </li>
+  );
+}
+
 /** A group drawn as one row of the list: a destination, or a section that opens in place. */
 const isRow = (group: SiteNavGroup) => isDestination(group) || isCollapsible(group);
 /** Rows and unheaded links read as one list; only a headed list is set apart. */
@@ -215,14 +229,13 @@ export function Sidebar({ mobileOnly = false }: { mobileOnly?: boolean }) {
         {(links.length > 0 || primaryAction) && (
           <div class="lg:hidden px-4 py-3 border-t border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] shrink-0">
             <ul>
-              {links.map((link) => (
-                <li key={link.href}>
-                  <a href={link.href} {...linkTarget(link.href, site.siteUrl)} class="flex items-center gap-2.5 min-h-11 text-[rgb(var(--color-gray-600))] hover:text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-400))] dark:hover:text-[rgb(var(--color-gray-200))]">
-                    <SocialIcon type={link.type} />
-                    <span>{linkLabel(link)}</span>
-                  </a>
+              {links.map((link) => link.type === "menu" ? (
+                // A menu's links stand under its label, as one group of the drawer's list.
+                <li key={link.label}>
+                  <span class="flex items-center min-h-11 text-xs font-medium text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">{link.label}</span>
+                  <ul class="pl-3">{link.links.map((item) => <DrawerLink key={item.href} link={item} />)}</ul>
                 </li>
-              ))}
+              ) : <DrawerLink key={link.href} link={link} />)}
               {primaryAction && (
                 <li class="pt-2">
                   <PrimaryAction {...primaryAction} block />

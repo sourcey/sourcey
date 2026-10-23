@@ -1,5 +1,5 @@
 /** Native navigation shapes every converter builds the same way. */
-import { SOCIAL_NETWORKS, type GroupConfig, type NavbarLink, type NavigationItem } from "../config.js";
+import { SOCIAL_NETWORKS, type GroupConfig, type NavbarEntry, type NavbarLink, type NavigationItem } from "../config.js";
 import { slugify } from "../utils/slug.js";
 import type { ConfigValue } from "./config-writer.js";
 
@@ -42,8 +42,8 @@ export function footerLinks(links: NavbarLink[], header: readonly NavbarLink[], 
   return { kept, repeated };
 }
 
-/** The `navbar` option for a list of links, or nothing when there are none. */
-export function navbarOption(links: NavbarLink[]): ConfigValue {
+/** The `navbar` option for a list of links and menus, or nothing when there are none. */
+export function navbarOption(links: NavbarEntry[]): ConfigValue {
   return links.length ? { links: links as unknown as ConfigValue } : undefined;
 }
 
