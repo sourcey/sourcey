@@ -448,6 +448,16 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("reads an import written inside an element, which MDX hoists to the module", async () => {
+    const page = "# Installation\n\n<div>\n\nimport Admonition from '@theme/Admonition';\n\n<Admonition type=\"tip\">\n\nRun it once.\n\n</Admonition>\n\n</div>\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain("<Tip>\n\nRun it once.\n\n</Tip>");
+      expect(converted).not.toContain("import");
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

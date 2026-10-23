@@ -54,10 +54,15 @@ export interface DocumentPlace {
   };
 }
 
+/** An MDX document's imports and exports: MDX hoists them to the module wherever they are written, inside an element too. */
+function moduleStatements(tree: SyntaxNode): SyntaxNode[] {
+  return [...walk(tree)].map(({ node }) => node).filter((node) => node.type === "mdxjsEsm");
+}
+
 /** The module scope of an MDX document: its imports and constants. */
 export async function documentScope(project: ProjectFiles, file: string, source: string, tree: SyntaxNode): Promise<ModuleScope> {
   const program: EstreeNode & { body: EstreeNode[] } = { type: "Program", body: [] };
-  for (const node of tree.children ?? []) if (node.type === "mdxjsEsm") program.body.push(...(node.data?.estree?.body ?? []));
+  for (const node of moduleStatements(tree)) program.body.push(...(node.data?.estree?.body ?? []));
   return scopeFromProgram(project, file, source, program);
 }
 
@@ -83,8 +88,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
   const replaced: { start: number; end: number }[] = [];
   const inside = (offset: number) => replaced.some((range) => offset >= range.start && offset < range.end);
 
-  for (const node of tree.children ?? []) {
-    if (node.type !== "mdxjsEsm") continue;
+  for (const node of moduleStatements(tree)) {
     for (const statement of node.data?.estree?.body ?? []) {
       if (statement.type === "ImportDeclaration") continue;
       if (statement.type === "ExportNamedDeclaration" && (isElementOverride(statement, scope, context.elementOverrides) || isPartialOutline(statement, scope))) continue;
