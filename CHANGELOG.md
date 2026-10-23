@@ -8,7 +8,7 @@
 
 ### Added
 
-- `navbar.links` takes a menu, `{ type: "menu", label, links }`: links under one label that open below it in the header, one menu at a time, and stand under the label in the mobile drawer.
+- `navbar.links` takes a menu, `{ type: "menu", label, links }`: links under one label that open below it in the header, one menu at a time, and stand under the label in the mobile drawer. `NavbarLink`, `NavbarMenu` and `NavbarEntry` are exported for configurations written in parts.
 - `sourcey migrate docusaurus` carries a navbar dropdown as a menu, and a `doc` item as a link to its document in the default version, where both had been left out.
 - `sourcey migrate docusaurus` converts `@theme/CodeBlock` to a fenced code block. Its language comes from `language` or its `language-` class, its title from `title` or the metastring, and its code is what Docusaurus shows: the string it is given, or the text written inside it, read as MDX reads it. A code block written on its own line within a paragraph converts too, as the block Docusaurus shows there. Verification reads the block's text as code, so a conversion that changes it stops. `showLineNumbers` is named in the report, since native code blocks do not number their lines.
 - `sourcey migrate docusaurus` converts `@theme/ThemedImage` to a native figure with its light and dark pictures, read from the site's static directories.
