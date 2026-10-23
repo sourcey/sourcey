@@ -656,6 +656,32 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("ends an HTML element's raw lines before the Markdown MDX reads in it, so a heading or a fence inside stays one", async () => {
+    const page = [
+      "# Installation",
+      "",
+      '<snippet-extract data-extract="signup">',
+      "## Sign Up",
+      "",
+      "Use your account.",
+      "</snippet-extract>",
+      "",
+      "<details>",
+      "<summary>JSON *Schema*</summary>",
+      "```json",
+      '{ "type": "object" }',
+      "```",
+      "</details>",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain('<snippet-extract data-extract="signup">\n\n## Sign Up\n');
+      expect(converted).toContain('<details>\n<summary>JSON <em>Schema</em></summary>\n\n```json\n{ "type": "object" }\n```\n</details>');
+    });
+  });
+
   it("keeps a paragraph written as <p> at its column in a tab, so the code beside it stays code", async () => {
     const page = [
       "import Tabs from '@theme/Tabs';",

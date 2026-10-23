@@ -1046,18 +1046,36 @@ function startsHtmlBlock(source: string, element: SyntaxNode): boolean {
   return !source.slice(opening, lineEnd(source, opening)).trim();
 }
 
+/** Blocks MDX reads as Markdown inside an element, which CommonMark would print as raw HTML on an HTML block's lines. */
+const MARKDOWN_BLOCKS = new Set(["heading", "code", "list", "blockquote", "table", "thematicBreak", "containerDirective", "leafDirective"]);
+
 /**
  * MDX reads Markdown inside an HTML element; CommonMark prints an HTML
- * block's lines, from its first tag to a blank line, as raw HTML. Inline
- * Markdown on those lines is written as the HTML MDX made of it: code spans,
- * emphasis, strikethrough, links and backslash escapes. Components keep
- * their own conversion.
+ * block's lines, from its first tag to a blank line, as raw HTML. The first
+ * block of Markdown on those lines, such as a heading or a fenced code block
+ * after `<details>`, gets the blank line before it that ends the HTML block,
+ * as do components. Inline Markdown on the lines before it is written as the
+ * HTML MDX made of it: code spans, emphasis, strikethrough, links and
+ * backslash escapes. Components keep their own conversion.
  */
 function rawBlockMarkdown(source: string, element: SyntaxNode): TextEdit[] {
   const { start, end } = span(element);
   const blank = /\n[ \t]*\n/.exec(source.slice(start, end));
-  const rawEnd = blank ? start + blank.index : end;
+  let rawEnd = blank ? start + blank.index : end;
   const edits: TextEdit[] = [];
+  const markdown = [...walk(element)].map(({ node }) => node).find((node) => {
+    if (!node.position || node === element || span(node).start >= rawEnd) return false;
+    const component = node.type === "mdxJsxFlowElement" && !!node.name && !/^[a-z]/.test(node.name);
+    return component || MARKDOWN_BLOCKS.has(node.type);
+  });
+  if (markdown) {
+    const line = source.lastIndexOf("\n", span(markdown).start - 1) + 1;
+    // Four columns in, the block would read as indented code after the blank line.
+    if (line > start && span(markdown).start - line < 4) {
+      edits.push({ start: line, end: line, text: "\n" });
+      rawEnd = line;
+    }
+  }
   const TAGS: Record<string, string> = { emphasis: "em", strong: "strong", delete: "del" };
   const visit = (node: SyntaxNode): void => {
     for (const child of node.children ?? []) {
