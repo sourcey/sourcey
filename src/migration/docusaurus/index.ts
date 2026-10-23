@@ -24,7 +24,7 @@ import { readFrontmatter } from "../text-edits.js";
 import { schemeColours, stylesheetFonts, themeColours } from "../theme.js";
 import { readDocs, type DocusaurusDoc } from "./docs.js";
 import { docusaurusConversion, docusaurusPreprocess } from "./markdown.js";
-import { convertSidebars, type SidebarNavigation } from "./sidebars.js";
+import { convertSidebars, type SidebarNames, type SidebarNavigation } from "./sidebars.js";
 import { loadSite, type DocsInstance, type DocusaurusSite } from "./site.js";
 import { localeLabel, readTranslations, translatedLocales } from "./translations.js";
 import { readVersions, type DocsVersion } from "./versions.js";
@@ -73,15 +73,16 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
     if (routeBases.has(instance.routeBase)) fail(`Two docs instances publish at /${instance.routeBase}`);
     routeBases.add(instance.routeBase);
     const versions = await readVersions(project, instance);
+    const names = sidebarNames(site, instance, versions);
     const items: ConfigValue[] = [];
     let source: Call | undefined;
     for (const version of versions) {
-      const versionSource = await convertVersion({ project, diagnostics, site, instance, version, base, pretty, fail, globals }, collected);
+      const versionSource = await convertVersion({ project, diagnostics, site, instance, version, base, pretty, fail, globals, names }, collected);
       if (version.last) source = versionSource;
       items.push({ id: version.name, label: version.label, path: version.path, ...versionStatus(version), ...(version.last ? {} : { source: versionSource }) });
     }
     const last = versions.find((version) => version.last);
-    tabs.push({ tab: tabLabel(site, instance), slug: instance.routeBase, source, ...(versions.length > 1 && last ? { versions: { default: last.name, items } } : {}) });
+    tabs.push({ tab: names.tab, slug: instance.routeBase, source, ...(versions.length > 1 && last ? { versions: { default: last.name, items } } : {}) });
   }
 
   // Markdown pages are the site's own: its header and footer around them, and no sidebar.
@@ -154,11 +155,12 @@ interface VersionContext {
   base: string;
   pretty: "slash" | "strip";
   fail: (message: string) => void;
+  names: SidebarNames;
 }
 
 /** One version of a docs instance: its documents, navigation and native Markdown source. */
 async function convertVersion(context: VersionContext, collected: Collected): Promise<Call> {
-  const { project, diagnostics, site, instance, version, base, pretty, fail, globals } = context;
+  const { project, diagnostics, site, instance, version, base, pretty, fail, globals, names } = context;
   const route = (slug: string, locale?: string) => {
     const path = slug.replace(/^\/+|\/+$/g, "");
     const prefix = [base, locale, instance.routeBase, version.path].filter(Boolean).map((part) => `/${part!.replace(/^\/+/, "")}`).join("");
@@ -167,7 +169,7 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
   const docs = (await readDocs(project, instance, version.contentDir)).filter((doc) => !doc.draft);
   if (version.last) for (const doc of docs) collected.docRoutes.set(`${instance.id}#${doc.id}`, route(doc.slug));
   const reference = (doc: DocusaurusDoc) => doc.source.replace(/\.mdx?$/, "").replace(/(^|\/)index$/, "") || "index";
-  const navigation = await convertSidebars({ project, diagnostics, site, instance, sidebarPath: version.sidebarPath, contentDir: version.contentDir, docs, reference, route });
+  const navigation = await convertSidebars({ project, diagnostics, site, instance, sidebarPath: version.sidebarPath, contentDir: version.contentDir, docs, reference, route, names });
   await writeIndexes(project, version.contentDir, navigation, collected.files, route, collected.routes, fail);
   const translations = await readTranslations(project, site, instance, version, docs, fail);
   // A category's page lands it in every language.
@@ -315,10 +317,37 @@ function tabItem(site: DocusaurusSite, instance: DocsInstance): Record<string, u
   return items.find((entry) => (entry.type === "docSidebar" || entry.type === "doc") && (entry.docsPluginId ?? "default") === instance.id);
 }
 
-/** The label of the navbar item that opens this instance's sidebar, else "Documentation". */
-function tabLabel(site: DocusaurusSite, instance: DocsInstance): string {
-  const item = tabItem(site, instance);
-  return typeof item?.label === "string" ? item.label : "Documentation";
+/**
+ * What names an instance and its sidebars: the navbar's links into it in
+ * order, a dropdown's included, each to a sidebar, a document, or a path
+ * within the instance whatever version it names; and the tab's name, the
+ * label of the first link to one of its sidebars or documents, else "Documentation".
+ */
+function sidebarNames(site: DocusaurusSite, instance: DocsInstance, versions: readonly DocsVersion[]): SidebarNames {
+  // A navbar's and a sidebar's paths are below the site's base, as Docusaurus reads them.
+  const prefixes = versions.map((version) => `/${[instance.routeBase, version.path].filter(Boolean).join("/")}`).sort((a, b) => b.length - a.length);
+  const pathOf = (href: string) => {
+    if (!href.startsWith("/")) return undefined;
+    const at = href.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+    const prefix = prefixes.find((candidate) => candidate === "/" || at === candidate || at.startsWith(`${candidate}/`));
+    return prefix === undefined ? undefined : at.slice(prefix === "/" ? 0 : prefix.length).replace(/^\/+/, "");
+  };
+  const links: SidebarNames["links"] = [];
+  const visit = (items: unknown) => {
+    for (const item of Array.isArray(items) ? (items as Record<string, unknown>[]) : []) {
+      visit(item.items);
+      if (typeof item.label !== "string") continue;
+      const own = (item.docsPluginId ?? "default") === instance.id;
+      const href = typeof item.to === "string" ? item.to : typeof item.href === "string" ? item.href : undefined;
+      if (item.type === "docSidebar" && typeof item.sidebarId === "string") {
+        if (own) links.push({ label: item.label, sidebarId: item.sidebarId });
+      } else if (item.type === "doc" && typeof item.docId === "string") {
+        if (own) links.push({ label: item.label, docId: item.docId });
+      } else if (href !== undefined && pathOf(href) !== undefined) links.push({ label: item.label, path: pathOf(href) });
+    }
+  };
+  visit((site.themeConfig.navbar as Record<string, unknown> | undefined)?.items);
+  return { tab: links.find((link) => link.sidebarId || link.docId)?.label ?? "Documentation", links, pathOf };
 }
 
 /** Frontmatter edits: the native route, title and navigation label where native would differ, and what native does not carry. */

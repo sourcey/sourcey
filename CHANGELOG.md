@@ -9,6 +9,7 @@
 
 ### Added
 
+- `sourcey migrate docusaurus` makes each of a docs instance's several sidebars a section of its navigation, named by the navbar's link into it (a dropdown's included), else by another sidebar's link to it, and open while the reader is in it, as Docusaurus shows one sidebar at a time. The sidebar the tab is named for leads as written. A sidebar's HTML item that is a heading, such as `<span>API</span>`, heads the items after it, where it had been left out, and the tab takes its name from a link in a navbar dropdown too. Several sidebars had run together with no names between them.
 - A page's frontmatter `editUrl` names its own edit address, for a page edited somewhere other than the site's repository, and `editUrl: false` leaves the link off. `sourcey migrate docusaurus` writes a page's `custom_edit_url` as it.
 - `navbar.links` takes a menu, `{ type: "menu", label, links }`: links under one label that open below it in the header, one menu at a time, and stand under the label in the mobile drawer. `NavbarLink`, `NavbarMenu` and `NavbarEntry` are exported for configurations written in parts.
 - `sourcey migrate docusaurus` carries a navbar dropdown as a menu, and a `doc` item as a link to its document in the default version, where both had been left out.
