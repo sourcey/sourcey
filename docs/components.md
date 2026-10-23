@@ -99,6 +99,8 @@ render(previous.items);
 
 Line numbers refer to the displayed source. `highlight=`, `focus=`, `add=` and `remove=` accept comma-separated lines or ranges. They change presentation; copying code retains the source. An unknown option or out-of-range line fails with a diagnostic.
 
+A code block names its language on its element, `<div class="prose-code-block" data-language="ts">`, so a stylesheet can label blocks by language.
+
 ## Figures, video and diagrams
 
 ```md

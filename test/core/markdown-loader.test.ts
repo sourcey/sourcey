@@ -158,6 +158,17 @@ describe("loadMarkdownPage", { timeout: 30_000 }, () => {
     });
   });
 
+  it("names a code block's language on the block, for a theme to label it", async () => {
+    await withTempDir(async (dir) => {
+      const file = join(dir, "run.md");
+      await writeFile(file, '# Run\n\n```Bash title="install.sh"\ncurl -s https://example.com | sh\n```\n\n```\nplain\n```\n');
+      const page = await loadMarkdownPage(file, "run");
+
+      expect(page.html).toContain('<div class="prose-code-block not-prose" data-language="bash"><div class="prose-code-title">install.sh</div>');
+      expect(page.html).toContain('<div class="prose-code-block not-prose">\n');
+    });
+  });
+
   it("names a code group's tabs by its fences' titles, which its panels do not repeat", async () => {
     await withTempDir(async (dir) => {
       const file = join(dir, "install.md");

@@ -54,7 +54,9 @@ export function renderCodeBlock(text: string, info?: string, metadata = parseCod
   const lineCount = text.split("\n").length;
   for (const line of [...metadata.highlight, ...metadata.focus, ...metadata.add, ...metadata.remove]) if (line > lineCount) throw new Error(`Code annotation refers to missing line ${line}`);
   const shiki = highlightCode(text, metadata.language, metadata);
-  return `<div class="prose-code-block not-prose">${metadata.title ? `<div class="prose-code-title">${escapeHtml(metadata.title)}</div>` : ""}
+  // A block names its language, so a theme can label it.
+  const language = metadata.language ? ` data-language="${escapeAttr(metadata.language.toLowerCase())}"` : "";
+  return `<div class="prose-code-block not-prose"${language}>${metadata.title ? `<div class="prose-code-title">${escapeHtml(metadata.title)}</div>` : ""}
 <div class="prose-code-copy"><button aria-label="${escapeAttr(copyLabel)}" class="copy-btn" type="button" data-copy-source="code">${COPY_ICON_SVG}</button></div>
 <div class="prose-code-content">${shiki}</div>
 </div>`;
