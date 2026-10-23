@@ -122,6 +122,11 @@ function schemaOutline(schema: NormalizedSchema | undefined): string {
 function composeTitle(title: string, siteName: string, separator: string): string {
   if (!title) return siteName;
   if (!siteName) return title;
-  const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
-  return normalize(title) === normalize(siteName) ? title : `${title}${separator}${siteName}`;
+  // Names compare as words, without the marks one place carries and another drops (Ever® Gauzy™).
+  const normalize = (value: string) => value.replace(/[®™©]/g, "").trim().replace(/\s+/g, " ").toLowerCase();
+  const page = normalize(title);
+  const site = normalize(siteName);
+  // A title that opens with the site's name already names it.
+  const named = page === site || (page.startsWith(site) && !/[\p{L}\p{N}]/u.test(page[site.length]));
+  return named ? title : `${title}${separator}${siteName}`;
 }

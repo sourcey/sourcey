@@ -54,6 +54,16 @@ describe("page metadata", () => {
     expect(model).toMatchObject({ summary: "", description: "Plain" });
   });
 
+  it("leaves the site's name off a title that opens with it", () => {
+    const titled = (title: string, name: string) => pageMetadata({ kind: "markdown", markdown: { title } } as Parameters<typeof pageMetadata>[0], { name, titleSeparator: " - " }).browserTitle;
+    expect(titled("Firefly III documentation", "Firefly III")).toBe("Firefly III documentation");
+    expect(titled("Ever® Gauzy™ Platform", "Ever Gauzy™ Platform")).toBe("Ever® Gauzy™ Platform");
+    expect(titled("Cheesestore", "cheesestore")).toBe("Cheesestore");
+    // A word that only starts with it is another name.
+    expect(titled("Cheesestores near you", "Cheesestore")).toBe("Cheesestores near you - Cheesestore");
+    expect(titled("Getting started", "Cheesestore")).toBe("Getting started - Cheesestore");
+  });
+
   it("titles a reference overview by the site and the reference it is", () => {
     const overview = pageMetadata({ kind: "spec", spec }, site);
     expect(overview).toMatchObject({ title: "Cheese API", browserTitle: "Cheesestore - API Reference", description: "The whole API: cheeses, orders & more." });
