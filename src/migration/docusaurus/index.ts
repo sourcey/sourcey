@@ -513,7 +513,8 @@ async function themeOptions(project: ProjectFiles, site: DocusaurusSite, review:
  */
 function navbarEntries(items: unknown, docRoutes: ReadonlyMap<string, string>, tabs: ReadonlySet<unknown>, review: (message: string) => void): NavbarEntry[] {
   const link = (item: Record<string, unknown>): NavbarLink | undefined => {
-    const label = typeof item.label === "string" ? item.label : undefined;
+    // An item drawn as an icon from its class has only its title to name it.
+    const label = typeof item.label === "string" ? item.label : typeof item.title === "string" ? item.title : undefined;
     const href = typeof item.href === "string" ? item.href : typeof item.to === "string" ? item.to : undefined;
     if (href) return navbarLink(networkOf(href), href, label);
     if (item.type !== "doc" || typeof item.docId !== "string") return undefined;
@@ -568,9 +569,15 @@ async function redirectOptions(site: DocusaurusSite, documents: readonly Planned
   // Docusaurus reads a redirect's paths below the site's base, and gives `createRedirects` each route there.
   const base = site.baseUrl.replace(/\/+$/, "");
   const below = (path: string) => (path.startsWith("/") ? `${base}${path}` : path);
+  // It leads to a page as the site spells its addresses, applying `trailingSlash` as Docusaurus's applyTrailingSlash does.
+  const spelled = (path: string) => {
+    const pathname = path.split(/[#?]/)[0];
+    if (site.trailingSlash === undefined || !path.startsWith("/") || pathname === "/" || pathname === site.baseUrl) return path;
+    return path.replace(pathname, site.trailingSlash ? pathname.replace(/\/?$/, "/") : pathname.replace(/\/+$/, ""));
+  };
   const redirects: Record<string, string> = {};
   for (const entry of (plugin.options.redirects ?? []) as { from: string | string[]; to: string }[])
-    for (const from of [entry.from].flat()) redirects[below(from)] = below(entry.to);
+    for (const from of [entry.from].flat()) redirects[below(from)] = spelled(below(entry.to));
   const create = plugin.options.createRedirects as ((path: string) => string | string[] | undefined) | undefined;
   if (typeof create === "function")
     for (const document of documents)
