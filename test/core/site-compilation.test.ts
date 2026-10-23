@@ -265,6 +265,21 @@ describe("native compilation", () => {
     expect(page.markdown.markdown).toContain("Later `code` span.");
   }));
 
+  it("keeps two tabs that share a label apart, each with its own pages and sidebar", () => fixture(async root => {
+    await file(root, "engine/intro.md", "# Engine\n\nThe engine.\n");
+    await file(root, "services/console.md", "# Console\n\nThe console.\n");
+    const navigation = { tabs: [
+      { tab: "Documentation", slug: "docs", source: markdown({ root: "engine", groups: [{ group: "Engine", pages: ["intro"] }] }) },
+      { tab: "Documentation", slug: "u", source: markdown({ root: "services", groups: [{ group: "Services", pages: ["console"] }] }) },
+    ] };
+    const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation }, root);
+    const files = await sourceyArtifacts(await buildSourceySite({ config, generateOgImages: false }));
+    const html = files.get("u/console.html")!.toString();
+    expect(html).toMatch(/id="sidebar"[\s\S]*Services/);
+    // The header's tabs and the drawer's both lead to each tab's own page.
+    expect(new Set([...html.matchAll(/<a href="([^"]+)"[^>]*>Documentation</g)].map((match) => match[1]))).toEqual(new Set(["/docs/intro.html", "/u/console.html"]));
+  }));
+
   it("links a page's own edit address, or none, as its frontmatter names", () => fixture(async root => {
     await file(root, "docs/guide.md", "---\neditUrl: https://github.com/example/agent/edit/main/docs/guide.md\n---\n\n# Guide\n\nWritten in the agent's repository.\n");
     await file(root, "docs/chat.md", "---\neditUrl: false\n---\n\n# Chat\n\nNothing to edit.\n");

@@ -367,7 +367,9 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       // Version scopes select content; authored section order still owns the header.
       const selectedTabs = members.flatMap(member => member.tabs);
       const ordered = config.authoring.navigation.tabs.flatMap(authored => {
-        const selected = selectedTabs.find(tab => authored.id ? tab.id === authored.id : tab.label === authored.tab);
+        // A tab is its id, else its slug as written, which tabs never share; two may share a label.
+        const id = authored.id ?? (authored.slug !== undefined ? authored.slug : slugify(authored.tab));
+        const selected = selectedTabs.find(tab => tab.id === id);
         const projected = selected && siteTabs.find(tab => tab.slug === selected.slug);
         return projected ? [projected] : [];
       });
