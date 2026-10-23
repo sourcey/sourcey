@@ -8,6 +8,7 @@ import { safeUrl } from "../../utils/html.js";
 import { SectionLabel } from "../ui/SectionLabel.js";
 import { Markdown } from "../ui/Markdown.js";
 import { DeprecatedBadge } from "../ui/Badge.js";
+import { Breakable } from "../ui/Breakable.js";
 
 interface SecurityProps {
   security: SecurityRequirement[];
@@ -37,7 +38,7 @@ export function SecurityCopy({ security, id }: SecurityProps) {
               return (
                 <div key={name} class="param-item">
                   <div class="param-header">
-                    <code class="param-name">{name}</code>
+                    <code class="param-name"><Breakable text={name} /></code>
                     {scheme && (
                       <span class="param-type">
                         <span class="json-property-type">
@@ -102,7 +103,7 @@ export function SecurityDefinitions() {
           return (
             <div key={name} class="param-item">
               <div class="param-header">
-                <code class="param-name">{name}</code>
+                <code class="param-name"><Breakable text={name} /></code>
                 <span class="param-type">
                   <span class="json-property-type">{scheme.type}</span>
                 </span>

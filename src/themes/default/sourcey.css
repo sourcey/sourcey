@@ -867,6 +867,9 @@
   background: transparent;
   border: none;
   padding: 0;
+  /* A name breaks after an underscore, and inside a word only where nothing else fits the column. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .dark #sourcey .param-name {
   color: rgb(var(--color-primary-light));

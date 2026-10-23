@@ -3,6 +3,7 @@ import type { NormalizedSchema } from "../../core/types.js";
 import { SchemaDatatype } from "./SchemaDatatype.js";
 import { RequiredBadge, ReadOnlyBadge, DeprecatedBadge, Badge } from "../ui/Badge.js";
 import { DisclosureIcon } from "../ui/DisclosureIcon.js";
+import { Breakable } from "../ui/Breakable.js";
 
 export interface FieldRowProps {
   name: string;
@@ -32,7 +33,7 @@ export function FieldRow({ name, id, schema, type, required, readOnly, writeOnly
   return (
     <div class="param-item" id={id}>
       <div class="param-header not-prose">
-        <code class="param-name">{name}</code>
+        <code class="param-name"><Breakable text={name} /></code>
         {schema && <SchemaDatatype schema={schema} grouped />}
         {type}
         {required && <RequiredBadge />}

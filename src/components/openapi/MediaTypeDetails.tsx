@@ -1,6 +1,7 @@
 import type { EncodingObject, MediaTypeContent, NormalizedParameter } from "../../core/types.js";
 import { SchemaDatatype } from "../schema/SchemaDatatype.js";
 import { Badge, DeprecatedBadge, RequiredBadge } from "../ui/Badge.js";
+import { Breakable } from "../ui/Breakable.js";
 
 interface MediaTypeDetailsProps {
   /** The media types this content is offered as: one, or several sharing a schema. */
@@ -121,7 +122,7 @@ function EncodingItem({ name, encoding }: { name: string; encoding: EncodingObje
   return (
     <div class="param-item">
       <div class="param-header">
-        <code class="param-name">{name}</code>
+        <code class="param-name"><Breakable text={name} /></code>
         {encoding.contentType && (
           <span class="param-type">
             <code class="text-xs font-medium text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-300))]">
@@ -168,7 +169,7 @@ function EncodingHeader({ name, header }: { name: string; header: NormalizedPara
   return (
     <div class="param-item">
       <div class="param-header">
-        <code class="param-name">{name}</code>
+        <code class="param-name"><Breakable text={name} /></code>
         {schema && (
           <span class="param-type">
             <SchemaDatatype schema={schema} />

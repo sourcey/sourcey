@@ -432,7 +432,8 @@ describe("renderPage (spec)", () => {
 
     const html = renderSpec(spec, defaultOptions);
     expect(html).toContain("Authentication");
-    expect(html).toContain("api_key");
+    // A scheme's name, like any field's, may break after its underscore on a narrow screen.
+    expect(html).toContain('<code class="param-name">api_<wbr/>key</code>');
   });
 
   it("renders server endpoints", () => {
