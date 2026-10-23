@@ -18,6 +18,7 @@
 ### Fixed
 
 - A migration writes a frontmatter flag or number, such as `hideInMenu: true` for an unlisted page, as YAML reads it back; it had written `"true"`, which native read as text, so such pages stayed in the menu.
+- An author's HTML table scrolls in place on a narrow screen, as a Markdown table does, where it had widened the page past the screen.
 - The sidebar opens every section on the way to a section's own page, such as a category's index, where it had opened only that section and left the way to it closed.
 - Text read from Markdown, for search, descriptions, changelog entries and exports, holds the characters a reader sees. 3.9.0 wrote quotes and ampersands in a changelog's text as `&#39;`, `&quot;` and `&amp;`, and indexed a page without a description by the first 200 characters of its HTML, cut mid-word, with entities and the copy button's label among its search words. Text is read from the tokens its Markdown was rendered from, in the same lexing, and a page's search content is its description.
 - A release's Markdown export carries its entries as written, with their inline code and links, rather than as plain text.

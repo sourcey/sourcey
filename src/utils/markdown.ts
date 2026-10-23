@@ -395,6 +395,9 @@ function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
           .join("\n");
         return `<div class="table-wrap" tabindex="0"><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
       },
+      html(token: Tokens.HTML | Tokens.Tag): string {
+        return token.block ? wrapAuthoredTables(token.text) : token.text;
+      },
       link({ href, title, tokens }: Tokens.Link): string {
         const text = this.parser.parseInline(tokens);
         const resolved = options.resolveHref?.(href);
@@ -416,6 +419,29 @@ function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
       },
     },
   });
+}
+
+/**
+ * An author's tables in a block of HTML scroll in place, as a Markdown
+ * table does, where the page is narrower than they are. A block whose table
+ * does not close within it is left as written.
+ */
+function wrapAuthoredTables(html: string): string {
+  if (!/<table[\s>]/i.test(html)) return html;
+  let wrapped = "", depth = 0, from = 0;
+  for (const tag of html.matchAll(/<(\/?)table\b[^>]*>/gi)) {
+    if (!tag[1]) {
+      if (depth++ === 0) {
+        wrapped += `${html.slice(from, tag.index)}<div class="table-wrap" tabindex="0">`;
+        from = tag.index;
+      }
+    } else if (depth > 0 && --depth === 0) {
+      const end = tag.index + tag[0].length;
+      wrapped += `${html.slice(from, end)}</div>`;
+      from = end;
+    }
+  }
+  return depth ? html : wrapped + html.slice(from);
 }
 
 /** Render, sanitizing only where an author's own HTML is in what was rendered. */

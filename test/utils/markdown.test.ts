@@ -23,6 +23,14 @@ describe("renderMarkdown", () => {
     expect(renderMarkdown("<script>alert(1)</script>\n\nText")).not.toContain("<script");
   });
 
+  it("lets an author's HTML table scroll in place, as a Markdown table does", () => {
+    const html = renderMarkdown("<h3>Settings</h3>\n<table><tr><td>Key</td><td><table><tr><td>nested</td></tr></table></td></tr></table>\n\nAfter.");
+    expect(html).toContain('<h3>Settings</h3>\n<div class="table-wrap" tabindex="0"><table><tr><td>Key</td><td><table><tr><td>nested</td></tr></table></td></tr></table></div>');
+    expect(html.match(/table-wrap/g)).toHaveLength(1);
+    // A table its block does not close stays as written.
+    expect(renderMarkdown("<table>\n<tr><td>open</td></tr>\n\nText.")).not.toContain("table-wrap");
+  });
+
   it("draws an image only from the web or this site, as it links", () => {
     expect(renderMarkdown("![Logo](/logo.png)")).toContain('<img src="/logo.png" alt="Logo">');
     expect(renderMarkdown("![Logo](https://example.com/logo.png)")).toContain('<img src="https://example.com/logo.png" alt="Logo">');
