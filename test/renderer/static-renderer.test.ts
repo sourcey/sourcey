@@ -610,6 +610,26 @@ describe("renderPage (spec)", () => {
     expect(nav).toMatch(/<li><details open class="sourcey-nav-group"><summary><span class="nav-group-label">Installation<\/span><\/summary><ul class="pl-3 space-y-px"><li><a href="installation\/docker\/" class="nav-link active"/);
   });
 
+  it("opens every section on the way to a section's own page", () => {
+    const navigation: SiteNavigation = {
+      tabs: [{ label: "Docs", slug: "", href: "start/", kind: "docs", groups: [
+        { label: "Agent", href: "agent/", id: "agent", page: "agent", collapsed: true, items: [
+          { label: "Overview", href: "agent/overview/", id: "agent/overview" },
+          { label: "Installation", href: "agent/installation/", id: "agent/installation", page: "agent/installation", collapsed: true, items: [
+            { label: "Linux", href: "agent/installation/linux/", id: "agent/installation/linux", page: "agent/installation/linux", collapsed: true, items: [
+              { label: "Packages", href: "agent/installation/linux/packages/", id: "agent/installation/linux/packages" },
+            ] },
+          ] },
+        ] },
+      ] }],
+      activeTabSlug: "",
+      activePageSlug: "agent/installation/linux",
+    };
+    const html = renderPage(createMinimalSpec(), defaultOptions, navigation, { kind: "markdown", markdown: createMarkdownPage({ slug: "agent/installation/linux" }) }, defaultSite);
+    const nav = html.match(/<nav id="nav"[\s\S]*?<\/nav>/)![0];
+    expect(nav.match(/<details open class="sourcey-nav-group">/g)).toHaveLength(3);
+  });
+
   it("draws a tag whose operations are elsewhere as a link, and keeps a heading a heading", () => {
     const navigation: SiteNavigation = {
       tabs: [{ label: "API", slug: "api", href: "api/", kind: "docs", groups: [

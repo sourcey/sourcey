@@ -238,6 +238,11 @@ export function withActivePage(
 export function isNavGroup(node: SiteNavItem | SiteNavGroup): node is SiteNavGroup {
   return "items" in node;
 }
+/** Whether a group holds a page: among its pages, as a section's own page, or as the group's. */
+export function holdsPage(group: SiteNavGroup, slug: string | null): boolean {
+  return group.id === slug || group.page === slug
+    || group.items.some(item => isNavGroup(item) ? holdsPage(item, slug) : item.id === slug);
+}
 /** The active tab, and the innermost section listing the active page. */
 export function activeSection(nav: SiteNavigation): { tab?: SiteTab; group?: SiteNavGroup } {
   const tab = nav.tabs.find((candidate) => candidate.slug === nav.activeTabSlug);

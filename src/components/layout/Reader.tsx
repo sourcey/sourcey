@@ -1,4 +1,4 @@
-import { activeSection, isNavGroup, walkNavItems, type SiteNavGroup } from "../../core/navigation.js";
+import { activeSection, holdsPage, isNavGroup, walkNavItems, type SiteNavGroup } from "../../core/navigation.js";
 import { useReferenceOutline } from "../openapi/outline.js";
 import { ContextControls, ContextNotice } from "./ContextControls.js";
 import { LogoImage, logoHref } from "../ui/Logo.js";
@@ -73,7 +73,7 @@ function ReaderGroups({ groups, active, href }: { groups: SiteNavGroup[]; active
       ? <div class="reader-nested-group"><ReaderGroups groups={[item]} active={active} href={href} /></div>
       : <a href={href(item.href)} aria-current={item.id === active ? "page" : undefined}><span>{item.label}</span>{item.id === active && <span class="active-nav-dot" />}</a>)}</>;
     if (group.collapsed === undefined || !group.items.length) return <>{group.label && label}{contents}</>;
-    const open = !group.collapsed || [...walkNavItems([group])].some(item => item.id === active);
+    const open = !group.collapsed || holdsPage(group, active);
     // A summary is a control of its own, so a section's own link sits beside its toggle, not inside it.
     if (group.href) return <div class="sourcey-nav-group-linked">{label}<details class="sourcey-nav-group" open={open}><summary class="nav-section" aria-label={group.label} />{contents}</details></div>;
     return <details class="sourcey-nav-group" open={open}><summary>{label}</summary>{contents}</details>;

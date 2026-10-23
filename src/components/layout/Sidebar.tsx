@@ -6,7 +6,7 @@ import { changelogNavigation } from "../changelog/navigation.js";
 import { SocialIcon, linkLabel } from "../ui/SocialIcon.js";
 import { PrimaryAction } from "../ui/PrimaryAction.js";
 import { Logo, logoHref } from "../ui/Logo.js";
-import { isNavGroup, walkNavItems, type SiteNavGroup } from "../../core/navigation.js";
+import { holdsPage, isNavGroup, walkNavItems, type SiteNavGroup } from "../../core/navigation.js";
 import { joinHref } from "../../site-url.js";
 import { kindTells } from "../../core/reference-identity.js";
 import { linkTarget } from "../../utils/html.js";
@@ -56,16 +56,10 @@ function NavGroups({ groups, activePageSlug, base }: {
   const shown = groups.filter(leadsAnywhere);
   return <>{shown.map((group, index) => {
     const spacing = index === 0 ? undefined : flows(group) && flows(shown[index - 1]) ? "mt-px" : "mt-6 lg:mt-8";
-    return holds(group, activePageSlug)
+    return holdsPage(group, activePageSlug)
       ? <div key={group.id ?? group.label} class={spacing}><NavGroup group={group} activePageSlug={activePageSlug} base={base} /></div>
       : <div key={group.id ?? group.label} class={spacing} dangerouslySetInnerHTML={{ __html: drawnAtRest(group, base) }} />;
   })}</>;
-}
-
-/** Whether a group draws differently on a page: it holds the page, a section of it, or its own link is the page. */
-function holds(group: SiteNavGroup, activePageSlug: string | null): boolean {
-  return group.id === activePageSlug || group.page === activePageSlug
-    || group.items.some(item => isNavGroup(item) ? holds(item, activePageSlug) : item.id === activePageSlug);
 }
 
 /**
@@ -111,7 +105,8 @@ function NavGroup({ group, activePageSlug, base }: {
         aria-current={item.id === activePageSlug ? (item.href.includes("#") ? "location" : "page") : undefined}>
         {item.method && kindTells(item.method, methods) && <MethodPill method={item.method} />}<span class="flex-1 break-words [word-break:break-word]"><Breakable text={item.label} /></span>
       </a></li>)}</ul>;
-  const active = current || [...walkNavItems([group])].some(item => item.id === activePageSlug);
+  // A group holding the page opens, its sections' own pages included, so the way to the page shows.
+  const active = holdsPage(group, activePageSlug);
   if (!collapsible) return <>{group.label && label}{contents}</>;
   // A summary is a control of its own, so a section's own link sits beside its toggle, not inside it.
   if (group.href) return <div class="sourcey-nav-group-linked">{label}<details open={active || !group.collapsed} class="sourcey-nav-group"><summary aria-label={group.label} />{contents}</details></div>;
