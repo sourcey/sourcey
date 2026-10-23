@@ -10,7 +10,7 @@ import { Call, type ConfigSource, type ConfigValue } from "./config-writer.js";
 import type { HostDependency } from "./types.js";
 import { convertMdxDocument, expandStaticJsx, type DocumentContext } from "./document.js";
 import { normaliseFences } from "./code-fences.js";
-import { alertMarker, literalHeadings, parseDocument, SourceSyntaxError, walk, type Dialect, type SyntaxNode } from "./mdx.js";
+import { alertMarker, literalHeadings, mdxIndentation, parseDocument, SourceSyntaxError, walk, type Dialect, type SyntaxNode } from "./mdx.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import type { FragmentRule } from "./slugs.js";
 import { applyEdits, frontmatterEdits, lineAt, lineMap, readFrontmatter } from "./text-edits.js";
@@ -188,6 +188,12 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
         ]);
     if (literal.length) {
       source = applyEdits(source, literal.map((offset) => ({ start: offset, end: offset, text: "\\" })));
+      tree = await parseDocument(document.file, source, frontmatter.bodyStart, document.dialect);
+    }
+    // MDX reads past indentation native counts, having no indented code; MDX 1 had it.
+    const indentation = (document.dialect.mdx ?? document.file.endsWith(".mdx")) && !document.dialect.mdx1 ? mdxIndentation(source, tree) : [];
+    if (indentation.length) {
+      source = applyEdits(source, indentation);
       tree = await parseDocument(document.file, source, frontmatter.bodyStart, document.dialect);
     }
     let text = source;

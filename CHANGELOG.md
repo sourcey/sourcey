@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- A migration from MDX takes off indentation MDX reads past and native would count, as MDX has no indented code: a list or a fenced block four columns in at the top of a page converts as the block MDX read, where native had read it as code, and a closing fence four columns past its opening, which MDX takes as the fence's end, closes the block there in native too.
 - A migration keeps hashes followed by a no-break space, such as `#### ` before a word, as the text the source framework shows, where CommonMark reads no heading and native would. The line converts as `\####`.
 - A migration's check of each page reads an HTML element that is not inline, such as a table cell, apart from its neighbours, and a line break (`<br />`) as a space, as a reader sees them. A table row written on one line had read as its cells run together, and stopped the migration as prose not preserved.
 - A migration ends an HTML element's raw lines before each block of Markdown MDX reads inside it, such as a heading or a fenced code block right after `<details>` and its `<summary>`, with the blank line CommonMark needs. Native had printed the heading or the code as raw text inside the element. Inline Markdown is written as HTML on every line native reads as raw, including the lines a later tag in the element opens.

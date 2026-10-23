@@ -656,6 +656,40 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("takes off indentation MDX reads past and native would count, so an indented list stays a list and a fence closes where MDX closes it", async () => {
+    const page = [
+      "# Installation",
+      "",
+      "```bash",
+      "cscli machines list",
+      "```",
+      "\t\t- Delete the test machine",
+      "```bash",
+      "cscli machines delete test",
+      "```",
+      "",
+      "Steps:",
+      "    1. Create the directory",
+      "    ```bash",
+      "    mkdir -p /etc/crowdsec/acquis.d/",
+      "    ```",
+      "",
+      "```yaml",
+      "    ## Acquisition template",
+      "    ```",
+      "```",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain("```\n- Delete the test machine\n```bash\n");
+      expect(converted).toContain("Steps:\n1. Create the directory\n```bash\nmkdir -p /etc/crowdsec/acquis.d/\n```\n");
+      // The fence MDX closes four columns in closes there in native too; the one after opens a block of its own.
+      expect(converted).toContain("```yaml\n    ## Acquisition template\n```\n```");
+    });
+  });
+
   it("keeps hashes a no-break space follows as the text Docusaurus shows, where native would read a heading", async () => {
     const page = "# Installation\n\n#### `enable`\n> bool\n\nThen run it.\n#### twice\n";
     await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {

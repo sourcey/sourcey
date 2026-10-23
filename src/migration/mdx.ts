@@ -292,6 +292,55 @@ export function literalHeadings(source: string, paragraph: SyntaxNode): number[]
   return offsets;
 }
 
+/** Columns a line's leading whitespace takes, tabs to the next multiple of four, as CommonMark counts them. */
+function columns(whitespace: string): number {
+  let width = 0;
+  for (const char of whitespace) width = char === "\t" ? width + 4 - (width % 4) : width + 1;
+  return width;
+}
+
+/** A line's leading whitespace with its first `width` columns taken off, a tab counting to its stop. */
+function outdent(line: string, width: number): number {
+  let taken = 0;
+  let at = 0;
+  while (at < line.length && taken < width && (line[at] === " " || line[at] === "\t")) taken = line[at++] === "\t" ? taken + 4 - (taken % 4) : taken + 1;
+  return at;
+}
+
+/**
+ * Where MDX, which has no indented code, reads past indentation that native
+ * counts: a block four columns in at the top of the page, which MDX reads as
+ * the block and native as code, and a fenced block's closing fence four
+ * columns past its opening, which closes it in MDX and not in native. Each
+ * edit takes the indentation off: the block's lines by its first line's, and
+ * the closing fence to its opening's column. Lines keep their number.
+ */
+export function mdxIndentation(source: string, tree: SyntaxNode): { start: number; end: number; text: string }[] {
+  const edits: { start: number; end: number; text: string }[] = [];
+  const lineOf = (offset: number) => source.lastIndexOf("\n", offset - 1) + 1;
+  const lead = (line: number) => source.slice(line).match(/^[ \t]*/)![0];
+  const moved = new Set<SyntaxNode>();
+  for (const node of tree.children ?? []) {
+    if (!node.position) continue;
+    const { start, end } = span(node);
+    const width = columns(source.slice(lineOf(start), start));
+    if (width < 4 || /\S/.test(source.slice(lineOf(start), start))) continue;
+    moved.add(node);
+    for (let line = lineOf(start); line < end; line = source.indexOf("\n", line) + 1 || end)
+      if (source.slice(line, source.indexOf("\n", line) + 1 || end).trim()) edits.push({ start: line, end: line + outdent(source.slice(line), width), text: "" });
+  }
+  for (const { node, parents } of walk(tree)) {
+    if (node.type !== "code" || !node.position || moved.has(node) || parents.some((parent) => moved.has(parent))) continue;
+    const { start, end } = span(node);
+    const fence = source.slice(start).match(/^(`{3,}|~{3,})/)?.[1];
+    const closing = lineOf(end - 1);
+    if (!fence || closing === lineOf(start) || !new RegExp(`^[ \\t]*\\${fence[0]}{${fence.length},}[ \\t]*$`).test(source.slice(closing, end))) continue;
+    const opening = columns(source.slice(lineOf(start), start).replace(/\S/g, " "));
+    if (columns(lead(closing)) - opening >= 4) edits.push({ start: closing, end: closing + lead(closing).length, text: " ".repeat(opening) });
+  }
+  return edits;
+}
+
 /** Text and its formatting, which hold no element or expression. */
 const PHRASING = new Set(["text", "emphasis", "strong", "delete", "inlineCode", "link", "linkReference", "break"]);
 
