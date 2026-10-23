@@ -7,6 +7,7 @@
 - `reference.split: "sections"` publishes an OpenAPI or MCP reference as a page for each section, an OpenAPI tag or an MCP group, holding its operations in full, and a page for each model, beside an overview that lists them. Each operation's own address (`reference.operations`) leads to it on its section's page, and previous and next lead from section to section. A reference with one section to split by stays one page, and the build says so.
 - `mcp({ spec, groups })` sections an MCP reference as the server's authors divide it: each group names its tools, resources and prompts, in the order the reference lists them, and the snapshot stays as captured. A name the server lacks, or one listed twice, fails the build; anything no group names is listed by kind after the groups, and the build names it. The undocumented `x-sourcey-group` field a snapshot could carry on an entry, which renamed its tag but left it listed under its kind, is no longer read.
 - The build warns when a reference on one page holds more than 100 operations, which are slow to open and to search, and names the splits that serve it better.
+- The Sourcey skill (`skills/sourcey`) ships in the npm package and as the `sourcey-docs` plugin for Claude Code, Gemini CLI, Cursor, Grok Build and ChatGPT/Codex: it teaches an agent the CLI, the migrations, how to shape a reference, and how to review a site as a reader before it ships.
 
 ### Changed
 

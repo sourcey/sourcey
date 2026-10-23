@@ -25,6 +25,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
   ],

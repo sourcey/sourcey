@@ -1,0 +1,49 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sourcey-docs",
+  "version": "3.8.3",
+  "description": "Build, migrate and review documentation sites with Sourcey: Markdown guides, OpenAPI and MCP references, Doxygen, Go and Rust, from a project's own sources.",
+  "author": {
+    "name": "Sourcey",
+    "email": "hello@sourcey.com",
+    "url": "https://sourcey.com"
+  },
+  "repository": "https://github.com/sourcey/sourcey",
+  "homepage": "https://sourcey.com/docs",
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "sourcey",
+    "documentation",
+    "docs",
+    "openapi",
+    "mcp",
+    "static-site-generator",
+    "migration"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Sourcey Docs",
+        "shortDescription": "Build documentation sites with Sourcey",
+        "longDescription": "Build, migrate and review a project's documentation with Sourcey: guides in Markdown, API references from OpenAPI, MCP server references, and C++, Go and Rust references, as a static site the project owns. Sourcey's startup offers data is a separate product.",
+        "developerName": "Sourcey",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Start a documentation site",
+          "Migrate from Docusaurus, MkDocs, Mintlify or Astro",
+          "Add an OpenAPI or MCP reference",
+          "Review a site before it ships"
+        ],
+        "websiteURL": "https://sourcey.com/docs",
+        "supportURL": "https://github.com/sourcey/sourcey/issues",
+        "defaultPrompt": [
+          "Set up Sourcey docs for this project from its README and OpenAPI spec.",
+          "Migrate this Docusaurus site to Sourcey and show me what the report says.",
+          "Review this Sourcey site as a reader would, before it ships."
+        ],
+        "composerIcon": "./assets/sourcey-mark.png",
+        "logo": "./assets/sourcey-mark.png"
+      }
+    }
+  }
+}

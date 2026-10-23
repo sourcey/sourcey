@@ -1,0 +1,15 @@
+{
+  "name": "sourcey",
+  "description": "Sourcey's plugins for agents: building, migrating and reviewing documentation sites.",
+  "owner": {
+    "name": "Sourcey",
+    "email": "hello@sourcey.com"
+  },
+  "plugins": [
+    {
+      "name": "sourcey-docs",
+      "source": "./",
+      "description": "Build, migrate and review documentation sites with Sourcey: Markdown guides, OpenAPI and MCP references, Doxygen, Go and Rust, from a project's own sources."
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "sourcey-docs",
+  "displayName": "Sourcey Docs",
+  "description": "Build, migrate and review documentation sites with Sourcey: Markdown guides, OpenAPI and MCP references, Doxygen, Go and Rust, from a project's own sources.",
+  "version": "3.8.3",
+  "author": {
+    "name": "Sourcey",
+    "email": "hello@sourcey.com"
+  },
+  "repository": "https://github.com/sourcey/sourcey",
+  "homepage": "https://sourcey.com/docs",
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "sourcey",
+    "documentation",
+    "docs",
+    "openapi",
+    "mcp",
+    "static-site-generator",
+    "migration"
+  ],
+  "logo": "./assets/sourcey-mark.png"
+}

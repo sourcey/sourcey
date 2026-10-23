@@ -208,6 +208,21 @@ sourcey-godoc generate --out site Standalone Go CLI for static godoc sites
 
 Run `sourcey <command> --help` for flags.
 
+## Agent skill
+
+The [Sourcey skill](skills/sourcey/SKILL.md) teaches a coding agent to start a documentation site, migrate one from Docusaurus, MkDocs, Mintlify or Astro, shape its API and MCP references, and review it as a reader before it ships. It is in the npm package at `node_modules/sourcey/skills/sourcey`, and this repository packages it as the `sourcey-docs` plugin for each agent host:
+
+```bash
+# Claude Code
+/plugin marketplace add sourcey/sourcey
+/plugin install sourcey-docs@sourcey
+
+# Gemini CLI
+gemini extensions install https://github.com/sourcey/sourcey
+```
+
+Cursor, Grok Build and ChatGPT/Codex read the manifests in `.cursor-plugin/`, `.grok-plugin/` and `plugin.json`. Sourcey's startup offers have their own plugin, [`sourcey`](https://github.com/sourcey/mcp-server); this one is for the documentation generator.
+
 ## Development
 
 ```bash
