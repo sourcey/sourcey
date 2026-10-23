@@ -368,15 +368,17 @@ Standalone builds emit HTML fallback pages and a `_redirects` file for hosts tha
 
 ## Reference pages
 
-An OpenAPI or MCP reference publishes in one of three shapes, chosen by its size and how it reads:
+An OpenAPI or MCP reference publishes in one of three shapes:
 
-| `reference.split` | Publishes | Suits |
-| --- | --- | --- |
-| none (default) | One page holding everything | A small reference: a few dozen operations |
-| `"sections"` | A page for each section, an OpenAPI tag or MCP group, holding its operations in full | An MCP server, or an API whose tags hold a modest number of light operations |
-| `"operations"` | A page for each operation | A large API, or one whose operations carry large schemas |
+| `reference.split` | Publishes |
+| --- | --- |
+| `false` | One page holding everything |
+| `"sections"` | A page for each section, an OpenAPI tag or MCP group, holding its operations in full |
+| `"operations"` | A page for each operation |
 
-A split reference also publishes a page for each model, beside an overview that lists the sections and their operations. Every shape uses the same reference components, examples and schema links, and OpenAPI operations keep their request console. On a split reference's overview, each operation and model keeps the anchor its section has on the single page, so a link from before the split lands on its entry. Each theme frames those pages as it frames a guide: the section's name over an operation's title, previous and next in navigation order, and an overview at reading width whose "On this page" lists its introduction's headings, as the sidebar lists the sections. A reference split by section with only one section to split by stays one page, and the build says so; one page holding more than 100 operations builds with a warning, as it is slow to open and to search.
+Unset, Sourcey chooses by size and says which it chose when it builds. A page holds at most 50 operations and 600 field rows, counting each parameter, body field and response a page draws. A reference within that is one page. A larger one with several sections, each within it, gets a page per section: an MCP server divided into groups usually does, as do APIs with modest, light tags. Otherwise each operation gets its own page, as a large API, or one whose operations carry large schemas, needs. Field rows matter as much as operations: a hundred light tools read well a section at a time, while thirty operations returning large schemas make a page too heavy to open.
+
+A split reference also publishes a page for each model, beside an overview: split by section, it lists the sections, each with its description or the operations it holds; split by operation, it lists every operation under its section. Every shape uses the same reference components, examples and schema links, and OpenAPI operations keep their request console. On a split reference's overview, each operation and model keeps the anchor its section has on the single page, so a link from before the split lands on its entry, and an operation's own address leads wherever its shape puts it, so a reference can grow from one shape to another without breaking a link. Each theme frames those pages as it frames a guide: the section's name over an operation's title, previous and next in navigation order, and an overview at reading width whose "On this page" lists its introduction's headings, as the sidebar lists the sections. A reference split by section with only one section to split by stays one page, and the build says so; one held on one page with more than 100 operations builds with a warning, as it is slow to open and to search.
 
 An MCP server's sections are its kinds, Tools, Resources and Prompts, unless its groups say otherwise. Name them as the server's authors divide it, each with the tools, resources and prompts it lists, in order:
 

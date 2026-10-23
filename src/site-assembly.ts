@@ -16,6 +16,7 @@ import { buildAuthoredNavigation, buildNavFromPages, buildNavFromSpec, buildSite
 import { navigationResolver } from "./core/navigation-targets.js";
 import { normalizeSpec } from "./core/normalizer.js";
 import { applyOverlays, type OverlayDiagnostic } from "./core/overlay.js";
+import { automaticSplit } from "./core/reference-shape.js";
 import { parseSpec } from "./core/parser.js";
 import { definitionAnchor, operationAnchor, operationKey, operationPagePath, referenceOperation, schemaPagePath, sectionBodies, tagAnchor } from "./core/reference-identity.js";
 import { shareReferenceSnapshot } from "./core/reference-snapshot.js";
@@ -177,16 +178,22 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       tryIt: source.kind === "mcp" ? false : tab.tryIt ?? config.tryIt };
     const operations = spec.operations.filter(op => !op.hidden);
     const sections = [...sectionBodies(spec)].filter(([, members]) => members.length);
-    // A list of one section says nothing, so a reference with one is its own page.
+    // A reference whose config names no shape takes the one its size calls for, and says which.
     let split = tab.reference.split;
+    if (split === undefined) {
+      const automatic = automaticSplit(spec);
+      split = automatic.split;
+      referenceDiagnostics.push({ severity: "info", code: "shape", tab: tab.label, message: `Published as ${automatic.reason}. Set reference.split to choose another shape.` });
+    }
+    // A list of one section says nothing, so a reference with one is its own page.
     if (split === "sections" && sections.length < 2) {
       referenceDiagnostics.push({ severity: "warning", code: "one-section", tab: tab.label,
         message: sections.length ? `Split by section, but every operation is in ${sections[0][0]}, so the reference is one page. Group its operations, or split it by operation.` : "Split by section, but the reference has no operations, so it is one page." });
-      split = undefined;
+      split = false;
     }
     if (!split && operations.length > LONG_REFERENCE) referenceDiagnostics.push({ severity: "warning", code: "long-page", tab: tab.label,
       message: `${operations.length} operations on one page are slow to open and to search. Split it with reference.split: "sections", or "operations".` });
-    const overview = add(context, tab, { ...current, view: split ? { kind: "overview" } : undefined }, "introduction", source.spec, tab.contentLocale);
+    const overview = add(context, tab, { ...current, view: split ? { kind: "overview", split } : undefined }, "introduction", source.spec, tab.contentLocale);
     const page = toPublicPath(overview.outputPath, config.baseUrl, config.prettyUrls);
     // An operation's or model's own address stays permanent wherever the reference shows it,
     // redirecting to its place on a page, so the reference can split or join again.

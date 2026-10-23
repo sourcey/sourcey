@@ -98,13 +98,15 @@ function operationOutline(operation: NormalizedOperation): string {
   return `${operation.method.toUpperCase()} ${operation.path}${parts.length ? `: ${parts.join(", ")}` : ""}.`;
 }
 
-/** Names as a sentence: the first six, then how many more. */
-function namesOutline(names: string[], noun: string): string {
-  if (!names.length) return "";
-  const shown = names.slice(0, 6);
+/** Names as a phrase: the first few, six unless given, then how many more; one more is named. */
+export function listNames(names: readonly string[], few = 6): string {
+  const shown = names.slice(0, names.length === few + 1 ? names.length : few);
   const rest = names.length - shown.length;
-  const words = rest > 0 ? `${shown.join(", ")} and ${rest} more` : shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}` : shown[0];
-  return `${noun}: ${words}.`;
+  return rest > 0 ? `${shown.join(", ")} and ${rest} more` : shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}` : shown[0] ?? "";
+}
+
+function namesOutline(names: string[], noun: string): string {
+  return names.length ? `${noun}: ${listNames(names)}.` : "";
 }
 
 /** A model with no description, described by what it holds: its fields, or its values. */

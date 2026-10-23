@@ -52,12 +52,11 @@ describe("reference sections", () => {
     expect(site.searchRows.some((row: { url: string }) => row.url === place)).toBe(true);
     expect(site.assembly.routes.redirectFor("/mcp/nitro_search_contacts/")?.to).toBe(place);
 
-    // The overview lists the sections; a kind shows only in the section that mixes them.
+    // The overview lists the sections, each leading to its page, and keeps each entry's
+    // single-page anchor on its section's row.
     const overview = html("mcp/index.html");
-    expect(overview).toContain('id="tag-contacts"');
-    expect(overview).not.toContain("method-tool");
-    expect(overview).toContain('class="reference-method method-resource"');
-    expect(overview).toContain('class="reference-method method-prompt"');
+    expect(overview).toMatch(/<li id="tag-contacts"><span class="reference-anchor-alias" id="operation-nitro-search-contacts-tool"[^>]*><\/span>.*?<a href="\/mcp\/contacts\/"><span class="reference-operation-label"><strong>Contacts<\/strong><span class="reference-operation-summary">nitro_search_contacts, nitro_import_contacts, nitro_manage_audience and nitro_define_segment<\/span>/s);
+    expect(overview).not.toContain("reference-method");
 
     const contacts = html("mcp/contacts/index.html");
     expect(contacts).toMatch(/<h1 class="reference-page-title[^"]*">Contacts<\/h1>/);
@@ -83,12 +82,27 @@ describe("reference sections", () => {
     expect(site.referenceDiagnostics).toEqual([expect.objectContaining({ code: "one-section", tab: "API" })]);
   }));
 
-  it("says when a reference on one page runs too long to open quickly", () => fixture(async (root) => {
+  it("says when a reference held on one page runs too long to open quickly", () => fixture(async (root) => {
     await writeFile(join(root, "api.json"), openApi({ Items: 60, Orders: 41 }));
-    const single = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json") }]);
+    const single = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: false } }]);
     expect(single.site.referenceDiagnostics).toEqual([expect.objectContaining({ code: "long-page", message: expect.stringContaining("101 operations") })]);
     const split = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "sections" } }]);
     expect(split.site.referenceDiagnostics).toEqual([]);
+  }));
+
+  it("chooses a shape by size where the config names none, and says which", () => fixture(async (root) => {
+    const shape = async (tags: Record<string, number>) => {
+      await writeFile(join(root, "api.json"), openApi(tags));
+      const { site } = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json") }]);
+      const views = site.pages.filter((page) => page.currentPage.kind === "spec").map((page) => page.currentPage.kind === "spec" && page.currentPage.view?.kind);
+      return { views: new Set(views), said: site.referenceDiagnostics.map((diagnostic) => `${diagnostic.severity} ${diagnostic.message}`) };
+    };
+    // Small: one page.
+    expect(await shape({ Items: 12, Orders: 8 })).toEqual({ views: new Set([undefined]), said: [expect.stringMatching(/^info Published as one page: 20 operations and \d+ field rows\./)] });
+    // Too large for one page, in sections that each make one: a page per section.
+    expect(await shape({ Items: 30, Orders: 30, Users: 30 })).toEqual({ views: new Set(["overview", "section"]), said: [expect.stringMatching(/^info Published as a page per section: 90 operations and \d+ field rows in 3 sections/)] });
+    // A section too large for a page: a page per operation.
+    expect(await shape({ Items: 120, Orders: 2 })).toEqual({ views: new Set(["overview", "operation"]), said: [expect.stringMatching(/^info Published as a page per operation: 122 operations and \d+ field rows, and its section Items alone holds 120 operations/)] });
   }));
 
   it("shows the section around a page whole, and folds the others to their links", () => fixture(async (root) => {

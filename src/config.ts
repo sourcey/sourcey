@@ -10,6 +10,7 @@ import {
   rustdoc as rustdocSource,
 } from "./adapters/index.js";
 import type { ResolvedSiteContext } from "./core/site-model.js";
+import type { ReferenceSplit } from "./core/reference-shape.js";
 import { canonicalInputPath } from "./core/loader.js";
 import { resolveContexts } from "./core/contexts.js";
 import type { NativeComponentDefinition } from "./core/markdown-components.js";
@@ -442,11 +443,14 @@ export interface TabConfig {
 
 export interface ReferenceConfig {
   /**
-   * `"sections"`: a page for each section (an OpenAPI tag, an MCP group or
-   * kind) holding its operations, and one for each model. `"operations"`: a
-   * page for each operation and model. Either way an overview lists them.
+   * `false`: one page. `"sections"`: a page for each section (an OpenAPI tag,
+   * an MCP group or kind) holding its operations, and one for each model.
+   * `"operations"`: a page for each operation and model. A split reference's
+   * overview lists its sections, or its operations. Unset, the reference is
+   * one page while that stays small, a page per section where each section
+   * makes a page that size, else a page per operation, and the build says which.
    */
-  split?: "sections" | "operations";
+  split?: ReferenceSplit;
   /**
    * Each operation's permanent address, built from `{operationId}`, `{method}`,
    * `{path}` or `{operation}` (its ID, or its path when it has none). A
@@ -932,7 +936,7 @@ async function resolveTabs(
     });
     if (tab.anchorUnmatched !== undefined && !["error", "warn", "ignore"].includes(tab.anchorUnmatched)) throw new Error(`Invalid anchorUnmatched in tab "${tab.tab}"; expected error, warn or ignore`);
     const reference = tab.reference ?? {};
-    if (reference.split !== undefined && reference.split !== "sections" && reference.split !== "operations") throw new Error(`Invalid reference.split in tab "${tab.tab}"; expected "sections" or "operations"`);
+    if (reference.split !== undefined && reference.split !== false && reference.split !== "sections" && reference.split !== "operations") throw new Error(`Invalid reference.split in tab "${tab.tab}"; expected false, "sections" or "operations"`);
     if (reference.operations !== undefined && (typeof reference.operations !== "string" || !reference.operations.trim())) throw new Error(`Invalid reference.operations in tab "${tab.tab}"; expected an address such as "{operationId}"`);
     resolved.push({
       ...resolvedTabFromSource(tab.tab, slug, source),

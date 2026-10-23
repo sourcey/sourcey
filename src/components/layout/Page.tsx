@@ -23,7 +23,7 @@ import { Sidebar } from "./Sidebar.js";
 import { TableOfContents } from "./TableOfContents.js";
 import { Introduction } from "../openapi/Introduction.js";
 import { SecurityDefinitions } from "../openapi/Security.js";
-import { TagSection, Tags } from "../openapi/Tags.js";
+import { SectionIndex, TagSection, Tags } from "../openapi/Tags.js";
 import { referenceTag } from "../../core/tag-utils.js";
 import { Operation } from "../openapi/Operation.js";
 import { Definition } from "../openapi/Definition.js";
@@ -184,9 +184,10 @@ function SpecPageContent({ className = "", bare = false }: { className?: string;
         </header>
 
         {/* The server's connection follows its introduction, or stands beside it where the theme has room. */}
-        {mcpOverview ? <div class="sourcey-mcp-overview"><Introduction /><McpConnection connection={connection} /><div class="sourcey-mcp-tools"><Tags tags={spec.tags} showOperations={false} /></div></div> : <><Introduction />{connection && <McpConnection connection={connection} />}</>}
+        {/* A reference split by section lists its sections; one split by operation lists its operations. */}
+        {mcpOverview ? <div class="sourcey-mcp-overview"><Introduction /><McpConnection connection={connection} /><div class="sourcey-mcp-tools">{view.split === "sections" ? <SectionIndex /> : <Tags tags={spec.tags} showOperations={false} />}</div></div> : <><Introduction />{connection && <McpConnection connection={connection} />}</>}
         <SecurityDefinitions />
-        {!mcpOverview && <Tags tags={spec.tags} showOperations={view?.kind !== "overview"} />}
+        {!mcpOverview && (view?.kind === "overview" && view.split === "sections" ? <SectionIndex /> : <Tags tags={spec.tags} showOperations={view?.kind !== "overview"} />)}
 
         {view?.kind === "overview" && Object.keys(spec.schemas).length > 0 && <section class="mt-12"><h2 id="models"><AnchorAliases target="models" />{options.messages?.models ?? "Models"}</h2><ul class="reference-operation-links">{Object.entries(spec.schemas).map(([name, schema]) => <li id={definitionAnchor(name, spec)}><a href={options.referenceTargets?.schemas[name]?.href}><strong>{name}</strong>{schema.description && <span>{schema.description}</span>}</a></li>)}</ul></section>}
         {view?.kind !== "overview" && Object.keys(spec.schemas).length > 0 && (

@@ -17,13 +17,13 @@ export interface BuildDiagnostics {
 }
 
 /**
- * How an OpenAPI or MCP reference publishes against its shape: entries its
- * groups leave out, a split with one section to split by, a page too long to
- * read as one.
+ * How an OpenAPI or MCP reference publishes against its shape: the shape the
+ * build chose where the config names none, entries its groups leave out, a
+ * split with one section to split by, a page too long to read as one.
  */
 export interface ReferenceDiagnostic {
-  severity: "warning";
-  code: "mcp-ungrouped" | "one-section" | "long-page";
+  severity: "info" | "warning";
+  code: "shape" | "mcp-ungrouped" | "one-section" | "long-page";
   tab: string;
   message: string;
 }
@@ -35,7 +35,7 @@ export function formatBuildDiagnostics(result: BuildDiagnostics): string[] {
     ...result.godocDiagnostics.map(formatGodocDiagnostic),
     ...result.rustdocDiagnostics.map(formatRustdocDiagnostic),
     ...result.overlayDiagnostics.map(formatOverlayDiagnostic),
-    ...result.referenceDiagnostics.map(diagnostic => `WARNING ${diagnostic.code} (${diagnostic.tab}): ${diagnostic.message}`),
+    ...result.referenceDiagnostics.map(diagnostic => `${diagnostic.severity === "info" ? "" : `WARNING ${diagnostic.code} `}${diagnostic.tab}: ${diagnostic.message}`),
     ...result.contentDiagnostics.map(formatContentDiagnostic),
     ...result.anchorDiagnostics.map(diagnostic => `anchor [${diagnostic.code}]: ${diagnostic.message} Unmatched aliases are omitted.`),
   ];

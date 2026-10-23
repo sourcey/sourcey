@@ -64,7 +64,7 @@ export type CurrentPage =
       tryIt?: false | TryItConfig;
       specKey?: string;
       view?:
-        { kind: "operation"; id: string } | { kind: "section"; tag: string } | { kind: "schema"; name: string } | { kind: "overview" };
+        { kind: "operation"; id: string } | { kind: "section"; tag: string } | { kind: "schema"; name: string } | { kind: "overview"; split: "sections" | "operations" };
     }
   | { kind: "markdown"; markdown: MarkdownPage }
   | { kind: "changelog"; changelog: ChangelogPage }
@@ -84,6 +84,8 @@ export interface ReferenceTarget {
 export interface ReferenceTargets {
   /** The reference's own page: its overview, or the whole reference on one page. */
   overview: ReferenceTarget;
+  /** Each section's own page, by tag name, where the reference is split by section. */
+  sections: Record<string, ReferenceTarget>;
   operations: Record<string, ReferenceTarget>;
   schemas: Record<string, ReferenceTarget>;
 }
@@ -456,13 +458,17 @@ export class RouteTable {
         (!route.page.currentPage.view || route.page.currentPage.view.kind === "overview"),
     )!;
     // An operation is published on its own page, its section's, or the reference's one page.
+    const sectionPages: Record<string, ReferenceTarget> = {};
     const sections = new Map<NormalizedOperation, RouteRecord>();
     for (const [tag, operations] of sectionBodies(spec)) {
       const route = byDocument.get(JSON.stringify(["section", `section:${tag}`]));
-      if (route) for (const operation of operations) sections.set(operation, route);
+      if (!route) continue;
+      sectionPages[tag] = { href: route.publicPath, outputPath: route.outputPath };
+      for (const operation of operations) sections.set(operation, route);
     }
     return {
       overview: { href: overview.publicPath, outputPath: overview.outputPath },
+      sections: sectionPages,
       operations: Object.fromEntries(
         spec.operations
           .filter((op) => !op.hidden)

@@ -2,8 +2,9 @@ import { useContext } from "preact/hooks";
 import { Breakable } from "../ui/Breakable.js";
 import { OptionsContext, SpecContext } from "../../renderer/context.js";
 import { kindTells, operationAnchor, operationKey, sectionBodies, tagAnchor } from "../../core/reference-identity.js";
+import { listNames, metadataSummary } from "../../core/page-metadata.js";
 import type { NormalizedTag } from "../../core/types.js";
-import { tagLineage } from "../../core/tag-utils.js";
+import { referenceTag, tagLineage } from "../../core/tag-utils.js";
 import { useTagLabel } from "./outline.js";
 import { Markdown } from "../ui/Markdown.js";
 import { Badge } from "../ui/Badge.js";
@@ -72,6 +73,39 @@ export function TagSection({ tag, showOperations, page = false }: { tag: Normali
       {bodies.map((op) => (
         <Operation key={`${op.method}-${op.path}`} operation={op} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * A reference split by section lists its sections, each leading to its page,
+ * with its description, or else the operations it holds. Each row keeps the
+ * anchors its operations had on the single page, so an older link lands on it.
+ */
+export function SectionIndex() {
+  const options = useContext(OptionsContext);
+  const spec = useContext(SpecContext);
+  const displayLabel = useTagLabel();
+  const sections = [...sectionBodies(spec)].filter(([, members]) => members.length);
+  const listed = new Set(sections.map(([name]) => name));
+  // A tag holding no operations of its own has no page to lead to; its anchor stays on the page.
+  const unlisted = spec.tags.filter(tag => !tag.hidden && !listed.has(tag.name));
+  return (
+    <div class="mt-12">
+      {unlisted.map(tag => <span key={tag.name} class="reference-anchor-alias" id={tagAnchor(tag.name, spec)} aria-hidden="true" />)}
+      <ul class="reference-operation-links">{sections.map(([name, members]) => {
+        const tag = referenceTag(spec, name);
+        const summary = metadataSummary(tag.description) || listNames(members.map(op => op.summary ?? op.path), 3);
+        return (
+          <li key={name} id={tagAnchor(name, spec)}>
+            {members.map(op => <span key={operationKey(op)} class="reference-anchor-alias" id={operationAnchor(op, spec)} aria-hidden="true" />)}
+            <a href={options.referenceTargets?.sections[name]?.href}>
+              <span class="reference-operation-label"><strong>{displayLabel(tag)}</strong><span class="reference-operation-summary">{summary}</span></span>
+              <svg class="reference-operation-arrow" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </a>
+          </li>
+        );
+      })}</ul>
     </div>
   );
 }

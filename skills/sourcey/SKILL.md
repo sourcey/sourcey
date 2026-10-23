@@ -82,15 +82,15 @@ Framework specifics, what each converts and what stops it: [references/migrating
 
 ## API and MCP references
 
-An OpenAPI or MCP tab publishes in one of three shapes. Choose by size and by how heavy each operation is:
+An OpenAPI or MCP tab publishes in one of three shapes. Leave `reference.split` unset and Sourcey chooses by size, printing which it chose:
 
-| `reference.split` | Publishes | Use for |
+| Shape | `reference.split` | Chosen when |
 | --- | --- | --- |
-| none (default) | One page holding everything | Up to a few dozen operations |
-| `"sections"` | A page per section (an OpenAPI tag, an MCP group) with its operations in full | MCP servers; APIs whose tags hold a modest number of light operations |
-| `"operations"` | A page per operation | Large APIs, or operations carrying large schemas |
+| One page | `false` | The reference holds at most 50 operations and 600 field rows |
+| A page per section (an OpenAPI tag, an MCP group) | `"sections"` | It has several sections and each fits those limits |
+| A page per operation | `"operations"` | Otherwise: large APIs, or operations carrying large schemas |
 
-Split references also get a page per model and an overview listing every section. `reference.operations: "{operationId}"` gives each operation a permanent address that follows it whatever the shape. The build warns when one page would hold more than 100 operations, and when a split by section has only one section.
+Set `reference.split` only to override the choice. Split references also get a page per model and an overview listing the sections, or every operation when split by operation. `reference.operations: "{operationId}"` gives each operation a permanent address that follows it whatever the shape. The build warns when one page is forced to hold more than 100 operations, and when a split by section has only one section.
 
 **MCP.** Capture the server's tools, resources and prompts with `npx mcp-parser snapshot --stdio "node server.js" -o mcp.json` (or `--http <url>`, `--sse <url>`), and commit the snapshot. Add a `description` to it for the overview and a `transport` the reader's client can run. Without groups, sections are the kinds: Tools, Resources, Prompts. A server of more than a handful of tools deserves the groups its authors use, which usually mirror how its source registers them:
 
@@ -102,7 +102,6 @@ source: mcp({
     Invoices: ["get_invoices", "create_invoice", "update_invoice"],
   },
 }),
-reference: { split: "sections" },
 ```
 
 Never invent groups from name patterns: if the source has no grouping, leave the kinds.
@@ -151,9 +150,11 @@ export default defineConfig({
 
 ## Build warnings
 
+A line naming each reference's chosen shape is information, not a warning.
+
 | Warning | Means | Fix |
 | --- | --- | --- |
-| `long-page` | One page holds more than 100 operations | `reference.split: "sections"` or `"operations"` |
+| `long-page` | `reference.split: false` holds more than 100 operations on one page | Remove it and let Sourcey choose, or name a split |
 | `one-section` | A split by section with one section | Group the MCP server, tag the API, or split by operation |
 | `mcp-ungrouped` | Entries no MCP group lists, shown by kind after the groups | Add them to their groups |
 | `missing-description` | Pages with no summary of their own | Add `description` frontmatter, or a spec `description` |
