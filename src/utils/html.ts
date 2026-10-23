@@ -10,6 +10,9 @@ export interface SafeUrlOptions {
   allowAnchor?: boolean;
 }
 
+/** The elements HTML closes with their start tag; any other is open until its end tag, whatever the start tag ends with. */
+export const VOID_ELEMENTS: ReadonlySet<string> = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

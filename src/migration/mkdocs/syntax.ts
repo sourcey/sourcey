@@ -5,6 +5,7 @@
  * Fenced code is never converted, except a fence that only includes a file.
  */
 import { posix } from "node:path";
+import { VOID_ELEMENTS } from "../../utils/html.js";
 import { firstHeadingText } from "../../utils/markdown.js";
 import type { Diagnostics } from "../diagnostics.js";
 import { siteFileUrls } from "../site-files.js";
@@ -323,12 +324,10 @@ function isAttributeList(content: string, colon = false): boolean {
   return colon || entries.some((entry) => /^[#.]|=/.test(entry));
 }
 
-const VOID_HTML = new Set(["br", "hr", "img", "input", "source", "wbr"]);
-
 /** An HTML start tag alone on its line: indent, tag name and attributes. */
 function htmlStartTag(line: string): { indent: string; tag: string; attributes: string } | undefined {
   const match = line.match(/^(\s*)<([a-z][\w-]*)\b([^>]*)>\s*$/i);
-  if (!match || match[3].trim().endsWith("/") || VOID_HTML.has(match[2].toLowerCase())) return undefined;
+  if (!match || match[3].trim().endsWith("/") || VOID_ELEMENTS.has(match[2].toLowerCase())) return undefined;
   return { indent: match[1], tag: match[2], attributes: match[3] };
 }
 

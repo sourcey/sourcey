@@ -4,7 +4,7 @@
  */
 import { posix } from "node:path";
 import type { IconSet } from "../config.js";
-import { escapeHtml } from "../utils/html.js";
+import { escapeHtml, VOID_ELEMENTS } from "../utils/html.js";
 import { indentColumns } from "../utils/indentation.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import { HTML_ATTRIBUTE_NAMES, identityKey, styleText, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
@@ -440,6 +440,13 @@ function spaceBefore(source: string, offset: number): number {
   return offset;
 }
 
+/** Elements of SVG and MathML, which close with `/>` as JSX does. */
+function foreignElements(tree: SyntaxNode): Set<SyntaxNode> {
+  const foreign = new Set<SyntaxNode>();
+  for (const { node, parents } of walk(tree)) if (["svg", "math"].includes(node.name ?? "") || parents.some((parent) => ["svg", "math"].includes(parent.name ?? ""))) foreign.add(node);
+  return foreign;
+}
+
 /** Names a document uses as values: other than declaring them, calling them or showing them as an element. */
 function valueNames(tree: SyntaxNode): Set<string> {
   const found = new Set<string>();
@@ -492,6 +499,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
   const reader = staticReader(project, scope, document.dialect);
   const staticValue = async (node: EstreeNode) => (await reader.read(node))?.value;
   let values: Set<string> | undefined;
+  let foreign: Set<SyntaxNode> | undefined;
 
   const edits: TextEdit[] = [];
   const replaced: { start: number; end: number }[] = [];
@@ -736,6 +744,13 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
         continue;
       }
       edits.push({ start: range.start, end: range.end, text: text === true ? name : `${name}="${escapeAttribute(String(text))}"` });
+    }
+    // JSX closes any element with `/>`, HTML only a void one: another, such as `<iframe />`, would hold the rest of the page.
+    const end = openingTagEnd(source, node);
+    if (closingTagStart(source, node) === undefined && source.slice(end - 2, end) === "/>" && !VOID_ELEMENTS.has(node.name!.toLowerCase()) && !(foreign ??= foreignElements(tree)).has(node)) {
+      // A tag that closes on a line of its own keeps the line.
+      const space = spaceBefore(source, end - 2);
+      edits.push({ start: source.slice(space, end - 2).includes("\n") ? end - 2 : space, end, text: `></${node.name}>` });
     }
     return "tags";
   }

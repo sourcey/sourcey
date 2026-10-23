@@ -657,6 +657,31 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("closes an HTML element JSX closes with />, as HTML closes only a void one, and leaves SVG as written", async () => {
+    const page = [
+      "# Installation",
+      "",
+      "<div style={{ position: 'relative' }}>",
+      "  <iframe",
+      "    src=\"https://www.youtube.com/embed/example\"",
+      "    title=\"Demo\"",
+      "  />",
+      "  <span className=\"spacer\" /><br />",
+      "</div>",
+      "",
+      "<svg viewBox=\"0 0 4 4\"><path d=\"M0 0h4v4H0z\" /></svg>",
+      "",
+      "The rest of the page.",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain('  <iframe\n    src="https://www.youtube.com/embed/example"\n    title="Demo"\n  ></iframe>\n  <span class="spacer"></span><br />\n</div>');
+      expect(converted).toContain('<svg viewBox="0 0 4 4"><path d="M0 0h4v4H0z" /></svg>');
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
