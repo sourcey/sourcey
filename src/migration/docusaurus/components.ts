@@ -1,8 +1,12 @@
 /** Docusaurus theme components as native components, by module and export identity. */
 import type { JsonValue } from "../../core/markdown-components.js";
-import { attributeText, identityKey, rejectDynamic, tabSelectionReview, unsupportedAttributes, type ConverterTable } from "../components.js";
+import { escapeHtml } from "../../utils/html.js";
+import { attributeText, HTML_ATTRIBUTE_NAMES, identityKey, rejectDynamic, styleText, tabSelectionReview, unsupportedAttributes, type ConverterTable } from "../components.js";
 import { markdownText } from "../text-edits.js";
 import { nativeCallout } from "./markdown.js";
+
+/** What Docusaurus's Link passes on to the anchor it draws. */
+const ANCHOR_ATTRIBUTES = ["className", "style", "target", "rel", "title", "id"];
 
 const NATIVE_CALLOUTS: Record<string, string> = { note: "Note", tip: "Tip", info: "Info", warning: "Warning", danger: "Danger", caution: "Caution" };
 
@@ -64,11 +68,20 @@ export function docusaurusConverters(): ConverterTable {
   table.set(identityKey("@docusaurus/Link", "default"), (element) => {
     const failure = rejectDynamic(element);
     if (failure) return failure;
-    const extra = unsupportedAttributes(element, ["to", "href"]);
+    const extra = unsupportedAttributes(element, ["to", "href", ...ANCHOR_ATTRIBUTES]);
     if (extra.length) return { error: `<${element.name}> attribute ${extra.join(", ")} has no native equivalent` };
     const href = attributeText(element.props.to) ?? attributeText(element.props.href);
     if (!href) return { error: `<${element.name}> has no destination` };
-    return { markdown: `[${element.children.trim() || markdownText(href)}](${href})` };
+    const attributes = ANCHOR_ATTRIBUTES.filter((name) => element.props[name] !== undefined);
+    if (!element.html && !attributes.length) return { markdown: `[${element.children.trim() || markdownText(href)}](${href})` };
+    // Native reads no Markdown in raw HTML, and a Markdown link has none of an anchor's attributes: the link is the anchor
+    // Docusaurus draws, which opens another site in a new tab.
+    const external = /^(\w+:|\/\/)/.test(href) ? { target: "_blank", rel: "noopener noreferrer" } : {};
+    const written = Object.entries({ href, ...external, ...Object.fromEntries(attributes.map((name) => [name, element.props[name]])) }).map(([name, value]) => {
+      const text = name === "style" && value && typeof value === "object" && !Array.isArray(value) ? styleText(value) : String(value);
+      return ` ${HTML_ATTRIBUTE_NAMES[name] ?? name}="${escapeHtml(text)}"`;
+    });
+    return { markdown: `<a${written.join("")}>${element.children.trim() || escapeHtml(href)}</a>` };
   });
 
   // Docusaurus highlights a code block whose children are a string, and shows children written as text in the block

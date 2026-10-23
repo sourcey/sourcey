@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- A migration writes a JSX style object's numbers as React does, in pixels unless the property is unitless, such as `lineHeight`, or the number is 0. `fontSize: 12.5` had become `font-size: 12.5`, which a browser ignores. A custom property keeps its value as written, and `msTransform` is written `-ms-transform`.
+- `sourcey migrate docusaurus` writes a `Link` inside an HTML element, or one with an anchor's attributes (`className`, `style`, `target`, `rel`, `title`, `id`), as the anchor Docusaurus draws, which opens another site in a new tab. Inside an HTML element it had become a Markdown link, which native shows there as text, and an anchor's attributes had stopped the migration.
 - A migration writes a frontmatter flag or number, such as `hideInMenu: true` for an unlisted page, as YAML reads it back; it had written `"true"`, which native read as text, so such pages stayed in the menu.
 - An author's HTML table scrolls in place on a narrow screen, as a Markdown table does, where it had widened the page past the screen.
 - Previous and next read a section's own page, such as a category's index, before the pages it holds, and give it a previous and next of its own, as Docusaurus pages through them. It had had neither, and the section's first page had led back past it.

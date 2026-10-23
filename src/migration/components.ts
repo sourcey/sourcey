@@ -21,6 +21,8 @@ export interface ElementInput {
   childValue?: JsonValue;
   /** The text a reader sees in children that are only text: its line, or its paragraphs one after another. */
   childText?: string;
+  /** The element stands in raw HTML, inside a plain HTML element, where native reads its replacement as HTML rather than Markdown. */
+  html?: boolean;
   /** The nearest component around this one, as its converter read it: Docusaurus's tabs label their items. */
   parent?: { module: string; export: string; props: Record<string, JsonValue> };
   /** Public path the document is published at. */
@@ -77,6 +79,37 @@ export function attributeText(value: JsonValue | undefined): string | undefined 
 }
 
 /** Attributes an element sets beyond those a converter understands. */
+/** JSX attribute names HTML spells otherwise. */
+export const HTML_ATTRIBUTE_NAMES: Record<string, string> = { className: "class", htmlFor: "for" };
+
+/** CSS properties React writes a number for as it is; React writes any other number in pixels. */
+const UNITLESS_PROPERTIES = new Set([
+  "animationIterationCount", "aspectRatio", "borderImageOutset", "borderImageSlice", "borderImageWidth", "boxFlex", "boxFlexGroup",
+  "boxOrdinalGroup", "columnCount", "columns", "flex", "flexGrow", "flexPositive", "flexShrink", "flexNegative", "flexOrder",
+  "gridArea", "gridRow", "gridRowEnd", "gridRowSpan", "gridRowStart", "gridColumn", "gridColumnEnd", "gridColumnSpan",
+  "gridColumnStart", "fontWeight", "lineClamp", "lineHeight", "opacity", "order", "orphans", "scale", "tabSize", "widows",
+  "zIndex", "zoom", "fillOpacity", "floodOpacity", "stopOpacity", "strokeDasharray", "strokeDashoffset", "strokeMiterlimit",
+  "strokeOpacity", "strokeWidth",
+]);
+
+/**
+ * A JSX style object as the CSS text React writes from it: properties in
+ * kebab case (`msTransform` as `-ms-transform`), custom properties as
+ * written, numbers in pixels unless the property is unitless or the number
+ * is 0, and values React leaves out (null, a flag, an empty string) left out.
+ */
+export function styleText(style: Record<string, JsonValue>): string {
+  return Object.entries(style)
+    .filter(([, value]) => value !== null && typeof value !== "boolean" && value !== "")
+    .map(([property, value]) => {
+      if (property.startsWith("--")) return `${property}: ${value}`;
+      const unitless = UNITLESS_PROPERTIES.has(property.replace(/^(Webkit|Moz|ms|O)([A-Z])/, (_, _prefix, letter: string) => letter.toLowerCase()));
+      const name = property.replace(/^ms(?=[A-Z])/, "-ms").replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      return `${name}: ${typeof value === "number" && value !== 0 && !unitless ? `${value}px` : String(value).trim()}`;
+    })
+    .join("; ");
+}
+
 export function unsupportedAttributes(element: ElementInput, allowed: string[]): string[] {
   return Object.keys(element.props)
     .concat(element.dynamic)

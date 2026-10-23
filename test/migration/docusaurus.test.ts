@@ -636,6 +636,27 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("writes a Link in raw HTML, or one with an anchor's attributes, as the anchor Docusaurus draws, and a style object as the CSS React writes", async () => {
+    const page = [
+      "import Link from '@docusaurus/Link';",
+      "",
+      "# Installation",
+      "",
+      "<div style={{ fontSize: 12.5, lineHeight: 1.6, margin: 0, WebkitLineClamp: 2, msTransform: 'none', '--accent': 2, color: null }}>",
+      "  <Link to=\"/start/\"><span>Explore →</span></Link>",
+      "</div>",
+      "",
+      "See <Link to=\"/start/\">the start</Link>, or <Link href=\"https://example.com\" className=\"button\" style={{ fontWeight: 600, padding: 4 }}>the site</Link>.",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain('<div style="font-size: 12.5px; line-height: 1.6; margin: 0; -webkit-line-clamp: 2; -ms-transform: none; --accent: 2">\n  <a href="/start/"><span>Explore →</span></a>\n</div>');
+      expect(converted).toContain('See [the start](/start/), or <a href="https://example.com" target="_blank" rel="noopener noreferrer" class="button" style="font-weight: 600; padding: 4px">the site</a>.');
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

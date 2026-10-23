@@ -7,7 +7,7 @@ import type { IconSet } from "../config.js";
 import { escapeHtml } from "../utils/html.js";
 import { indentColumns } from "../utils/indentation.js";
 import type { JsonValue } from "../core/markdown-components.js";
-import { identityKey, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
+import { HTML_ATTRIBUTE_NAMES, identityKey, styleText, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
 import { evaluate, exportedConstant, identifierName, scopeFromProgram, toJson, type CallValue, type ImportBinding, type JsonResult, type ModuleScope } from "./javascript.js";
 import { childrenText, closingTagStart, openingTagEnd, span, textContent, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
@@ -34,8 +34,6 @@ export interface ConvertedDocument {
   /** Whether conversion stopped on an unsupported construct. */
   failed: boolean;
 }
-
-const HTML_ATTRIBUTE_NAMES: Record<string, string> = { className: "class", htmlFor: "for" };
 
 /**
  * The document being converted: its file, where the native document will live
@@ -589,6 +587,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       children: close === undefined ? "" : source.slice(opening, close),
       childValue: await childValue(node),
       childText: childrenText(node),
+      ...(inHtml && { html: true }),
       ...(parent && { parent }),
       route,
       section: (path) => context.sections?.get(path.replace(/\/?$/, "/")),
@@ -1060,11 +1059,5 @@ function rawBlockMarkdown(source: string, element: SyntaxNode): TextEdit[] {
 
 function escapeAttribute(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-}
-
-function styleText(style: Record<string, JsonValue>): string {
-  return Object.entries(style)
-    .map(([property, value]) => `${property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${value}`)
-    .join("; ");
 }
 
