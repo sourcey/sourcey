@@ -656,6 +656,14 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("keeps hashes a no-break space follows as the text Docusaurus shows, where native would read a heading", async () => {
+    const page = "# Installation\n\n#### `enable`\n> bool\n\nThen run it.\n#### twice\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/02-install.mdx")).toBe("---\nslug: start/install\n---\n\n# Installation\n\n\\#### `enable`\n> bool\n\nThen run it.\n\\#### twice\n");
+    });
+  });
+
   it("reads a table's cells written on one line apart, and a line break as a space, as a reader sees them", async () => {
     const page = "# Installation\n\n<table>\n  <tbody>\n    <tr><td>Setup time</td><td>~ 10 min</td></tr>\n  </tbody>\n</table>\n\n| SDK | Example |\n| --- | --- |\n| React | Node: [one](https://example.com/one)<br />Go: [two](https://example.com/two) |\n";
     await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {

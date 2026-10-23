@@ -275,6 +275,23 @@ export function alertMarker(source: string, blockquote: SyntaxNode): RegExpMatch
   return source.slice(first.position.start.offset).match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n|$)/);
 }
 
+/**
+ * Where a paragraph's lines open with hashes and a space other than a space or
+ * a tab, such as a no-break space: text to CommonMark, a heading to native.
+ * Each offset is the line's first hash.
+ */
+export function literalHeadings(source: string, paragraph: SyntaxNode): number[] {
+  if (paragraph.type !== "paragraph" || !paragraph.position) return [];
+  const { start, end } = span(paragraph);
+  const offsets: number[] = [];
+  for (let line = start; line < end; line = source.indexOf("\n", line) + 1 || end) {
+    // A line after the first opens with its container's markers and indentation.
+    const lead = line === start ? 0 : source.slice(line).match(/^[ \t>]*/)![0].length;
+    if (/^#{1,6}[^\S \t\n]/.test(source.slice(line + lead, end))) offsets.push(line + lead);
+  }
+  return offsets;
+}
+
 /** Text and its formatting, which hold no element or expression. */
 const PHRASING = new Set(["text", "emphasis", "strong", "delete", "inlineCode", "link", "linkReference", "break"]);
 

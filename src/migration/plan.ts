@@ -10,7 +10,7 @@ import { Call, type ConfigSource, type ConfigValue } from "./config-writer.js";
 import type { HostDependency } from "./types.js";
 import { convertMdxDocument, expandStaticJsx, type DocumentContext } from "./document.js";
 import { normaliseFences } from "./code-fences.js";
-import { alertMarker, parseDocument, SourceSyntaxError, walk, type Dialect, type SyntaxNode } from "./mdx.js";
+import { alertMarker, literalHeadings, parseDocument, SourceSyntaxError, walk, type Dialect, type SyntaxNode } from "./mdx.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import type { FragmentRule } from "./slugs.js";
 import { applyEdits, frontmatterEdits, lineAt, lineMap, readFrontmatter } from "./text-edits.js";
@@ -177,11 +177,17 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
       reported.error({ file: document.file, line: error.line, column: error.column, code: "syntax", message: error.message });
       continue;
     }
-    // Alert syntax the framework shows as text stays text: native would read it as a callout.
-    // A dialect remark cannot read converts its own (MkDocs, with or without gh-admonitions).
-    const literal = document.dialect.alerts || document.dialect.compareConverted ? [] : [...walk(tree)].filter(({ node }) => alertMarker(source, node));
+    // Alert syntax the framework shows as text stays text: native would read it as a callout. So do hashes
+    // a no-break space follows, which native would read as a heading. A dialect remark cannot read converts
+    // its own (MkDocs, with or without gh-admonitions).
+    const literal = document.dialect.compareConverted
+      ? []
+      : [...walk(tree)].flatMap(({ node }) => [
+          ...(!document.dialect.alerts && alertMarker(source, node) ? [node.children![0].position!.start.offset] : []),
+          ...literalHeadings(source, node),
+        ]);
     if (literal.length) {
-      source = applyEdits(source, literal.map(({ node }) => ({ start: node.children![0].position!.start.offset, end: node.children![0].position!.start.offset, text: "\\" })));
+      source = applyEdits(source, literal.map((offset) => ({ start: offset, end: offset, text: "\\" })));
       tree = await parseDocument(document.file, source, frontmatter.bodyStart, document.dialect);
     }
     let text = source;
