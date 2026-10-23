@@ -1,4 +1,5 @@
 /** Docusaurus theme components as native components, by module and export identity. */
+import type { JsonValue } from "../../core/markdown-components.js";
 import { attributeText, identityKey, rejectDynamic, tabSelectionReview, unsupportedAttributes, type ConverterTable } from "../components.js";
 import { markdownText } from "../text-edits.js";
 import { nativeCallout } from "./markdown.js";
@@ -11,20 +12,32 @@ export function docusaurusConverters(): ConverterTable {
   table.set(identityKey("@theme/Tabs", "default"), (element) => {
     const failure = rejectDynamic(element);
     if (failure) return failure;
-    const extra = unsupportedAttributes(element, ["groupId", "queryString", "defaultValue", "className", "lazy"]);
+    const extra = unsupportedAttributes(element, ["groupId", "queryString", "defaultValue", "className", "lazy", "values"]);
     if (extra.length) return { error: `<${element.name}> attribute ${extra.join(", ")} has no native equivalent` };
+    if (element.props.values !== undefined) {
+      const listed = tabValues(element.props.values);
+      if (!listed) return { error: `<${element.name}> attribute values must list each tab as { value, label }` };
+      // Docusaurus shows the tabs in the order `values` lists them; native tabs show them as written.
+      const written = writtenTabValues(element.children);
+      const order = [...listed.keys()].filter((value) => written.includes(value));
+      if (order.some((value, index) => value !== written.filter((item) => listed.has(item))[index]))
+        return { error: `<${element.name}> lists its tabs in values in another order than it writes them`, suggestion: "Write the tab items in the order values lists them." };
+    }
     return { component: "Tabs", review: tabSelectionReview(element, ["groupId", "queryString", "defaultValue"]) };
   });
 
-  // A tab without a label shows its value.
+  // A tab without a label shows the label its tabs' values give it, else its value.
   table.set(identityKey("@theme/TabItem", "default"), (element) => {
     const failure = rejectDynamic(element);
     if (failure) return failure;
     const extra = unsupportedAttributes(element, ["value", "label", "default", "className"]);
     if (extra.length) return { error: `<${element.name}> attribute ${extra.join(", ")} has no native equivalent` };
+    const value = attributeText(element.props.value);
+    const tabs = element.parent && identityKey(element.parent.module, element.parent.export) === identityKey("@theme/Tabs", "default") ? element.parent : undefined;
+    const listed = value === undefined ? undefined : tabValues(tabs?.props.values)?.get(value);
     return {
       component: "Tab",
-      props: { title: attributeText(element.props.label) ?? attributeText(element.props.value) ?? "" },
+      props: { title: attributeText(element.props.label) ?? listed ?? value ?? "" },
       review: tabSelectionReview(element, ["default"]),
     };
   });
@@ -59,4 +72,31 @@ export function docusaurusConverters(): ConverterTable {
   });
 
   return table;
+}
+
+/** A tabs element's `values`, `[{ value, label }]`, as each value's label (a value without one shows itself); undefined in any other shape. */
+function tabValues(values: JsonValue | undefined): Map<string, string> | undefined {
+  if (!Array.isArray(values)) return undefined;
+  const labels = new Map<string, string>();
+  for (const entry of values) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.value !== "string") return undefined;
+    labels.set(entry.value, typeof entry.label === "string" ? entry.label : entry.value);
+  }
+  return labels;
+}
+
+/** The `value` of each component written directly in a tabs element's children, in order: its items. */
+function writtenTabValues(children: string): string[] {
+  const values: string[] = [];
+  let depth = 0;
+  for (const [, closing, attributes, selfClosing] of children.matchAll(/<(\/?)[A-Z][\w.]*\b((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/g)) {
+    if (closing) {
+      depth--;
+      continue;
+    }
+    const value = depth === 0 ? /\bvalue=(?:"([^"]*)"|'([^']*)')/.exec(attributes) : null;
+    if (value) values.push(value[1] ?? value[2]);
+    if (!selfClosing) depth++;
+  }
+  return values;
 }

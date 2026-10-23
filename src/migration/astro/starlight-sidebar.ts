@@ -2,7 +2,7 @@
 import type { GroupConfig, NavigationItem } from "../../config.js";
 import type { JsonValue } from "../../core/markdown-components.js";
 import { toJson, type Value } from "../javascript.js";
-import { groupId, placeUnlisted, topLevelGroups } from "../navigation.js";
+import { groupIds, placeUnlisted, topLevelGroups } from "../navigation.js";
 import { lineAt } from "../text-edits.js";
 import { STARLIGHT_OPENAPI, withoutPrefix, type Locale, type SourceEntry, type StarlightContext } from "./starlight-model.js";
 import { isAbsoluteHttpUrl } from "../../site-url.js";
@@ -90,6 +90,7 @@ export async function convertSidebar(
     return items(tree, id);
   };
 
+  const groupId = groupIds();
   const item = async (value: Value, parentId: string, index: number): Promise<NavigationItem | undefined> => {
     if (value.kind === "spread") {
       if (value.value.kind === "reference" && value.value.binding.module === STARLIGHT_OPENAPI) return undefined;

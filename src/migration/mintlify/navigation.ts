@@ -5,7 +5,7 @@
  * over a shared space, each set becomes a section of one navigation.
  */
 import type { GroupConfig, NavigationItem } from "../../config.js";
-import { groupId, placeUnlisted, topLevelGroups } from "../navigation.js";
+import { groupIds, placeUnlisted, topLevelGroups } from "../navigation.js";
 
 type Node = Record<string, unknown>;
 
@@ -60,6 +60,7 @@ export function convertNavigation(
     return found.operation ? operation?.(found.reference) : found.reference;
   };
 
+  const groupId = groupIds();
   const group = (node: Node, parent: string, nested: boolean): NavigationItem | undefined => {
     const label = String(node.group ?? "");
     const id = groupId(parent, label, "group");

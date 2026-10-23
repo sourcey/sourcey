@@ -81,22 +81,28 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
   }
 
   // `inHtml`: inside a plain HTML element, whose one raw HTML block holds its children.
-  const visit = async (node: SyntaxNode, inTable = false, inHtml = false): Promise<void> => {
+  // `parent`: the nearest component around the node, as its converter read it.
+  const visit = async (node: SyntaxNode, inTable = false, inHtml = false, parent?: ElementInput["parent"]): Promise<void> => {
     if (node.position && inside(node.position.start.offset)) return;
     const jsx = node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement";
+    let within = parent;
     if (jsx) {
-      const handled = await element(node, inTable, inHtml);
+      const handled = await element(node, inTable, inHtml, parent);
       if (handled === "whole") return;
+      if (handled !== "tags") within = handled;
     } else if (node.type === "mdxFlowExpression" || node.type === "mdxTextExpression") {
       await expression(node);
       return;
     }
     const html = inHtml || (jsx && !!node.name && /^[a-z]/.test(node.name) && !node.name.includes("."));
-    for (const child of node.children ?? []) await visit(child, inTable || node.type === "table", html);
+    for (const child of node.children ?? []) await visit(child, inTable || node.type === "table", html, within);
   };
 
-  /** Returns "whole" when the element and its descendants were replaced together. */
-  async function element(node: SyntaxNode, inTable: boolean, inHtml: boolean): Promise<"whole" | "tags"> {
+  /**
+   * Returns "whole" when the element and its descendants were replaced
+   * together, and a component whose children stay to be converted as their parent.
+   */
+  async function element(node: SyntaxNode, inTable: boolean, inHtml: boolean, parent: ElementInput["parent"]): Promise<"whole" | "tags" | NonNullable<ElementInput["parent"]>> {
     const { start, end } = span(node);
     const name = node.name;
     if (!name) {
@@ -144,6 +150,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       dynamic,
       bindings,
       children: close === undefined ? "" : source.slice(opening, close),
+      ...(parent && { parent }),
       route,
       section: (path) => context.sections?.get(path.replace(/\/?$/, "/")),
       project: {
@@ -169,7 +176,8 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       fail(result.error, start, result.suggestion);
       return "whole";
     }
-    if ("keep" in result) return "tags";
+    const self = { module: binding.module, export: binding.export, props };
+    if ("keep" in result) return self;
     if ("remove" in result) {
       diagnostics.review({ file, line: input.line, code: "component", message: `<${name}> is removed: ${result.remove}` });
       edits.push({ start, end, text: "" });
@@ -181,7 +189,8 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       fail(`<${name}> has children that its native replacement would discard`, start);
       return "whole";
     }
-    return replace(node, result, start, end, opening, close);
+    const replacement = replace(node, result, start, end, opening, close);
+    return replacement === "tags" ? self : replacement;
   }
 
   function replace(

@@ -3,6 +3,7 @@
  * source: every published route, every heading fragment and every block of
  * prose and code. Nothing in the project is touched.
  */
+import { decodeHTML } from "entities";
 import { access, cp, mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, posix, resolve } from "node:path";
@@ -301,8 +302,14 @@ async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean } = {
       prose.push(normalise(run));
     } else if (["paragraph", "heading", "tableCell"].includes(node.type)) prose.push(normalise(textContent(node)));
     else if (node.type === "image" && node.alt) prose.push(normalise(node.alt));
-    // Comments show nothing; the text between tags does.
-    else if (node.type === "html") prose.push(normalise((node.value ?? "").replace(/<!--[\s\S]*?(?:-->|$)/g, " ").replace(/<[^>]*>/g, " ")));
+    // Comments show nothing; the text between tags does, and an image's alternative text or a title, as a component's.
+    else if (node.type === "html") {
+      const html = (node.value ?? "").replace(/<!--[\s\S]*?(?:-->|$)/g, " ");
+      prose.push(normalise(html.replace(/<[^>]*>/g, " ")));
+      for (const [tag] of html.matchAll(/<[a-z][^>]*>/gi))
+        for (const [, name, double, single] of tag.matchAll(/\s([a-z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi))
+          if (TEXT_ATTRIBUTES.has(name.toLowerCase())) prose.push(normalise(decodeHTML(double ?? single)));
+    }
     else if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement")
       for (const attribute of node.attributes ?? [])
         if (attribute.name && TEXT_ATTRIBUTES.has(attribute.name) && typeof attribute.value === "string") prose.push(normalise(textContent(await parseMarkdown(attribute.value, 0))));

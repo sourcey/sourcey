@@ -47,9 +47,20 @@ export function navbarOption(links: NavbarLink[]): ConfigValue {
   return links.length ? { links: links as unknown as ConfigValue } : undefined;
 }
 
-/** A stable group ID under its parent, from the source's label. */
-export function groupId(parent: string, label: string, fallback: string): string {
-  return [parent, slugify(label) || fallback].filter(Boolean).join("/");
+/**
+ * Stable group IDs for one navigation, each under its parent and from the
+ * source's label: siblings whose labels make the same ID, such as "C++" and
+ * "C#", are numbered in the order they are listed.
+ */
+export function groupIds(): (parent: string, label: string, fallback: string) => string {
+  const taken = new Set<string>();
+  return (parent, label, fallback) => {
+    const base = [parent, slugify(label) || fallback].filter(Boolean).join("/");
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+    taken.add(id);
+    return id;
+  };
 }
 
 /**

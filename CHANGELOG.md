@@ -7,6 +7,11 @@
 - Text read from Markdown, for search, descriptions, changelog entries and exports, holds the characters a reader sees. 3.9.0 wrote quotes and ampersands in a changelog's text as `&#39;`, `&quot;` and `&amp;`, and indexed a page without a description by the first 200 characters of its HTML, cut mid-word, with entities and the copy button's label among its search words. Text is read from the tokens its Markdown was rendered from, in the same lexing, and a page's search content is its description.
 - A release's Markdown export carries its entries as written, with their inline code and links, rather than as plain text.
 - A field of the type it sits in, which the reference resolver leaves as a reference, is named by that reference and links to its type, whatever the resolver marks on it. With json-schema-ref-parser 16.0.5, which a fresh install resolves, such a field read `any`.
+- `sourcey migrate docusaurus` reads a heading's `{#id}` in MDX as Docusaurus reads it, where it had stopped at it as an expression it could not parse, and reads each of Docusaurus's `markdown.mdx1Compat` settings as the site sets them.
+- `sourcey migrate docusaurus` titles a tab from its tabs' `values`, `[{ label, value }]`, as Docusaurus does, and stops where `values` lists the tabs in another order than they are written.
+- A migration numbers sibling navigation groups whose labels make the same ID, such as "C++" and "C#", where the native build had stopped at the duplicate.
+- A migration's check of each page's prose reads an image's alternative text and a title in HTML, as it reads them on a component: an `<img alt>` kept as written had read as lost.
+- `sourcey migrate docusaurus` keeps a navbar logo or favicon given as a web address.
 
 ## 3.9.0 - 2026-10-23
 

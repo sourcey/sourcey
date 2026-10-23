@@ -77,6 +77,8 @@ export interface Dialect {
   directives?: boolean;
   /** HTML comments in MDX, which Docusaurus reads and MDX alone rejects. */
   htmlComments?: boolean;
+  /** A heading's `{#id}` in MDX, which Docusaurus reads as text before MDX parses it (`mdx1Compat.headingIds`). */
+  headingIds?: boolean;
   /** Components the framework provides without imports, as `module#export` by tag name. */
   globals?: ReadonlyMap<string, string>;
 }
@@ -94,6 +96,9 @@ export async function parseMarkdown(source: string, bodyStart: number, dialect: 
     const start = bodyStart + comment.index!;
     body = body.slice(0, start) + comment[0].replace(/[^\n]/g, " ") + body.slice(start + comment[0].length);
   }
+  // A heading line's first unescaped `{#`, as `escapeMarkdownHeadingIds` finds it, is text: its brace is masked and comes back after.
+  const maskedIds = dialect.mdx && dialect.headingIds && /(?:^|\n)#{1,6}(?!#).*(?<!\\)\{#/.test(body);
+  if (maskedIds) body = body.replaceAll(/(?:^|\n)#{1,6}(?!#).*/g, (line) => line.replace(/(?<!\\)\{#/, `${HEADING_ID}#`));
   // MDX 1 read a block of HTML as raw markup, where JSX reads its contents as Markdown (indented lines as code).
   const blocks = dialect.mdx && dialect.mdx1 ? await htmlBlocks(body) : [];
   for (const offset of blocks) body = `${body.slice(0, offset)}${RAW}${body.slice(offset + 1)}`;
@@ -105,6 +110,7 @@ export async function parseMarkdown(source: string, bodyStart: number, dialect: 
     if (dialect.directives) restoreInlineDirectives(tree, source);
     if (comments.length) restoreCode(tree, source, comments.map((comment) => ({ start: bodyStart + comment.index!, end: bodyStart + comment.index! + comment[0].length })));
     if (blocks.length) restoreHtmlBlocks(tree, source);
+    if (maskedIds) restoreHeadingIds(tree);
     return tree;
   } catch (error) {
     const place = error as { message: string; line?: number; column?: number; reason?: string };
@@ -114,6 +120,13 @@ export async function parseMarkdown(source: string, bodyStart: number, dialect: 
 
 /** Stands in for the `<` opening an HTML block, so JSX passes over it; the block returns as HTML. */
 const RAW = "\uE000";
+/** Stands in for the brace of a heading's `{#id}`, so MDX reads it as text; the brace returns after. */
+const HEADING_ID = "\uE001";
+
+function restoreHeadingIds(node: SyntaxNode): void {
+  if (node.value?.includes(HEADING_ID)) node.value = node.value.replaceAll(HEADING_ID, "{");
+  for (const child of node.children ?? []) restoreHeadingIds(child);
+}
 /** The containers block content stands in. */
 const FLOW = new Set(["root", "blockquote", "listItem", "footnoteDefinition"]);
 

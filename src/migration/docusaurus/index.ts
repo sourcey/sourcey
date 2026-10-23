@@ -7,6 +7,7 @@
 import { posix } from "node:path";
 import type { NavbarLink } from "../../config.js";
 import { firstHeadingText, headingInfo, lexMarkdown } from "../../utils/markdown.js";
+import { isAbsoluteHttpUrl } from "../../site-url.js";
 import type { Tokens } from "marked";
 import { identityKey } from "../components.js";
 import type { Call, ConfigValue } from "../config-writer.js";
@@ -21,7 +22,7 @@ import { editLinkOptions } from "../repository.js";
 import { readFrontmatter } from "../text-edits.js";
 import { schemeColours, stylesheetFonts, themeColours } from "../theme.js";
 import { readDocs, type DocusaurusDoc } from "./docs.js";
-import { docusaurusPreprocess, nativeAdmonitions, unwrapMdxCodeBlocks } from "./markdown.js";
+import { docusaurusConversion, docusaurusPreprocess } from "./markdown.js";
 import { convertSidebars, type SidebarNavigation } from "./sidebars.js";
 import { loadSite, type DocsInstance, type DocusaurusSite } from "./site.js";
 import { localeLabel, readTranslations, translatedLocales } from "./translations.js";
@@ -84,8 +85,9 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
 
   // Markdown pages are the site's own: its header and footer around them, and no sidebar.
   const pageDialect = docsDialect(site, site.pageAdmonitions, globals);
+  const pageConversion = docusaurusConversion(site.pageAdmonitions, site.mdx1Compat);
   for (const page of markdownPages)
-    documents.push({ file: page.file, route: `${base}/${page.path}${page.path && pretty === "slash" ? "/" : ""}`, dialect: pageDialect(page.file), before: unwrapMdxCodeBlocks, after: (text) => nativeAdmonitions(text, site.pageAdmonitions), frontmatter: { set: {}, remove: [] } });
+    documents.push({ file: page.file, route: `${base}/${page.path}${page.path && pretty === "slash" ? "/" : ""}`, dialect: pageDialect(page.file), ...pageConversion, frontmatter: { set: {}, remove: [] } });
 
   const theme = site.themeConfig;
   const navbar = (theme.navbar ?? {}) as Record<string, unknown>;
@@ -192,7 +194,7 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
   ];
   const markdown = markdownSource(version.contentDir, navigation.groups, published);
   const dialect = docsDialect(site, instance.admonitions, globals);
-  const convert = { before: unwrapMdxCodeBlocks, after: (text: string) => nativeAdmonitions(text, instance.admonitions) };
+  const convert = docusaurusConversion(instance.admonitions, site.mdx1Compat);
   for (const entry of published) {
     const slug = markdown.slugs.get(entry);
     if (entry.doc) {
@@ -256,13 +258,14 @@ async function mdxComponents(project: ProjectFiles): Promise<Map<string, string>
 
 /** How the docs plugin reads one of this instance's documents, and how verification reads it back. */
 function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonitions"], globals: ReadonlyMap<string, string>): (file: string) => SourceDialect {
-  const preprocess = docusaurusPreprocess(admonitions);
+  const preprocess = docusaurusPreprocess(admonitions, site.mdx1Compat);
   return (file) => ({
     fragments: "github",
     mdx: site.markdownFormat === "mdx" || (site.markdownFormat === "detect" && file.endsWith(".mdx")),
     mdx1: site.major < 3,
     directives: true,
     htmlComments: true,
+    headingIds: site.mdx1Compat.headingIds,
     globals,
     preprocess,
   });
@@ -393,8 +396,9 @@ async function mergeStatics(
   return target;
 }
 
-/** A site path a static directory served, as its file in the native public directory. */
-async function staticFile(project: ProjectFiles, statics: readonly string[], publicDir: string | undefined, path: string): Promise<string | undefined> {
+/** A site path a static directory served, as its file in the native public directory; a web address stays one. */
+async function siteImage(project: ProjectFiles, statics: readonly string[], publicDir: string | undefined, path: string): Promise<string | undefined> {
+  if (isAbsoluteHttpUrl(path)) return path;
   const inside = path.replace(/^\/+/, "");
   for (const directory of statics) if (publicDir && (await project.exists(posix.join(directory, inside)))) return `./${posix.join(publicDir, inside)}`;
   return undefined;
@@ -411,17 +415,17 @@ async function logoOptions(
   const options: Record<string, ConfigValue> = {};
   const image = (navbar.logo ?? {}) as { src?: string; srcDark?: string };
   if (typeof image.src === "string") {
-    const light = await staticFile(project, statics, publicDir, image.src);
-    const dark = typeof image.srcDark === "string" ? await staticFile(project, statics, publicDir, image.srcDark) : undefined;
+    const light = await siteImage(project, statics, publicDir, image.src);
+    const dark = typeof image.srcDark === "string" ? await siteImage(project, statics, publicDir, image.srcDark) : undefined;
     // The navbar's title beside its logo makes the logo a mark.
     const mark = typeof navbar.title === "string" && navbar.title.trim() !== "";
     if (light) options.logo = dark || mark ? { light, ...(dark ? { dark } : {}), ...(mark ? { mark: true } : {}) } : light;
-    else review(`The navbar logo ${image.src} is not in a static directory and is not carried over`);
+    else review(`The navbar logo ${image.src} is not in a static directory or on the web and is not carried over`);
   }
   if (typeof favicon === "string") {
-    const file = await staticFile(project, statics, publicDir, favicon);
+    const file = await siteImage(project, statics, publicDir, favicon);
     if (file) options.favicon = file;
-    else review(`The favicon ${favicon} is not in a static directory and is not carried over`);
+    else review(`The favicon ${favicon} is not in a static directory or on the web and is not carried over`);
   }
   return options;
 }

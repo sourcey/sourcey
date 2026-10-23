@@ -13,7 +13,7 @@ import { raiseHeadings, titleHeadingLevel } from "../headings.js";
 import { evaluate, parseModule, resolveModule, type Value } from "../javascript.js";
 import { parseDocument, SourceSyntaxError, type Dialect } from "../mdx.js";
 import type { AstroDocumentation, SourceDocumentInfo, SourceNavigationItem } from "../mapping.js";
-import { groupId, placeUnlisted, topLevelGroups } from "../navigation.js";
+import { groupIds, placeUnlisted, topLevelGroups } from "../navigation.js";
 import { markdownSource, type NativePlan, type PlannedDocument, type SourceDialect } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
 import { astroEntrySlug, type FragmentRule } from "../slugs.js";
@@ -209,6 +209,7 @@ function convertNavigation(
   const byRoute = new Map(documents.map((document) => [document.route, document]));
   const labels = new Map<string, string>();
   const listed = new Set<string>();
+  const groupId = groupIds();
   const entry = (item: SourceNavigationItem, parent: string): NavigationItem | undefined => {
     const document = item.link ? byRoute.get(item.link.replace(/\/?$/, "/").replace(/^(?!\/)/, "/")) : undefined;
     if (document) {

@@ -7,7 +7,7 @@ import { posix } from "node:path";
 import { load as parseYaml } from "js-yaml";
 import type { GroupConfig, NavigationItem } from "../../config.js";
 import type { Diagnostics } from "../diagnostics.js";
-import { groupId, placeUnlisted, topLevelGroups } from "../navigation.js";
+import { groupIds, placeUnlisted, topLevelGroups } from "../navigation.js";
 import type { ProjectFiles } from "../project-files.js";
 import { githubSlugs } from "../slugs.js";
 import { isCategoryIndex, numberPrefix, type DocusaurusDoc } from "./docs.js";
@@ -88,6 +88,7 @@ export async function convertSidebars(context: SidebarContext): Promise<SidebarN
     return found;
   };
 
+  const groupId = groupIds();
   const convert = (item: Item, parent: string): NavigationItem | undefined => {
     if (item.type === "link") return { href: item.href, label: item.label };
     if (item.type === "html") {

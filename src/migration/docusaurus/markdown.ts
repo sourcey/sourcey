@@ -30,7 +30,7 @@ export function nativeCallout(keyword: string): { type: string; title?: string }
 }
 
 /** ` ```mdx-code-block ` fences hold live MDX, which Docusaurus unwraps before parsing. */
-export function unwrapMdxCodeBlocks(content: string): string {
+function unwrapMdxCodeBlocks(content: string): string {
   const replacer = (...args: unknown[]) => {
     const groups = args.at(-1) as Record<string, string>;
     return `${groups.begin}${groups.children}${groups.end}`;
@@ -49,17 +49,32 @@ function admonitionLabels(content: string, keywords: readonly string[]): string 
   });
 }
 
-/** How Docusaurus reads a document's text before parsing it. */
-export function docusaurusPreprocess(keywords: readonly string[]): (source: string) => string {
-  return (source) => admonitionLabels(unwrapMdxCodeBlocks(source), keywords);
+/**
+ * How Docusaurus reads a document's text before parsing it, in
+ * `preprocessContent`'s order. Its heading ids are the dialect's
+ * (`headingIds`), which reads them where they are written.
+ */
+export function docusaurusPreprocess(keywords: readonly string[], compat: Mdx1Compat): (source: string) => string {
+  return (source) => (compat.admonitions ? admonitionLabels(unwrapMdxCodeBlocks(source), keywords) : unwrapMdxCodeBlocks(source));
+}
+
+/** The MDX 1 syntax Docusaurus 3 reads before parsing, as `markdown.mdx1Compat` turns it on. */
+export interface Mdx1Compat {
+  headingIds: boolean;
+  admonitions: boolean;
+}
+
+/** The conversion's rewrites around parsing a document: before, the code blocks Docusaurus unwraps; after, admonitions as native callouts. */
+export function docusaurusConversion(keywords: readonly string[], compat: Mdx1Compat): { before(source: string): string; after(text: string): Promise<string> } {
+  return { before: unwrapMdxCodeBlocks, after: (text) => nativeAdmonitions(text, keywords, compat) };
 }
 
 /**
  * Admonitions as native callouts: the label form, then each keyword native
  * Markdown does not read renamed to the callout it rendered as, titled as it was.
  */
-export async function nativeAdmonitions(text: string, keywords: readonly string[]): Promise<string> {
-  const labelled = admonitionLabels(text, keywords);
+async function nativeAdmonitions(text: string, keywords: readonly string[], compat: Mdx1Compat): Promise<string> {
+  const labelled = compat.admonitions ? admonitionLabels(text, keywords) : text;
   const edits: TextEdit[] = [];
   for (const { node } of walk(await parseMarkdown(labelled, 0, { directives: true }))) {
     if (node.type !== "containerDirective" || !node.name || !keywords.includes(node.name) || !node.position) continue;

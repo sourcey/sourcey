@@ -8,7 +8,7 @@ import { CORE_SCHEMA, defineMappingTag, defineScalarTag, defineSequenceTag, load
 import type { GroupConfig, NavigationItem } from "../../config.js";
 import { Environment, type ConfigValue } from "../config-writer.js";
 import { counted, type Diagnostics } from "../diagnostics.js";
-import { footerLinks, groupId, navbarLink, navbarOption, networkOf, placeUnlisted, topLevelGroups } from "../navigation.js";
+import { footerLinks, groupIds, navbarLink, navbarOption, networkOf, placeUnlisted, topLevelGroups } from "../navigation.js";
 import { markdownSource, type FrameworkMigration, type NativePlan, type PlannedDocument, type SourcePath } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
 import { editLinkOptions } from "../repository.js";
@@ -297,6 +297,7 @@ function convertNav(
     if (label) labels.set(normalised, label);
     return label ? { page: reference, label } : reference;
   };
+  const groupId = groupIds();
   const entry = (value: unknown, parent: string): NavigationItem | undefined => {
     if (typeof value === "string") return /^[a-z]+:/i.test(value) ? { href: value, label: value } : page(value);
     if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;

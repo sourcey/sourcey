@@ -70,6 +70,8 @@ export interface DocusaurusSite {
   url?: string;
   trailingSlash?: boolean;
   markdownFormat: "mdx" | "md" | "detect";
+  /** The MDX 1 syntax Docusaurus 3 still reads before parsing (`markdown.mdx1Compat`), each on unless the site turns it off. */
+  mdx1Compat: { headingIds: boolean; admonitions: boolean };
   staticDirectories: string[];
   docs: DocsInstance[];
   customCss: string[];
@@ -135,6 +137,10 @@ export async function loadSite(project: ProjectFiles, diagnostics: Diagnostics):
     url: typeof config.url === "string" ? config.url : undefined,
     trailingSlash: typeof config.trailingSlash === "boolean" ? config.trailingSlash : undefined,
     markdownFormat: markdown.format === "md" || markdown.format === "detect" ? markdown.format : "mdx",
+    mdx1Compat: {
+      headingIds: (markdown.mdx1Compat as Options | undefined)?.headingIds !== false,
+      admonitions: (markdown.mdx1Compat as Options | undefined)?.admonitions !== false,
+    },
     staticDirectories: ((config.staticDirectories as string[] | undefined) ?? ["static"]).map(relativePath),
     docs: instances.map((options) => docsInstance(options, local)),
     customCss: [((classic.theme as Options | undefined)?.customCss ?? [])].flat().map(String).map(relativePath),

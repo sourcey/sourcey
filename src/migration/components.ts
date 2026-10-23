@@ -17,6 +17,8 @@ export interface ElementInput {
   bindings: Record<string, string>;
   /** Source text of the children, exactly as written. */
   children: string;
+  /** The nearest component around this one, as its converter read it: Docusaurus's tabs label their items. */
+  parent?: { module: string; export: string; props: Record<string, JsonValue> };
   /** Public path the document is published at. */
   route: string;
   /** The native navigation group whose landing page is at this public path, for section indexes. */
