@@ -329,6 +329,7 @@ const GENERATED_OPEN = "\uE000", GENERATED_CLOSE = "\uE001";
 const GENERATED_BLOCK = /^ {0,3}\uE000(\d+)\uE001(?:\n+|$)/;
 const GENERATED_BLOCK_START = /(^|\n) {0,3}\uE000\d+\uE001(?:\n|$)/;
 const GENERATED_INLINE = /^\uE000(\d+)\uE001/;
+const GENERATED_MARKER = /\uE000(\d+)\uE001/g;
 
 /** The marker for the `index`th piece of generated HTML passed to `renderMarkdown`. */
 export function generatedMarker(index: number): string {
@@ -398,7 +399,8 @@ function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
         return `<div class="table-wrap" tabindex="0"><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
       },
       html(token: Tokens.HTML | Tokens.Tag): string {
-        return token.block ? wrapAuthoredTables(token.text) : token.text;
+        // A component written inside an author's HTML, such as an icon in a <div>, stands there as its marker.
+        return (token.block ? wrapAuthoredTables(token.text) : token.text).replace(GENERATED_MARKER, (_, index: string) => generatedHtml[Number(index)] ?? "");
       },
       link({ href, title, tokens }: Tokens.Link): string {
         const text = this.parser.parseInline(tokens);

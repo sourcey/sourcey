@@ -233,6 +233,11 @@ describe("inline components", () => {
     expect(page.html).toContain('<p>Use <span class="sourcey-badge"><strong>stable</strong></span> with care.</p>');
   });
 
+  it("stay in their place inside an author's HTML", async () => {
+    const page = await guide('# Guide\n\n<div style="display:flex">\n  <Badge text="stable" />\n  Ready\n</div>\n\nMore.\n');
+    expect(page.html).toContain('<div style="display:flex">\n  <span class="sourcey-badge"><strong>stable</strong></span>\n  Ready\n</div>');
+  });
+
   it("keep an opening paragraph with a link in the page, where the plain lede would lose it", async () => {
     const page = await guide("# Guide\n\nUse the [REST API](/api/) or the CLI.\n\nMore.\n");
     expect(page.description).toBe("Use the REST API or the CLI.");
