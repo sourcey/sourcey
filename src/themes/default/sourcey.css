@@ -107,6 +107,14 @@
   padding: 0;
 }
 
+/* ── Author HTML ────────────────────────────────────────────────── */
+
+/* Content is the containing block for what its HTML places absolutely, such as a video filling an aspect-ratio box. */
+#sourcey .prose,
+#sourcey .sourcey-changelog-entry-list > li {
+  position: relative;
+}
+
 /* ── Responsive Tables ────────────────────────────────────────────── */
 
 #sourcey .table-wrap {

@@ -561,6 +561,8 @@ kbd {
   font-size: 8px;
 }
 .reader-prose {
+  /* The containing block for what the page's HTML places absolutely. */
+  position: relative;
   color: var(--reader-text);
   font-size: 13px;
   line-height: 1.95;

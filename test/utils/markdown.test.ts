@@ -191,4 +191,23 @@ describe("inline SVG", () => {
     expect(html).not.toContain("evil.test");
     expect(html).not.toContain("fixed");
   });
+
+  it("keeps an author's type, spacing, borders, grid tracks, theme colours and placement within the content on any element, and nothing fixed, raised or loaded", () => {
+    const html = renderMarkdown([
+      '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 1.5rem 0; border-left: 2px solid var(--ifm-color-emphasis-200); padding-left: 14px">',
+      '<p style="font-size: 12.5px; font-weight: 600; line-height: 1.6; letter-spacing: -0.01em; color: var(--cs-ink-dim); text-align: center">Text</p>',
+      '<strong style="color: color-mix(in srgb, #f9b124 14%, transparent); background: linear-gradient(90deg, rgba(213, 176, 80, 1) 0%, #fff 100%)">Premium</strong>',
+      '<img src="/a.png" alt="A" style="object-fit: contain; border-radius: 8px">',
+      '<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden"><iframe src="https://www.youtube.com/embed/a" title="Demo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"></iframe></div>',
+      '<span style="position: fixed; top: -10px; z-index: 9; margin-top: -40px; background: url(https://evil.test/x); color: var(--x, url(https://evil.test/y)); font-family: expression(alert(1)); background-color: image-set(&quot;https://evil.test/z&quot; 1x)">x</span>',
+      "</div>",
+    ].join(""));
+    expect(html).toContain('<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:0.6rem;margin:1.5rem 0;border-left:2px solid var(--ifm-color-emphasis-200);padding-left:14px">');
+    expect(html).toContain('<p style="font-size:12.5px;font-weight:600;line-height:1.6;letter-spacing:-0.01em;color:var(--cs-ink-dim);text-align:center">Text</p>');
+    expect(html).toContain('<strong style="color:color-mix(in srgb, #f9b124 14%, transparent);background:linear-gradient(90deg, rgba(213, 176, 80, 1) 0%, #fff 100%)">Premium</strong>');
+    expect(html).toContain('style="object-fit:contain;border-radius:8px"');
+    expect(html).toContain('<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden"><iframe src="https://www.youtube.com/embed/a" title="Demo" style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe></div>');
+    expect(html).toContain("<span>x</span>");
+    expect(html).not.toMatch(/evil\.test|fixed|z-index|-10px|-40px|expression/);
+  });
 });

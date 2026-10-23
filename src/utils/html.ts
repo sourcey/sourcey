@@ -89,6 +89,19 @@ const SVG_ATTRIBUTES = [
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
 const LENGTH = /^(0|\d{1,4}(\.\d{1,3})?(px|rem|em|%))$/;
 const FRACTION = /^(0|1|0?\.\d{1,3})$/;
+
+// The terms of an author's style values. None holds a parenthesis but the colour
+// functions and a theme variable, so no value can reach url(), image-set() or expression().
+const NUMBER = String.raw`\d{1,4}(?:\.\d{1,3})?`;
+const LEN = String.raw`(?:0|${NUMBER}(?:px|rem|em|%|ch|vh|vw))`;
+const VARIABLE = String.raw`var\(--[\w-]{1,64}\)`;
+const COLOR_FUNCTION = String.raw`(?:(?:rgba?|hsla?)\([\d\s.,%/]{1,40}\)|${VARIABLE})`;
+const PAINT = String.raw`(?:#[0-9a-fA-F]{3,8}|${COLOR_FUNCTION}|[a-zA-Z]{3,20})`;
+const COLOR = String.raw`(?:${PAINT}|color-mix\(in (?:srgb|oklab|oklch|hsl),\s*${PAINT}(?:\s+\d{1,3}%)?,\s*${PAINT}(?:\s+\d{1,3}%)?\))`;
+const GRADIENT = String.raw`(?:linear|radial)-gradient\((?:[^()]|${COLOR_FUNCTION}){1,400}\)`;
+const SIDES = (term: string) => new RegExp(`^${term}(?:\\s+${term}){0,3}$`);
+const TRACK = String.raw`(?:\d{1,2}fr|${LEN}|auto|minmax\(${LEN},\s*(?:\d{1,2}fr|${LEN})\))`;
+const style = (pattern: string) => new RegExp(`^(?:${pattern})$`);
 const SHIKI_FONT_STYLE = /^(italic|normal|inherit)$/;
 const SHIKI_FONT_WEIGHT = /^(bold|normal|inherit|[1-9]00)$/;
 const SHIKI_TEXT_DECORATION = /^(underline|line-through|none|inherit)$/;
@@ -128,6 +141,8 @@ export function sanitizeRenderedHtml(input: string, linkSchemes: readonly string
         "tabindex",
         "title",
         "hidden",
+        // Any element's style, as far as allowedStyles keeps it.
+        "style",
         "aria-*",
         "data-*",
       ],
@@ -181,13 +196,16 @@ export function sanitizeRenderedHtml(input: string, linkSchemes: readonly string
       source: ["http", "https"],
     },
     allowProtocolRelative: false,
-    // Inline styles keep authored drawing and layout: SVG paint, sizes and
-    // flex rows. Values are keywords, hex colours and lengths, never url().
+    // Inline styles keep authored drawing, type and layout: paint, sizes,
+    // spacing, borders, flex and grid tracks, and placement inside the content
+    // that holds them. Values are keywords, colours, gradients, lengths and
+    // theme variables, never url(). Nothing is fixed to the window, raised
+    // above the page's layers or pulled back over what precedes it.
     allowedStyles: {
       "*": {
-        background: [/^transparent$/, HEX],
-        "background-color": [HEX],
-        color: [HEX],
+        background: [style(`${COLOR}|${GRADIENT}`)],
+        "background-color": [style(COLOR)],
+        color: [style(COLOR)],
         height: [LENGTH, /^auto$/],
         width: [LENGTH, /^auto$/],
         "max-width": [LENGTH],
@@ -203,6 +221,58 @@ export function sanitizeRenderedHtml(input: string, linkSchemes: readonly string
         "flex-wrap": [/^(wrap|nowrap)$/],
         "align-items": [/^(start|end|flex-start|flex-end|center|baseline|stretch)$/],
         "justify-content": [/^(start|end|flex-start|flex-end|center|space-between|space-around|space-evenly)$/],
+        // An author's type, boxes and layout within their element, never placed elsewhere on the page.
+        "border-color": [style(COLOR)],
+        "font-size": [style(`${LEN}|${VARIABLE}|(?:x{1,2}-)?(?:small|large)|medium|smaller|larger`)],
+        "font-weight": [/^(normal|bold|bolder|lighter|[1-9]00)$/],
+        "font-style": [/^(normal|italic|oblique)$/],
+        "font-family": [style(String.raw`(?:${VARIABLE}|[\w\s"'-]{1,64})(?:\s*,\s*(?:${VARIABLE}|[\w\s"'-]{1,64})){0,6}`)],
+        "line-height": [style(`${NUMBER}|${LEN}|normal`)],
+        "letter-spacing": [style(`-?${LEN}|normal`)],
+        "text-align": [/^(left|right|center|justify|start|end)$/],
+        "text-transform": [/^(none|uppercase|lowercase|capitalize)$/],
+        "text-decoration": [/^(none|underline|line-through|overline)( (solid|dashed|dotted|wavy))?$/],
+        "text-overflow": [/^(clip|ellipsis)$/],
+        "white-space": [/^(normal|nowrap|pre|pre-wrap|pre-line)$/],
+        "vertical-align": [style(`${LEN}|middle|top|bottom|baseline|text-top|text-bottom`)],
+        margin: [SIDES(`(?:${LEN}|auto)`)],
+        "margin-top": [style(`${LEN}|auto`)],
+        "margin-right": [style(`${LEN}|auto`)],
+        "margin-bottom": [style(`${LEN}|auto`)],
+        "margin-left": [style(`${LEN}|auto`)],
+        padding: [SIDES(LEN)],
+        "padding-top": [style(LEN)],
+        "padding-right": [style(LEN)],
+        "padding-bottom": [style(LEN)],
+        "padding-left": [style(LEN)],
+        ...Object.fromEntries(["border", "border-top", "border-right", "border-bottom", "border-left"].map((property) => [property, [style(`0|none|(?:(?:${LEN}|thin|medium|thick)\\s+)?(?:none|solid|dashed|dotted|double)(?:\\s+${COLOR})?`)]])),
+        "border-radius": [SIDES(LEN)],
+        "box-shadow": [style(`none|(?:inset\\s+)?${LEN}\\s+${LEN}(?:\\s+${LEN}){0,2}\\s+${COLOR}(?:,\\s*(?:inset\\s+)?${LEN}\\s+${LEN}(?:\\s+${LEN}){0,2}\\s+${COLOR}){0,3}`)],
+        flex: [style(`none|auto|${NUMBER}(?:\\s+${NUMBER})?(?:\\s+(?:${LEN}|auto))?`)],
+        "flex-direction": [/^(row|row-reverse|column|column-reverse)$/],
+        "flex-grow": [style(NUMBER)],
+        "flex-shrink": [style(NUMBER)],
+        "flex-basis": [style(`${LEN}|auto`)],
+        "align-self": [/^(auto|start|end|flex-start|flex-end|center|baseline|stretch)$/],
+        "grid-template-columns": [style(`(?:${TRACK}|repeat\\(\\d{1,2},\\s*${TRACK}(?:\\s+${TRACK}){0,3}\\))(?:\\s+(?:${TRACK}|repeat\\(\\d{1,2},\\s*${TRACK}\\))){0,11}`)],
+        "column-gap": [style(LEN)],
+        "row-gap": [style(LEN)],
+        "min-width": [style(LEN)],
+        "min-height": [style(LEN)],
+        "max-height": [style(LEN)],
+        "aspect-ratio": [/^\d{1,4}(\s*\/\s*\d{1,4})?$/],
+        "object-fit": [/^(contain|cover|fill|none|scale-down)$/],
+        overflow: [/^(visible|hidden|clip|auto|scroll)$/],
+        "overflow-x": [/^(visible|hidden|clip|auto|scroll)$/],
+        "overflow-y": [/^(visible|hidden|clip|auto|scroll)$/],
+        "list-style": [/^none$/],
+        // Placed within the content that holds it, which the theme makes the containing block, and never above other layers.
+        position: [/^(static|relative|absolute)$/],
+        top: [style(`${LEN}|auto`)],
+        right: [style(`${LEN}|auto`)],
+        bottom: [style(`${LEN}|auto`)],
+        left: [style(`${LEN}|auto`)],
+        inset: [SIDES(`(?:${LEN}|auto)`)],
         "--shiki-dark": [HEX],
         "--shiki-dark-bg": [HEX],
         "--shiki-light": [HEX],

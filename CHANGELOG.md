@@ -4,6 +4,7 @@
 
 ### Changed
 
+- An author's HTML keeps more of its inline style, on any element: type (size, weight, style, family, line height, spacing, alignment, case, decoration), margins and padding, borders and radii, shadows, flex and grid tracks, overflow, object fit, and placement within the content with `position: relative` or `absolute` and offsets, which the content holds as its containing block. Colours can be `rgb()`, `hsl()`, `color-mix()`, gradients and theme variables (`var(--name)`) as well as hex. A style that is fixed to the window, raises an element above the page's layers, pulls it back with a negative margin or offset, or loads anything (`url()`, `image-set()`) is still removed. A responsive video, a padded box holding an absolutely placed iframe, had lost its placement and kept its fixed height of 0.
 - A component or directive written in a list item's text, indented up to three spaces, stays in the list item, with what follows it there, as CommonMark and MDX read it. It had ended the list, and the item's later lines could read as code.
 
 ### Added
