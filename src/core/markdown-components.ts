@@ -38,7 +38,9 @@ export type ContentNode =
   | { kind: "label"; text: string; href?: string }
   | { kind: "section-index"; section?: string; layout: "cards" | "list" }
   | { kind: "code"; value: string; language: string; title?: string; metadata?: CodeFenceMetadata }
-  | { kind: "component"; name: string; id: string; inline?: boolean; resolved: ResolvedComponent; definition: NativeComponentDefinition; client?: { entry: string; css: string[] } };
+  | { kind: "component"; name: string; id: string; inline?: boolean; resolved: ResolvedComponent; definition: NativeComponentDefinition; client?: { entry: string; css: string[] };
+      /** The spaces its line opens with, up to three: a component written in a list item's text stays in the item. */
+      indent?: string };
 export interface ResolvedComponent<Data = unknown> { content: readonly ContentNode[]; data?: Data; clientProps?: JsonValue }
 export interface ComponentRenderHelpers {
   render(nodes: readonly ContentNode[]): string;
@@ -767,7 +769,9 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
         const rawMeta = directive[3].trim();
         const attrs = rawMeta.startsWith("{") ? parseStaticAttributes(rawMeta.slice(1, -1), { file: options.source, offset: cursor }) : rawMeta ? { title: rawMeta.replace(/^\[|\]$/g, "") } : {};
         const children = await parse(dedent(input.slice(after, closing.start)));
-        flush(); nodes.push(await component(name, attrs, children, cursor));
+        const indent = directive[0].match(/^ */)![0];
+        flush(); const node = await component(name, attrs, children, cursor);
+        nodes.push(indent && node.kind === "component" ? { ...node, indent } : node);
         cursor = closing.end; continue;
       }
       const tag = input[cursor] === "<" && input.slice(cursor).match(/^<([A-Z][\w]*)\b((?:[^>"']|"[^"]*"|'[^']*')*)>/);
@@ -785,7 +789,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
         const inline = definitions[name]?.inline || /\S/.test(before) || /\S/.test(after);
         flush();
         const node = await component(name, attrs, await parse(dedent(body)), cursor);
-        nodes.push(node.kind === "component" ? { ...node, inline } : node);
+        nodes.push(node.kind === "component" ? { ...node, inline, ...(!inline && /^ {1,3}$/.test(before) ? { indent: before } : {}) } : node);
         cursor = end; continue;
       }
       plain += input[cursor++];
@@ -860,7 +864,9 @@ export function readableContent(nodes: readonly ContentNode[], audience: Audienc
   const read = (children: readonly ContentNode[]) => readableContent(children, audience, links);
   const prose = (value: string) => (links ? links.text(value) : value);
   const marked = (value: string, linked?: true) => (links && linked ? links.markdown(value) : value);
-  return nodes.map(node => {
+  // A component written in a list item's text keeps its indentation, so it reads as part of the item.
+  return nodes.map(node => node.kind === "component" && node.indent ? readNode(node).replace(/\n(?=[^\n])/g, `\n${node.indent}`) : readNode(node)).join("");
+  function readNode(node: ContentNode): string {
     if (forAgents(node)) return audience === "agents" ? `\n\n${read((node as ComponentNode).resolved.content)}\n\n` : "";
     if (named(node, "Steps")) {
       const steps = node.resolved.content.filter(child => named(child, "Step"));
@@ -882,7 +888,7 @@ export function readableContent(nodes: readonly ContentNode[], audience: Audienc
     if (node.kind === "label") return `\n\n**${prose(node.href ? `[${node.text}](${node.href})` : node.text)}**\n\n`;
     if (node.kind === "code") return `\n\n${node.title ? `**${prose(node.title)}**\n\n` : ""}\`\`\`${node.language}\n${node.value}\n\`\`\`\n\n`;
     return `\n\n${read(node.resolved.content)}\n\n`;
-  }).join("");
+  }
 }
 const renderOptions = new WeakMap<UiMessages, MarkdownRenderOptions>();
 let builtinDefinitions: ReadonlySet<NativeComponentDefinition> | undefined;
@@ -896,7 +902,7 @@ export function renderContent(nodes: readonly ContentNode[], messages: UiMessage
   let level = headingLevel;
   // What the build draws itself goes in as markers, so Markdown never reads it again.
   const generated: string[] = [];
-  const block = (html: string) => `\n\n${generatedMarker(generated.push(html) - 1)}\n\n`;
+  const block = (html: string, indent = "") => `\n\n${indent}${generatedMarker(generated.push(html) - 1)}\n\n`;
   const markdown = nodes.map(node => {
     if (node.kind === "section-index") throw new Error("Unresolved section index reached the HTML renderer");
     if (node.kind === "markdown") return escapeGeneratedMarkers(node.value);
@@ -913,7 +919,7 @@ export function renderContent(nodes: readonly ContentNode[], messages: UiMessage
     // A component the site defines draws HTML of its own making, sanitized as an author's is.
     const drawn = isBuiltin(node.definition) ? html : sanitizeRenderedHtml(html, ["operation"]);
     const rendered = node.client ? `<${wrapper} data-sourcey-component="${escapeAttr(node.id)}" data-sourcey-module="${escapeAttr(node.client.entry)}" data-sourcey-props="${escapeAttr(JSON.stringify(node.resolved.clientProps ?? null))}">${drawn}</${wrapper}>` : drawn;
-    return node.inline ? generatedMarker(generated.push(rendered) - 1) : block(rendered);
+    return node.inline ? generatedMarker(generated.push(rendered) - 1) : block(rendered, node.indent);
   }).join("");
   return renderMarkdown(markdown, options, generated);
 }

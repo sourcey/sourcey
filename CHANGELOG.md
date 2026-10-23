@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- A component or directive written in a list item's text, indented up to three spaces, stays in the list item, with what follows it there, as CommonMark and MDX read it. It had ended the list, and the item's later lines could read as code.
+
 ### Added
 
 - `sourcey migrate docusaurus` converts `@theme/CodeBlock` to a fenced code block. Its language comes from `language` or its `language-` class, its title from `title` or the metastring, and its code is what Docusaurus shows: the string it is given, or the text written inside it, read as MDX reads it. A code block written on its own line within a paragraph converts too, as the block Docusaurus shows there. Verification reads the block's text as code, so a conversion that changes it stops. `showLineNumbers` is named in the report, since native code blocks do not number their lines.

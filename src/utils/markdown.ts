@@ -323,8 +323,9 @@ let authoredHtml = false;
  */
 let generatedHtml: readonly string[] = [];
 const GENERATED_OPEN = "\uE000", GENERATED_CLOSE = "\uE001";
-const GENERATED_BLOCK = /^\uE000(\d+)\uE001(?:\n+|$)/;
-const GENERATED_BLOCK_START = /(^|\n)\uE000\d+\uE001(?:\n|$)/;
+// A block marker may open its line with up to three spaces, as a component written in a list item's text does.
+const GENERATED_BLOCK = /^ {0,3}\uE000(\d+)\uE001(?:\n+|$)/;
+const GENERATED_BLOCK_START = /(^|\n) {0,3}\uE000\d+\uE001(?:\n|$)/;
 const GENERATED_INLINE = /^\uE000(\d+)\uE001/;
 
 /** The marker for the `index`th piece of generated HTML passed to `renderMarkdown`. */

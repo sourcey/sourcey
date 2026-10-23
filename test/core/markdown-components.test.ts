@@ -264,6 +264,12 @@ describe("callouts", () => {
     expect(page.markdown).toContain("> [!TIP]\n> This tutorial is unfinished.");
     expect(page.markdown).toContain("> [!WARNING]\n> **Back up first**\n>\n> It changes your data.");
   });
+
+  it("stay in the list item whose text they are written in, with what follows them there", async () => {
+    const page = await guide("# Setup\n\n- Add a method:\n\n  :::tip\n  Name it.\n  :::\n\n    - Each service asks for its own inputs.\n\n  <Note>Some are optional.</Note>\n\n- Edit a method.\n");
+    expect(page.html).toMatch(/<li><p>Add a method:<\/p>\s*<div class="callout callout-tip[\s\S]*?Name it\.[\s\S]*?<\/div><ul>\s*<li>Each service asks for its own inputs\.<\/li>\s*<\/ul>\s*<div class="callout callout-note[\s\S]*?Some are optional\.[\s\S]*?<\/li>\s*<li><p>Edit a method\.<\/p>/);
+    expect(page.markdown).toMatch(/- Add a method:\n\s*\n {2}> \[!TIP\]\n {2}> Name it\.\n\s*\n {4}- Each service asks for its own inputs\.\n\s*\n {2}> \[!NOTE\]\n {2}> Some are optional\.\n\s*\n- Edit a method\./);
+  });
 });
 
 describe("cards", () => {
