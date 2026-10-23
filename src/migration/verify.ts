@@ -15,7 +15,7 @@ import { buildSourceySite, sourceyArtifacts, type SourceySiteArtifacts } from ".
 import { identityKey } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
 import { documentScope, elementBinding } from "./document.js";
-import { childrenText, parseDocument, parseMarkdown, textContent, walk, type SyntaxNode } from "./mdx.js";
+import { alertMarker, childrenText, parseDocument, parseMarkdown, textContent, walk, type SyntaxNode } from "./mdx.js";
 import { configFile, type NativePlan, type PlannedDocument } from "./plan.js";
 import type { ProjectFiles } from "./project-files.js";
 import { fragmentSlugger, type FragmentRule } from "./slugs.js";
@@ -220,8 +220,9 @@ async function verifyDocument(
   const original = document.dialect.preprocess?.(written) ?? written;
   const tree = await parseDocument(document.file, original, readFrontmatter(original).bodyStart, document.dialect);
   // A link to the page-title heading lands at the top of the page, where native renders the title.
+  // A heading with no text has an empty fragment, which no link can name: the source renders it without one.
   const headings = (await sourceHeadings(tree, document.dialect.fragments)).map((heading, index) => ({ ...heading, index }));
-  const linkable = headings.filter((heading) => !(heading.index === 0 && heading.depth === 1 && heading.text.trim() === page.markdown.title));
+  const linkable = headings.filter((heading) => heading.id && !(heading.index === 0 && heading.depth === 1 && heading.text.trim() === page.markdown.title));
   const fragments = elementIds(page.markdown.html);
   const missing = linkable
     .filter((heading) => !fragments.has(heading.id))
@@ -237,9 +238,9 @@ async function verifyDocument(
   }
 
 
-  const source = await contentBlocks(tree, { alerts: document.dialect.compareConverted, code: await codeElement(project, document, original, tree) });
+  const source = await contentBlocks(tree, { alerts: document.dialect.compareConverted ? original : undefined, code: await codeElement(project, document, original, tree) });
   // Native writes callouts as GitHub alerts in its readable Markdown.
-  const native = await contentBlocks(await parseMarkdown(page.markdown.markdown, 0), { alerts: true });
+  const native = await contentBlocks(await parseMarkdown(page.markdown.markdown, 0), { alerts: page.markdown.markdown });
   const prose = normalise(native.prose.join(" "));
   const code = new Set(native.code);
   for (const block of source.prose) {
@@ -287,25 +288,27 @@ async function codeElement(project: ProjectFiles, document: PlannedDocument, sou
 /** Component attributes whose values a reader sees as text. */
 const TEXT_ATTRIBUTES = new Set(["title", "description", "label", "alt", "caption"]);
 
-/** A GitHub alert's marker line, which a reader sees as the alert's title. */
+/** A GitHub alert's marker line in a paragraph's text, which a reader sees as the alert's title. */
 const ALERT_MARKER = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n|$)/;
 
 /**
  * Visible prose and code of a document. Attribute text of components and the
  * text inside raw HTML count as prose, so a component converted to native
  * syntax is compared by what a reader sees; attribute text reads as the inline
- * Markdown both sides render it as. With `alerts`, a GitHub alert
- * reads as native and GitHub show it: titled by its type. A `code` element's
+ * Markdown both sides render it as. With `alerts`, the text the tree was read
+ * from, a GitHub alert written there reads as native and GitHub show it:
+ * titled by its type. A `code` element's
  * children are its code, as a reader sees their text.
  */
-async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean; code?: (node: SyntaxNode) => boolean } = {}): Promise<{ prose: string[]; code: string[] }> {
+async function contentBlocks(tree: SyntaxNode, options: { alerts?: string; code?: (node: SyntaxNode) => boolean } = {}): Promise<{ prose: string[]; code: string[] }> {
   const prose: string[] = [];
   const code: string[] = [];
   const isCode = options.code ?? (() => false);
   for (const { node, parents } of walk(tree)) {
     if (parents.some(isCode)) continue;
     const text = node.type === "paragraph" ? textContent(node) : "";
-    const alert = options.alerts && parents.at(-1)?.type === "blockquote" && parents.at(-1)!.children![0] === node ? text.match(ALERT_MARKER) : null;
+    const quote = parents.at(-1);
+    const alert = options.alerts !== undefined && quote?.children?.[0] === node && alertMarker(options.alerts, quote) ? text.match(ALERT_MARKER) : null;
     if (alert) prose.push(alert[1].charAt(0) + alert[1].slice(1).toLowerCase(), normalise(text.slice(alert[0].length)));
     else if (node.type === "code") code.push(codeText(node.value ?? ""));
     else if (node.type === "paragraph" && node.children?.some((child) => child.type === "mdxJsxTextElement")) {

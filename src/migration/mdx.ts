@@ -264,6 +264,16 @@ export function textContent(node: SyntaxNode): string {
   return (node.children ?? []).map(textContent).join("");
 }
 
+/**
+ * A GitHub alert's marker, as native reads one: `[!NOTE]` alone on the first
+ * line of a blockquote, as written, where an escaped `\[!NOTE]` is text.
+ */
+export function alertMarker(source: string, blockquote: SyntaxNode): RegExpMatchArray | null {
+  const first = blockquote.type === "blockquote" ? blockquote.children?.[0] : undefined;
+  if (first?.type !== "paragraph" || !first.position) return null;
+  return source.slice(first.position.start.offset).match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n|$)/);
+}
+
 /** Text and its formatting, which hold no element or expression. */
 const PHRASING = new Set(["text", "emphasis", "strong", "delete", "inlineCode", "link", "linkReference", "break"]);
 

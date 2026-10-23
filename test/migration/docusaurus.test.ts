@@ -475,6 +475,16 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("keeps GitHub alert syntax Docusaurus shows as text as text, and a heading with no text without a fragment", async () => {
+    const page = "# Installation\n\n## Prerequisites\n\n#### \n\n- A working instance\n\n> [!NOTE]\n> Run it once.\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain("> \\[!NOTE]\n> Run it once.\n");
+      expect(converted).toContain("#### \n");
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
