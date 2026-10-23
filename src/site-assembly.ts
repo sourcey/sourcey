@@ -281,17 +281,12 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       const record = add(context, tab, { kind: "markdown", markdown: page }, id);
       return toPublicUrl(record.outputPath, undefined, config.baseUrl, config.prettyUrls);
     }
-    const wide = nav.groups.length > 20;
     for (const group of [...walkNavGroups(nav.groups)].reverse()) {
-      if (group.href || group.items.length <= 80 && !(wide && nav.groups.includes(group))) continue;
+      if (group.href || group.items.length <= 80) continue;
       const id = `section:${group.id ?? group.label}`;
       const slug = `_sections/${slugify(group.label) || "pages"}-${createHash("sha256").update(id).digest("hex").slice(0,8)}`;
       const title = context.localeConfig.messages.navigation?.[group.id ?? ""] ?? group.label;
       group.href = sectionPage(id, slug, title, () => [...walkNavItems([group])].map(item => `- [${item.label.replace(/\]/g, "\\]")}](${item.href})`).join("\n"));
-    }
-    if (wide) {
-      const label = context.localeConfig.messages.sections;
-      nav.sectionIndex = { label, href: sectionPage("section-index", "_sections/index", label, () => nav.groups.map(group => `- [${group.label}](${group.href})`).join("\n")) };
     }
   }
   if (config.changelog.permalinks) addPermalinkPages(pageMap, config.prettyUrls);

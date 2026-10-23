@@ -74,9 +74,15 @@ describe("projectNavigation", () => {
     const [current, other] = projectNavigation(nav, "api", "public-b-3").tabs[0].groups;
     expect(current.items).toHaveLength(3);
     expect((current.items[1] as { items: unknown[] }).items).toHaveLength(20);
-    // The family is a heading, reached through its sections; each section links to its start.
+    // A family is a heading, reached through its sections; each section links to its start.
     expect(other.href).toBeUndefined();
     expect(other).toMatchObject({ items: [{ label: "a", href: "/api/admin-a-0/", items: [] }, { label: "b", href: "/api/admin-b-0/", items: [] }, { label: "c", href: "/api/admin-c-0/", items: [] }] });
+  });
+
+  it("leads a folded section with pages of its own to them, beside the sections it holds", () => {
+    const docs = { label: "Database", id: "database", items: [{ label: "Overview", href: "/db/", id: "db" }, section("db", "entities")] };
+    const groups = projectNavigation({ ...nav, tabs: [{ ...nav.tabs[0], groups: [...families, docs] }] }, "api", "public-b-3").tabs[0].groups;
+    expect(groups[2]).toMatchObject({ label: "Database", href: "/db/", items: [{ label: "entities", href: "/api/db-entities-0/", items: [] }] });
   });
 
   it("keeps a group without a heading as its entries, never a link without a name", () => {

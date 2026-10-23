@@ -4,6 +4,12 @@
 // on the matching #nav fragment link. All visual styling is in sourcey.css;
 // this file only manages the class.
 (function () {
+  // Whether a link leads to this page, however its address spells the page.
+  function samePage(href) {
+    var strip = function (path) { return path.replace(/\/index\.html$/, '/').replace(/\/$/, ''); };
+    return strip(new URL(href, window.location.href).pathname) === strip(window.location.pathname);
+  }
+
   function init() {
     var navLinks = document.querySelectorAll('#nav .nav-link, #nav .nav-group-link');
     var targets = document.querySelectorAll('[data-traverse-target]');
@@ -25,13 +31,19 @@
     var clickedId = null; // When set, overrides scroll-based activation
     var clickTimer = null;
 
-    // Map traverse-target id → nav link element (by matching href fragment)
+    // Map traverse-target id → the nav link to that place on this page
     var linkMap = {};
     navLinks.forEach(function (link) {
       var href = link.getAttribute('href');
-      if (href && href.indexOf('#') !== -1) {
+      if (href && href.indexOf('#') !== -1 && samePage(href)) {
         linkMap[href.split('#')[1]] = link;
       }
+    });
+    // The page's own links stand for it until a place on it with a link of its own is current,
+    // so the sidebar shows one current entry.
+    var pageLinks = Array.prototype.filter.call(navLinks, function (link) {
+      var href = link.getAttribute('href');
+      return link.classList.contains('active') && href && href.indexOf('#') === -1;
     });
 
     // If no fragment-based nav links AND no TOC headings, nothing to track
@@ -70,6 +82,9 @@
         active.setAttribute('aria-current', 'location');
         active.scrollIntoView({ block: 'nearest', behavior: 'auto' });
       }
+      pageLinks.forEach(function (link) {
+        link.classList.toggle('active', !active);
+      });
 
       var tocActive = tocMap[id];
       if (tocActive) {
@@ -106,7 +121,7 @@
       if (!href || href.indexOf('#') === -1) return;
       var id = href.split('#')[1];
       if (!id || !document.getElementById(id)) return;
-      if (new URL(href, window.location.href).pathname !== window.location.pathname) return;
+      if (!samePage(href)) return;
 
       e.preventDefault();
       clickedId = id;

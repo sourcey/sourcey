@@ -89,21 +89,24 @@ describe("canonical navigation composition", () => {
     }
   }));
 
-  it("gives a large authored reference real section destinations containing final operation links", () => fixture(async root => {
-    const paths = Object.fromEntries(Array.from({ length: 44 }, (_, index) => [`/pets/${index}`, { get: { summary: `Pet ${index}`, responses: { "200": { description: "Success" } } } }]));
+  it("gives a long authored section a real destination containing final operation links", () => fixture(async root => {
+    const paths = Object.fromEntries(Array.from({ length: 92 }, (_, index) => [`/pets/${index}`, { get: { summary: `Pet ${index}`, responses: { "200": { description: "Success" } } } }]));
     await file(root, "api.json", JSON.stringify({ ...api(), paths }));
-    const config = await resolveConfigFromRaw({ prettyUrls: "slash", theme: { fonts: { google: false } }, i18n: { defaultLocale: "fr", locales: { fr: { label: "Français", messages: { navigation: { "group-0": "Famille zéro" } } } } }, navigation: { tabs: [{ id: "rest", tab: "API", source: openapi("api.json"), reference: { split: "operations" }, navigation: Array.from({ length: 22 }, (_, index) => ({ group: `Group ${index}`, id: `group-${index}`, pages: [{ operation: `GET /pets/${index * 2}` }, { operation: `GET /pets/${index * 2 + 1}` }] })) }] } }, root);
+    const operations = (from: number, to: number) => Array.from({ length: to - from }, (_, index) => ({ operation: `GET /pets/${from + index}` }));
+    const config = await resolveConfigFromRaw({ prettyUrls: "slash", theme: { fonts: { google: false } }, i18n: { defaultLocale: "fr", locales: { fr: { label: "Français", messages: { navigation: { "group-0": "Famille zéro" } } } } }, navigation: { tabs: [{ id: "rest", tab: "API", source: openapi("api.json"), reference: { split: "operations" }, navigation: [
+      { group: "Group 0", id: "group-0", pages: operations(0, 90) },
+      { group: "Group 1", id: "group-1", pages: operations(90, 92) },
+    ] }] } }, root);
     const site = await buildSourceySite({ config, generateOgImages: false });
-    const sections = site.pages.filter(page => page.identity.document.startsWith("section:"));
-    expect(sections).toHaveLength(22);
-    expect(sections.find(page => page.identity.document === "section:group-0")!.currentPage).toMatchObject({ kind: "markdown", markdown: { title: "Famille zéro" } });
-    for (const page of sections) {
-      if (page.currentPage.kind !== "markdown") throw new Error("Expected section page");
-      expect(page.currentPage.markdown.html).toContain("/operations/operation-pets-");
-      expect(page.currentPage.markdown.html).not.toContain('href=""');
-    }
-    expect(JSON.stringify(site.searchRows)).toContain("Group 21");
-    expect(site.navigation.tabs[0].sectionIndex?.href).toBe("/api/_sections/index/");
+    // A section of more than 80 entries has a page listing them; a short one leads to its first.
+    const sections = site.pages.filter(page => page.identity.document.startsWith("section"));
+    expect(sections.map(page => page.identity.document)).toEqual(["section:group-0"]);
+    const [page] = sections;
+    if (page.currentPage.kind !== "markdown") throw new Error("Expected section page");
+    expect(page.currentPage.markdown.title).toBe("Famille zéro");
+    expect(page.currentPage.markdown.html).toContain("/operations/operation-pets-89-get/");
+    expect(page.currentPage.markdown.html).not.toContain('href=""');
+    expect(JSON.stringify(site.searchRows)).toContain("Famille zéro");
   }));
 
   it("reloads imported route and navigation data without changing the earlier compilation", () => fixture(async root => {

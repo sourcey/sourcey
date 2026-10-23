@@ -90,4 +90,23 @@ describe("reference sections", () => {
     const split = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "sections" } }]);
     expect(split.site.referenceDiagnostics).toEqual([]);
   }));
+
+  it("shows the section around a page whole, and folds the others to their links", () => fixture(async (root) => {
+    await writeFile(join(root, "api.json"), openApi({ Items: 90, Orders: 30 }));
+    const { html } = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "operations" } }]);
+    const nav = sidebar(html("api/operations/operation-items-45-get/index.html"));
+    for (const index of [0, 45, 89]) expect(nav).toContain(`>Items ${index}<`);
+    expect(nav).not.toContain(">Orders 0<");
+    expect(nav).toContain('href="/api/#tag-orders"');
+  }));
+
+  it("lists a server of one section whole on every page, even its overview", () => fixture(async (root) => {
+    const tools = Array.from({ length: 120 }, (_, index) => ({ name: `tool${index}`, inputSchema: { type: "object" } }));
+    await writeFile(join(root, "mcp.json"), JSON.stringify({ mcpSpec: "0.3.2", mcpVersion: "2025-11-25", server: { name: "server", version: "1" }, tools }));
+    const { html } = await build(root, [{ tab: "MCP", slug: "mcp", source: mcp("mcp.json"), reference: { split: "operations" } }]);
+    for (const page of ["mcp/index.html", "mcp/operations/operation-tool60-tool/index.html"]) {
+      const nav = sidebar(html(page));
+      for (const name of ["tool0", "tool60", "tool119"]) expect(nav).toContain(`>${name}<`);
+    }
+  }));
 });

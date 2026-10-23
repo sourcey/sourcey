@@ -130,7 +130,7 @@ footer: {
 },
 ```
 
-`footer.text` is one line of inline Markdown at the foot of every page, such as a copyright or licence notice; the reader theme shows it in place of the site name unless `reader.footer.text` is set. `footer.links` take the same form as `navbar.links`: a network's icon, or a text link with its `label`.
+`footer.text` is one line of inline Markdown at the foot of every page, such as a copyright or licence notice; the reader theme shows it in place of the site name unless `reader.footer.text` is set. `footer.links` take the same form as `navbar.links`: a network's icon, or a text link with its `label`. The footer sets text links first and the networks' icons together after them. Keep it to places the header and sidebar do not already lead: the site's own pages are in the sidebar, and its repository is usually in the header. "Edit this page" is the page's own: it ends each page, above previous and next.
 
 ## Typography
 
@@ -434,7 +434,7 @@ Operation entries use `METHOD /path`, exactly as the spec defines it. Their labe
 
 Markdown groups can also link to a reference owned by another tab with `{ operation: "GET /keys", reference: "rest" }`. Use a stable tab `id` for `reference`. A page in another source uses `{ page: "installation", tab: "guides" }`; the page can be named by its source reference or stable document ID. Cross-source links select the matching language and content version. Readers follow the canonical document in its owning tab.
 
-The source controls which operations are published. Navigation controls their order and grouping. An operation can appear in several groups while keeping one URL. Large trees get section pages so every entry remains reachable. Navigation data can live in a separate TypeScript file, typed with `GroupConfig[]`, and be imported by the config.
+The source controls which operations are published. Navigation controls their order and grouping. An operation can appear in several groups while keeping one URL. The sidebar lists every section, with the one around the current page open; a section of more than 80 entries without a page of its own gets a generated page listing them, which its link leads to where it is folded. Navigation data can live in a separate TypeScript file, typed with `GroupConfig[]`, and be imported by the config.
 
 ## OpenAPI overlays
 

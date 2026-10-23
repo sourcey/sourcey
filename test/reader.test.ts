@@ -59,7 +59,7 @@ describe("reader theme", () => {
     directories.push(dir);
     await writeFile(
       join(dir, "index.md"),
-      "---\ntitle: The interaction contract\nnavTitle: Overview\ndescription: A readable contract.\n---\n\n## Scope\n\nA real introduction.\n\n[Continue](./authorization.md)\n",
+      "---\ntitle: The interaction contract\nnavTitle: Overview\ndescription: A readable contract.\n---\n\n## Scope\n\nA real introduction.\n\n## Conformance\n\nWhat a service must do.\n\n[Continue](./authorization.md)\n",
     );
     await writeFile(
       join(dir, "authorization.md"),
@@ -127,6 +127,9 @@ describe("reader theme", () => {
     expect(chapter).toMatch(/class="reader-chapters-trigger"><span class="reader-chapters-place"><strong>[^<]+<\/strong><span>Authorization<\/span><\/span>/);
     expect(index).toContain('href="/specification/authorization/"');
     expect(index).toContain('href="#scope"');
+    expect(index).toContain('href="#conformance"');
+    // A contents list of one place says nothing the page does not.
+    expect(chapter).not.toContain('id="sourcey-toc-label"');
     expect(index).toContain('id="search-dialog"');
     expect(index).toContain("data-reader-fallback");
     expect(index).toContain('href="https://sourcey.com/docs"');

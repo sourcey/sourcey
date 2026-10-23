@@ -108,7 +108,7 @@ function MarkdownPageContent({ page, className = "" }: { page: MarkdownPage; cla
         class="prose prose-gray dark:prose-invert relative mt-8 mb-14 max-w-none"
         dangerouslySetInnerHTML={{ __html: page.html }}
       />
-      <PageNavigation />
+      <PageEnd />
       <ContentFooter />
     </div>
   );
@@ -128,7 +128,7 @@ function ChangelogPageContent({
     >
       <PageNotice />
       <ChangelogPage page={page} />
-      <PageNavigation />
+      <PageEnd />
       <ContentFooter />
     </div>
   );
@@ -207,7 +207,7 @@ function SpecPageContent({ className = "", bare = false }: { className?: string;
   );
 }
 
-function PageNavigation() {
+function PageNavigation({ spacing = "mt-12" }: { spacing?: string }) {
   const nav = useContext(NavigationContext);
   const options = useContext(OptionsContext);
   const activeTab = nav.tabs.find((t) => t.slug === nav.activeTabSlug);
@@ -229,7 +229,7 @@ function PageNavigation() {
   const breakable = (label: string) => (/\S{18,}/.test(label) ? " min-w-0" : "");
 
   return (
-    <nav class="mt-12 flex items-stretch justify-between gap-4" aria-label={options.messages.pagination}>
+    <nav class={`${spacing} flex items-stretch justify-between gap-4`} aria-label={options.messages.pagination}>
       {prev ? (
         <a href={joinHref(base, prev.href)} class={`${linkClass}${breakable(prev.label)}`}>
           <span class={labelClass}>← {options.messages?.previous ?? "Previous"}</span>
@@ -248,15 +248,12 @@ function PageNavigation() {
   );
 }
 
-function ContentFooter() {
+/** Where the page's source can be edited, when the site names its repository and branch. */
+function useEditUrl(): string | undefined {
   const site = useContext(SiteContext);
   const page = useContext(PageContext);
   const options = useContext(OptionsContext);
   const editBranch = options.sourceRevision ?? site.editBranch;
-  const links = site.footer.links;
-
-  // Build "Edit this page" URL when repo + editBranch are configured
-  let editUrl: string | undefined;
   const editPath =
     page.kind === "markdown"
       ? page.markdown.editPath === undefined
@@ -267,21 +264,66 @@ function ContentFooter() {
           ? page.changelog.sourcePath
           : page.changelog.editPath
         : undefined;
-  if (site.repo && editBranch && editPath) {
-    const repoBase = site.repo.replace(/\/$/, "");
-    const editBasePath =
-      page.kind === "markdown" && page.markdown.editBasePath !== undefined
-        ? page.markdown.editBasePath
-        : site.editBasePath;
-    const basePath = editBasePath ? `${editBasePath.replace(/^\/|\/$/g, "")}/` : "";
-    editUrl = `${repoBase}/edit/${editBranch}/${basePath}${editPath}`;
-  }
+  if (!site.repo || !editBranch || !editPath) return undefined;
+  const repoBase = site.repo.replace(/\/$/, "");
+  const editBasePath =
+    page.kind === "markdown" && page.markdown.editBasePath !== undefined
+      ? page.markdown.editBasePath
+      : site.editBasePath;
+  const basePath = editBasePath ? `${editBasePath.replace(/^\/|\/$/g, "")}/` : "";
+  return `${repoBase}/edit/${editBranch}/${basePath}${editPath}`;
+}
 
+/** A page's end: a way to edit its source, then the pages before and after it. */
+function PageEnd() {
+  const editUrl = useEditUrl();
+  return <>{editUrl && <EditPageLink href={editUrl} />}<PageNavigation spacing={editUrl ? "mt-8" : "mt-12"} /></>;
+}
+
+function EditPageLink({ href: editUrl }: { href: string }) {
+  const options = useContext(OptionsContext);
+  return (
+    <p class="sourcey-edit-page text-sm">
+      <a
+        href={editUrl}
+        target="_blank"
+        rel="noopener"
+        class="inline-flex items-center gap-1.5 text-[rgb(var(--color-gray-500))] hover:text-[rgb(var(--color-primary-ink))] dark:text-[rgb(var(--color-gray-400))] dark:hover:text-[rgb(var(--color-primary-light))] transition-colors"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          aria-hidden="true"
+          class="w-3.5 h-3.5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"
+          />
+        </svg>
+        {options.messages?.editPage ?? "Edit this page"}
+      </a>
+    </p>
+  );
+}
+
+/**
+ * The site's foot: who it belongs to, then the places it leads outside, words
+ * first and the networks' marks together after them.
+ */
+function ContentFooter() {
+  const site = useContext(SiteContext);
+  const words = site.footer.links.filter((link) => link.type === "link");
+  const marks = site.footer.links.filter((link) => link.type !== "link");
   const linkStyle =
-    "hover:text-[rgb(var(--color-gray-600))] dark:hover:text-[rgb(var(--color-gray-300))] transition-colors";
+    "hover:text-[rgb(var(--color-gray-700))] dark:hover:text-[rgb(var(--color-gray-200))] transition-colors";
 
   return (
-    <div class="mt-16 mb-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] pt-6 text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">
+    <div class="mt-16 mb-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-800)/0.5)] pt-6 text-xs text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Markdown inline content={site.footer.text} class="sourcey-footer-text" />
         <a href="https://sourcey.com/docs" target="_blank" rel="noopener" class={linkStyle}>
@@ -289,47 +331,24 @@ function ContentFooter() {
         </a>
       </div>
       {/* Many links wrap onto a second line rather than widening the page past a narrow screen. */}
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {editUrl && (
-          <a
-            href={editUrl}
-            target="_blank"
-            rel="noopener"
-            class={`${linkStyle} flex items-center gap-1`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-3 h-3 mr-0.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"
-              />
-            </svg>
-            {options.messages?.editPage ?? "Edit this page"}
-          </a>
-        )}
-        {links.map((link) => (
-          <a
-            key={link.href}
-            href={link.href}
-            {...linkTarget(link.href, site.siteUrl)}
-            aria-label={linkLabel(link)}
-            class={linkStyle}
-          >
-            {link.type === "link" ? (
-              (link.label ?? link.href)
-            ) : (
-              <SocialIcon type={link.type} />
-            )}
-          </a>
-        ))}
-      </div>
+      {site.footer.links.length > 0 && (
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {words.map((link) => (
+            <a key={link.href} href={link.href} {...linkTarget(link.href, site.siteUrl)} class={linkStyle}>
+              {link.label ?? link.href}
+            </a>
+          ))}
+          {marks.length > 0 && (
+            <span class="flex items-center gap-3.5">
+              {marks.map((link) => (
+                <a key={link.href} href={link.href} {...linkTarget(link.href, site.siteUrl)} aria-label={linkLabel(link)} class={linkStyle}>
+                  <SocialIcon type={link.type} />
+                </a>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -353,13 +372,13 @@ function DefaultLayout() {
       <main id="docs">
         {page.kind === "markdown" ? (
           <div class="flex flex-row-reverse gap-8 box-border w-full">
-            <TableOfContents headings={page.markdown.headings} />
+            <TableOfContents headings={page.markdown.headings} reserve />
             <MarkdownPageContent page={page.markdown} className={reading} />
           </div>
         ) : page.kind === "spec" && page.view?.kind === "overview" ? (
           // A split reference's overview reads as a guide does.
           <div class="flex flex-row-reverse gap-8 box-border w-full">
-            <TableOfContents headings={outline} />
+            <TableOfContents headings={outline} reserve />
             <SpecPageContent className={reading} />
           </div>
         ) : page.kind === "changelog" ? (

@@ -48,11 +48,16 @@ function TocList({ headings }: { headings: PageHeading[] }) {
   );
 }
 
-export function TableOfContents({ headings, label }: { headings: PageHeading[]; label?: string }) {
+/**
+ * "On this page", where the page has two places or more to list: a list of one
+ * says nothing the page does not. With `reserve`, a page with none keeps the
+ * column empty, so its text sits where every other page's does.
+ */
+export function TableOfContents({ headings, label, reserve = false }: { headings: PageHeading[]; label?: string; reserve?: boolean }) {
   const site = useContext(SiteContext);
   const messages = useContext(OptionsContext).messages;
   label ??= messages.onThisPage;
-  if (headings.length === 0) return null;
+  if (headings.length < 2) return reserve && site.theme.name !== "api-first" ? <div class="hidden xl:block shrink-0 w-[19rem] xl:mr-4" aria-hidden="true" /> : null;
 
   if (site.theme.name === "api-first") {
     // The full-width theme: a plain column pinned beside the reading column.

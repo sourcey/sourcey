@@ -35,7 +35,6 @@ export interface SiteTab {
   documentId?: string;
   kind: "spec" | "docs";
   groups: SiteNavGroup[];
-  sectionIndex?: { href: string; label: string };
 }
 
 export interface SiteNavGroup {
@@ -273,31 +272,32 @@ interface NavigationIndex {
   count: number;
   /** The pages its entries lead to. */
   pages: number;
+  /** Its named sections that lead to pages. */
+  sections: number;
   ancestors: Map<string, Set<SiteNavGroup>>;
-  positions: Map<SiteNavGroup, Map<string, number>>;
 }
 const navigationIndexes = new WeakMap<SiteTab, NavigationIndex>();
 function navigationIndex(tab: SiteTab): NavigationIndex {
   let index = navigationIndexes.get(tab);
   if (index) return index;
-  index = { count: 0, pages: 0, ancestors: new Map(), positions: new Map(), adjacent: new Map() };
+  index = { count: 0, pages: 0, sections: 0, ancestors: new Map(), adjacent: new Map() };
   const sections = new Map<string, SiteNavGroup>();
   function visit(groups: readonly SiteNavGroup[], parents: SiteNavGroup[] = []) {
     for (const group of groups) {
-      const ancestors = [...parents, group], positions = new Map<string, number>();
-      index!.positions.set(group, positions);
+      const ancestors = [...parents, group];
+      if (group.label && group.items.some(item => !isNavGroup(item))) index!.sections++;
       // A section's own page lies inside the section.
       if (group.page) index!.ancestors.set(group.page, new Set([...index!.ancestors.get(group.page) ?? [], ...ancestors]));
-      group.items.forEach((item, position) => {
+      for (const item of group.items) {
         if (isNavGroup(item)) visit([item], ancestors);
         else {
-          index!.count++; positions.set(item.id, position);
+          index!.count++;
           if (!sections.has(item.id)) sections.set(item.id, group);
           const existing = index!.ancestors.get(item.id) ?? new Set<SiteNavGroup>();
           for (const ancestor of ancestors) existing.add(ancestor);
           index!.ancestors.set(item.id, existing);
         }
-      });
+      }
     }
   }
   visit(tab.groups);
@@ -344,34 +344,26 @@ export function projectNavigation(nav: SiteNavigation, tabSlug: string, pageSlug
   // Every page carries its tab's sidebar. A reference's runs to thousands of operations, so past
   // a hundred only the branch around the page keeps its contents; an authored tree is shown
   // whole, as readers expect, until it is several times that. A tab of one page, such as a
-  // single-page reference, has no other page to carry it, and is shown whole.
-  if (index.pages <= 1 || index.count <= (active.kind === "spec" ? 100 : 400)) return withActivePage(nav, tabSlug, pageSlug);
+  // single-page reference, has no other page to carry it, and one of a single section has no
+  // other branch to fold away: each is shown whole.
+  if (index.pages <= 1 || index.sections <= 1 || index.count <= (active.kind === "spec" ? 100 : 400)) return withActivePage(nav, tabSlug, pageSlug);
   function branch(group: SiteNavGroup): SiteNavGroup {
-    const contains = index.ancestors.get(pageSlug)?.has(group);
-    if (contains) {
-      const position = index.positions.get(group)?.get(pageSlug) ?? -1;
-      const items = group.href && position >= 0 && group.items.length > 40
-        ? group.items.slice(Math.max(0, position - 12), position + 13) : group.items;
-      return { ...group, items: items.map(item => isNavGroup(item) ? branch(item) : item) };
-    }
+    // The branch around the page is shown whole: a list cut short reads as complete.
+    if (index.ancestors.get(pageSlug)?.has(group)) return { ...group, items: group.items.map(item => isNavGroup(item) ? branch(item) : item) };
     // A group without a heading is a run of entries, not a section with a name to stand for it.
     if (!group.label) return group;
-    // A branch away from the page keeps its own sections as links, so its shape still shows. A group
-    // keeps its own link; one without (a heading) is reached through its sections, or, keeping
-    // none, links to its start.
+    // A branch away from the page keeps its own sections as links, so its shape still shows. It
+    // leads where it starts: its own link, else its first page of its own; a heading with no page
+    // of its own is reached through its sections, or, keeping none, links to its start.
     const collapse = (value: SiteNavGroup, depth: number): SiteNavGroup => {
       const sections = depth > 0 ? [] : value.items.filter(isNavGroup).map(section => collapse(section, depth + 1));
-      return { ...value, href: value.href ?? (sections.length ? undefined : [...walkNavItems([value])][0]?.href), items: sections };
+      const own = value.items.find(item => !isNavGroup(item));
+      return { ...value, href: value.href ?? own?.href ?? (sections.length ? undefined : [...walkNavItems([value])][0]?.href), items: sections };
     };
     return collapse(group, 0);
   }
-  let groups = active.groups;
-  if (active.sectionIndex && groups.length > 20) {
-    const position = Math.max(0, groups.findIndex(group => index.ancestors.get(pageSlug)?.has(group)));
-    groups = groups.slice(Math.max(0, position - 6), position + 7);
-  }
-  const projected = groups.map(branch);
-  if (active.sectionIndex) projected.unshift({ label: active.sectionIndex.label, href: active.sectionIndex.href, items: [] });
+  // Every section the tab has is listed, so the reader sees its whole shape.
+  const projected = active.groups.map(branch);
   return { ...nav, activeTabSlug: tabSlug, activePageSlug: pageSlug,
     adjacentPages: index.adjacent.get(pageSlug),
     tabs: nav.tabs.map(tab => tab === active ? { ...tab, groups: projected } : { ...tab, groups: [] }) };

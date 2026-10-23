@@ -634,6 +634,28 @@ describe("renderPage (spec)", () => {
     expect(html).toContain('<span class="sourcey-footer-text">© Example, licensed under <a href="https://example.com/license" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</span>');
   });
 
+  it("sets the footer's words before the networks' marks, which keep together, and the page's edit link at its end", () => {
+    const site = {
+      ...defaultSite,
+      repo: "https://github.com/sourcey/example",
+      editBranch: "main",
+      footer: { text: "© Example", links: [
+        { type: "discord" as const, href: "https://discord.gg/example" },
+        { type: "link" as const, href: "https://example.com", label: "Website" },
+        { type: "twitter" as const, href: "https://x.com/example" },
+        { type: "link" as const, href: "https://demo.example.com", label: "Demo" },
+      ] },
+    };
+    const html = renderPage(createMinimalSpec(), defaultOptions, createDocsNavigation(), { kind: "markdown", markdown: createMarkdownPage({ editPath: "guide.md" }) }, site);
+    const footer = html.slice(html.indexOf("sourcey-footer-text"));
+    expect(footer.indexOf(">Website<")).toBeLessThan(footer.indexOf(">Demo<"));
+    expect(footer.indexOf(">Demo<")).toBeLessThan(footer.indexOf('aria-label="Discord"'));
+    expect(footer).toMatch(/<span class="flex items-center gap-3\.5"><a [^>]*aria-label="Discord"[^>]*>.*?<\/a><a [^>]*aria-label="Twitter"/s);
+    // Editing is the page's own action, not the site's: it ends the page, before the footer.
+    expect(footer).not.toContain("/edit/main/");
+    expect(html.indexOf("/edit/main/guide.md")).toBeLessThan(html.indexOf("sourcey-footer-text"));
+  });
+
   it("uses the global edit base for markdown pages unless the page overrides it", () => {
     const spec = createMinimalSpec();
     const navigation = createDocsNavigation();

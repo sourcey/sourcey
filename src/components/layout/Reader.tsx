@@ -116,6 +116,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
   const navigationLinks = site.navbar.links.map((link) => ({ ...link, label: linkLabel(link) }));
   const outline = useReferenceOutline();
   const headings = docPage?.headings ?? (page.kind === "changelog" ? page.changelog.headings : outline);
+  const places = headings.filter((heading) => heading.level === Math.min(...headings.map((h) => h.level)));
   // A chapter names its edition; a reference page, the section listing it.
   const crumbs = [tab?.label, docPage ? edition : group?.label].filter(
     (crumb, i, all): crumb is string => !!crumb && all.indexOf(crumb) === i,
@@ -374,15 +375,14 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
             {paged && footer}
           </main>
           <aside class="docs-toc" aria-label={messages.onThisPage}>
-            {headings.length > 0 && (
+            {/* A list of one place on the page says nothing the page does not. */}
+            {places.length > 1 && (
               <>
                 <span id="sourcey-toc-label" class="eyebrow">{messages.onThisPage}</span>
                 <nav aria-labelledby="sourcey-toc-label">
-                  {headings
-                    .filter((heading) => heading.level === Math.min(...headings.map((h) => h.level)))
-                    .map((heading) => (
-                      <a href={`#${heading.id}`}>{heading.text}</a>
-                    ))}
+                  {places.map((heading) => (
+                    <a href={`#${heading.id}`}>{heading.text}</a>
+                  ))}
                 </nav>
               </>
             )}
