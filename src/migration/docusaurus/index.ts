@@ -15,12 +15,12 @@ import type { Call, ConfigValue } from "../config-writer.js";
 import type { Diagnostics } from "../diagnostics.js";
 import { evaluate, identifierName, parseModule } from "../javascript.js";
 import type { ResolvedMapping } from "../mapping.js";
-import type { EstreeNode } from "../mdx.js";
+import { parseDocument, parseMarkdown, textContent, type EstreeNode } from "../mdx.js";
 import { footerLinks, groupsOf, navbarLink, navbarOption, networkOf } from "../navigation.js";
 import { markdownSource, type FrameworkMigration, type NativePlan, type PlannedDocument, type SourceDialect } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
 import { editLinkOptions } from "../repository.js";
-import { readFrontmatter } from "../text-edits.js";
+import { lineEnd, readFrontmatter } from "../text-edits.js";
 import { schemeColours, stylesheetFonts, themeColours } from "../theme.js";
 import { readDocs, type DocusaurusDoc } from "./docs.js";
 import { docusaurusConversion, docusaurusPreprocess } from "./markdown.js";
@@ -204,14 +204,19 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
   for (const entry of published) {
     const slug = markdown.slugs.get(entry);
     if (entry.doc) {
+      const text = await project.readText(entry.doc.file);
+      const conversion = convert(entry.doc.file);
+      const titled = await componentTitle(entry.doc.file, conversion.before(text).text, dialect(entry.doc.file));
       collected.documents.push({
         file: entry.doc.file,
         ...(entry.doc.target ? { target: entry.doc.target } : {}),
         route: route(entry.doc.slug, entry.locale),
         ...(entry.locale ? { locale: entry.locale } : {}),
         dialect: dialect(entry.doc.file),
-        ...convert(entry.doc.file),
-        frontmatter: documentFrontmatter(entry.doc, slug, await project.readText(entry.doc.file), diagnostics),
+        ...conversion,
+        // The heading the page shows as its title is native's title, which native draws above the page.
+        ...(titled ? { after: async (converted: string) => withoutHeading(await conversion.after(converted), titled) } : {}),
+        frontmatter: documentFrontmatter(entry.doc, slug, text, diagnostics, titled),
       });
     }
   }
@@ -351,16 +356,17 @@ function sidebarNames(site: DocusaurusSite, instance: DocsInstance, versions: re
 }
 
 /** Frontmatter edits: the native route, title and navigation label where native would differ, and what native does not carry. */
-function documentFrontmatter(doc: DocusaurusDoc, slug: string | undefined, text: string, diagnostics: Diagnostics): PlannedDocument["frontmatter"] {
+function documentFrontmatter(doc: DocusaurusDoc, slug: string | undefined, text: string, diagnostics: Diagnostics, titled?: string): PlannedDocument["frontmatter"] {
   const data = doc.frontmatter;
   const set: Record<string, string | boolean> = {};
   if (slug) set.slug = slug;
   // Docusaurus titles a page from frontmatter, an opening heading, or its ID; native from frontmatter or its first heading.
   const body = text.slice(readFrontmatter(text).bodyStart);
-  // A page that opens with its own heading shows that heading, its frontmatter title only naming it elsewhere.
-  const opening = openingHeading(body);
-  const shown = typeof data.title === "string" && opening && opening !== data.title ? opening : doc.title;
-  if (shown !== doc.title || (typeof data.title !== "string" && firstHeadingText(body, 1) !== doc.title)) set.title = shown;
+  // A page that opens with its own heading shows that heading, its frontmatter title only naming it elsewhere,
+  // as does one whose heading follows only components.
+  const opening = openingHeading(body) ?? titled;
+  const shown = (typeof data.title === "string" || titled) && opening && opening !== data.title ? opening : doc.title;
+  if (shown !== doc.title || titled || (typeof data.title !== "string" && firstHeadingText(body, 1) !== doc.title)) set.title = shown;
   if (doc.label !== shown) set.navTitle = doc.label;
   if (doc.unlisted) set.hideInMenu = true;
   // A page's own edit link, or none, as Docusaurus reads `custom_edit_url`.
@@ -371,6 +377,39 @@ function documentFrontmatter(doc: DocusaurusDoc, slug: string | undefined, text:
   if (uncarried.length) diagnostics.review({ file: doc.file, code: "docusaurus-frontmatter", message: `Frontmatter ${uncarried.join(", ")} has no native equivalent and is removed` });
   if (data.tags !== undefined) diagnostics.error({ file: doc.file, code: "docusaurus-frontmatter", message: "Tags publish tag pages, which have no native equivalent yet" });
   return { set, remove: [...CONSUMED, ...uncarried].filter((key) => data[key] !== undefined) };
+}
+
+/**
+ * The level-one heading Docusaurus shows as a page's title where components
+ * come before it and no prose: its content title, which it draws in place,
+ * with no title above the page, as a bouncer's page sets its heading under
+ * the header component naming the bouncer.
+ */
+async function componentTitle(file: string, source: string, dialect: SourceDialect): Promise<string | undefined> {
+  let tree;
+  try {
+    tree = await parseDocument(file, source, readFrontmatter(source).bodyStart, dialect);
+  } catch {
+    return undefined;
+  }
+  let components = false;
+  for (const node of tree.children ?? []) {
+    if (node.type === "heading" && node.depth === 1) return components ? textContent(node).trim() || undefined : undefined;
+    if (node.type === "mdxJsxFlowElement") components = true;
+    else if (!["mdxjsEsm", "mdxFlowExpression", "html", "yaml", "toml"].includes(node.type)) return undefined;
+  }
+  return undefined;
+}
+
+/** A native page without the level-one heading native shows as its title. */
+async function withoutHeading(text: string, title: string): Promise<string> {
+  const tree = await parseMarkdown(text, readFrontmatter(text).bodyStart);
+  const heading = (tree.children ?? []).find((node) => node.type === "heading" && node.depth === 1 && textContent(node).trim() === title);
+  if (!heading?.position) return text;
+  const start = text.lastIndexOf("\n", heading.position.start.offset - 1) + 1;
+  let end = lineEnd(text, heading.position.end.offset);
+  if (/^[ \t]*\r?\n/.test(text.slice(end))) end = lineEnd(text, end);
+  return text.slice(0, start) + text.slice(end);
 }
 
 /** The level-one heading a document opens with, after any imports, exports and comments, as Docusaurus reads its content title. */

@@ -103,6 +103,14 @@ export default defineConfig({
 `;
 
 describe("Docusaurus number prefixes", () => {
+  it("titles a page by the heading it shows under a component, as Docusaurus does, and keeps the component first", async () => {
+    const page = "---\ntitle: Agent Library — Build Your Own\n---\n\nimport Admonition from '@theme/Admonition';\n\n<Admonition type=\"note\" title=\"Agent Library\">\n\nBuild with it.\n\n</Admonition>\n\n# Build Applications With the Agent\n\n## Overview\n\nText.\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/02-install.mdx")).toBe('---\ntitle: Build Applications With the Agent\nslug: start/install\nnavTitle: "Agent Library — Build Your Own"\n---\n\n<Note title="Agent Library">\n\nBuild with it.\n\n</Note>\n\n## Overview\n\nText.\n');
+    });
+  });
+
   it("strips an ordering prefix, but not a version or date that looks like one", () => {
     expect(numberPrefix("01-intro")).toEqual({ name: "intro", position: 1 });
     expect(numberPrefix("003 - setup")).toEqual({ name: "setup", position: 3 });

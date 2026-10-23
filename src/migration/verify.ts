@@ -241,7 +241,8 @@ async function verifyDocument(
   const source = await contentBlocks(tree, { alerts: document.dialect.compareConverted ? original : undefined, code: await codeElement(project, document, original, tree) });
   // Native writes callouts as GitHub alerts in its readable Markdown.
   const native = await contentBlocks(await parseMarkdown(page.markdown.markdown, 0), { alerts: page.markdown.markdown });
-  const prose = normalise(native.prose.join(" "));
+  // The page's title is prose a reader sees, above it.
+  const prose = normalise([page.markdown.title, ...native.prose].join(" "));
   const code = new Set(native.code);
   for (const block of source.prose) {
     if (!prose.includes(block))
