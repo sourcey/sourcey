@@ -9,7 +9,7 @@ import { indentColumns } from "../utils/indentation.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import { identityKey, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
-import { evaluate, exportedConstant, scopeFromProgram, toJson, type CallValue, type ImportBinding, type JsonResult, type ModuleScope } from "./javascript.js";
+import { evaluate, exportedConstant, identifierName, scopeFromProgram, toJson, type CallValue, type ImportBinding, type JsonResult, type ModuleScope } from "./javascript.js";
 import { childrenText, closingTagStart, openingTagEnd, span, textContent, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
 import type { ProjectFiles } from "./project-files.js";
 import { applyEdits, lineAt, lineEnd, markdownText, type TextEdit } from "./text-edits.js";
@@ -51,6 +51,7 @@ export interface DocumentPlace {
     globals?: ReadonlyMap<string, string>;
     mdx1?: boolean;
     headingIds?: boolean;
+    pageExports?: readonly string[];
     calls?: ReadonlyMap<string, (args: readonly JsonValue[]) => JsonValue | undefined>;
     statics?: { base: string; directories: readonly string[] };
   };
@@ -93,7 +94,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
   for (const node of moduleStatements(tree)) {
     for (const statement of node.data?.estree?.body ?? []) {
       if (statement.type === "ImportDeclaration") continue;
-      if (statement.type === "ExportNamedDeclaration" && (isElementOverride(statement, scope, context.elementOverrides) || isPartialOutline(statement, scope))) continue;
+      if (statement.type === "ExportNamedDeclaration" && (isElementOverride(statement, scope, context.elementOverrides) || isPartialOutline(statement, scope) || (await pageData(statement)))) continue;
       fail(
         statement.type.startsWith("Export")
           ? "This export runs code when the page renders, which native Markdown does not execute"
@@ -348,6 +349,21 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       return;
     }
     edits.push({ start, end, text: markdownText(value) });
+  }
+
+  /**
+   * `export const name = value` of a static value the framework does not read
+   * from a page: page data, which the page's uses read where they are.
+   */
+  async function pageData(statement: EstreeNode): Promise<boolean> {
+    const declaration = statement.declaration as EstreeNode | null;
+    if (declaration?.type !== "VariableDeclaration" || declaration.kind !== "const") return false;
+    for (const declarator of declaration.declarations as EstreeNode[]) {
+      const id = declarator.id as EstreeNode;
+      if (id.type !== "Identifier" || !declarator.init || document.dialect.pageExports?.includes(identifierName(id))) return false;
+      if ((await staticValue(declarator.init as EstreeNode)) === undefined) return false;
+    }
+    return true;
   }
 
   /** A static value, following imported constants to their authoritative module and evaluating the framework's fixed calls. */

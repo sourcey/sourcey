@@ -275,9 +275,13 @@ function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonition
     preprocess: preprocess(file),
     calls,
     codeElements: CODE_ELEMENTS,
+    pageExports: PAGE_EXPORTS,
     statics: { base: site.baseUrl, directories: site.staticDirectories },
   });
 }
+
+/** What Docusaurus reads from a document's module, which a page can export to replace: its table of contents, above all. */
+const PAGE_EXPORTS = ["toc", "frontMatter", "contentTitle", "metadata", "assets"];
 
 /** The theme's code block, whose children Docusaurus shows as code: a string, or lines of text. */
 const CODE_ELEMENTS: ReadonlySet<string> = new Set([identityKey("@theme/CodeBlock", "default")]);

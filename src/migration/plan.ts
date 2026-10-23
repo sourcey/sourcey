@@ -44,6 +44,8 @@ export interface SourceDialect extends Dialect {
    * `module#export`: Docusaurus's CodeBlock. Verification reads their text as code.
    */
   codeElements?: ReadonlySet<string>;
+  /** Names a page exports that the framework reads from it (Docusaurus's `toc`), which are not page data. */
+  pageExports?: readonly string[];
   /** The project directories the framework publishes at its base path (`/` or `/docs/`), as `useBaseUrl` addresses them. */
   statics?: { base: string; directories: readonly string[] };
 }

@@ -575,6 +575,24 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("reads a page's static export where it is used, and stops at one Docusaurus reads or one that is code", async () => {
+    const data = "import Admonition from '@theme/Admonition';\n\nexport const TITLE = \"Back up first\";\n\n# Installation\n\n<Admonition type=\"tip\" title={TITLE}>\n\nRun it once.\n\n</Admonition>\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": data }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain('<Tip title="Back up first">');
+      expect(converted).not.toContain("export");
+    });
+    const code = "export const toc = [];\nexport const pill = (color) => ({ color });\n\n# Installation\n\nText.\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": code }, async (root) => {
+      const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
+      expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => [item.line, item.message])).toEqual([
+        [1, "This export runs code when the page renders, which native Markdown does not execute"],
+        [2, "This export runs code when the page renders, which native Markdown does not execute"],
+      ]);
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
