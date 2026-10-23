@@ -21,7 +21,7 @@
 
 ### Fixed
 
-- A migration's check of each page reads an HTML element that is not inline, such as a table cell, apart from its neighbours, as a reader sees it. A table row written on one line had read as its cells run together, and stopped the migration as prose not preserved.
+- A migration's check of each page reads an HTML element that is not inline, such as a table cell, apart from its neighbours, and a line break (`<br />`) as a space, as a reader sees them. A table row written on one line had read as its cells run together, and stopped the migration as prose not preserved.
 - A migration ends an HTML element's raw lines before the first block of Markdown MDX reads inside it, such as a heading or a fenced code block right after `<details>` and its `<summary>`, or a component, with the blank line CommonMark needs. Native had printed the heading or the code as raw text inside the element.
 - A migration keeps a paragraph written as `<p>` at the column its element stands at. Inside a component indented four spaces, such as a tab, the paragraph had moved to the margin, so native read the code blocks and text beside it as indented code.
 - `sourcey migrate docusaurus` leads a client redirect to its page as the site spells addresses, applying `trailingSlash` as Docusaurus does. A redirect written to `/start` on a site whose pages end in a slash had stopped the native build at a target that does not exist.

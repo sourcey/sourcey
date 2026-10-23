@@ -656,8 +656,8 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
-  it("reads a table's cells written on one line apart, as a reader sees them", async () => {
-    const page = "# Installation\n\n<table>\n  <tbody>\n    <tr><td>Setup time</td><td>~ 10 min</td></tr>\n  </tbody>\n</table>\n";
+  it("reads a table's cells written on one line apart, and a line break as a space, as a reader sees them", async () => {
+    const page = "# Installation\n\n<table>\n  <tbody>\n    <tr><td>Setup time</td><td>~ 10 min</td></tr>\n  </tbody>\n</table>\n\n| SDK | Example |\n| --- | --- |\n| React | Node: [one](https://example.com/one)<br />Go: [two](https://example.com/two) |\n";
     await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
       const report = await migrateProject({ framework: "docusaurus", root });
       expect(report.applied).toBe(true);

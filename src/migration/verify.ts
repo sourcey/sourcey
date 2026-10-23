@@ -290,9 +290,11 @@ const INLINE_TAGS = new Set(["a", "abbr", "b", "bdi", "bdo", "cite", "code", "da
 
 /**
  * The text a reader sees in a node: an HTML element that is not inline, such
- * as a table cell, reads apart from its neighbours, as a block of raw HTML does.
+ * as a table cell, reads apart from its neighbours, as a block of raw HTML
+ * does, and a line break, as MDX's `<br />` or Markdown's inline `<br>`, is a space.
  */
 function readerText(node: SyntaxNode): string {
+  if (node.type === "html" && /^<br\s*\/?>$/i.test(node.value ?? "")) return " ";
   const block = (node.type === "mdxJsxTextElement" || node.type === "mdxJsxFlowElement") && !!node.name && /^[a-z]/.test(node.name) && !INLINE_TAGS.has(node.name);
   const text = node.children ? node.children.map(readerText).join("") : textContent(node);
   return block ? ` ${text} ` : text;
