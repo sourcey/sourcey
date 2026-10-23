@@ -50,9 +50,13 @@ Pages are read the way your Docusaurus version read them. Docusaurus 3 reads Mar
 | `@theme/Tabs`, `@theme/TabItem` | `Tabs` and `Tab`; native tabs open on their first tab and are chosen per set, so `groupId`, `queryString` and a default tab are listed in the report |
 | `@theme/Admonition` | the matching callout |
 | `@theme/DocCardList` | `PageCards` for the category the page lands |
-| `@docusaurus/Link` | a Markdown link |
+| `@docusaurus/Link` | a Markdown link; inside an HTML element, or with an anchor's attributes such as `className` or `style`, the anchor Docusaurus draws |
+| `@theme/CodeBlock` | a fenced code block with its language and title |
+| `@theme/ThemedImage` | a figure with its light and dark pictures |
 | imported Markdown partials | `<Include>` |
 | `src/pages/*.md` | [site pages](../configuration.md#site-pages) (`pages: "./src/pages"`), drawn with the site's header and footer as Docusaurus drew them |
+
+A page's JavaScript is read where it is static and written as what it shows: its `export const` values, constants it imports from the project (`@site/` included), `useBaseUrl()`, lists drawn with `.map()` over static data, the page's own components and helper functions, conditional JSX such as `{premium && <Badge />}`, and pure string and array methods. A style object is written as the CSS React writes from it. Anything else, such as state, effects or a fetch, stops the migration at its line.
 
 ## What stops a migration
 
