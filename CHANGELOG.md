@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- `sourcey migrate docusaurus` names the pages each sidebar lists before its first category by their place in the one navigation its sidebars make. With several sidebars that each opened with such pages, the native build had stopped at a duplicate group ID.
 - A migration closes an HTML element that JSX closed with `/>`, such as `<iframe ... />`, with its end tag, as HTML closes only a void element at its start tag. The browser had read the rest of the page as the iframe's fallback text and shown none of it. SVG and MathML keep `/>`, which they read as JSX does.
 - A migration writes a JSX style object's numbers as React does, in pixels unless the property is unitless, such as `lineHeight`, or the number is 0. `fontSize: 12.5` had become `font-size: 12.5`, which a browser ignores. A custom property keeps its value as written, and `msTransform` is written `-ms-transform`.
 - `sourcey migrate docusaurus` writes a `Link` inside an HTML element, or one with an anchor's attributes (`className`, `style`, `target`, `rel`, `title`, `id`), as the anchor Docusaurus draws, which opens another site in a new tab. Inside an HTML element it had become a Markdown link, which native shows there as text, and an anchor's attributes had stopped the migration.

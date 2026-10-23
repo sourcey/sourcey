@@ -126,7 +126,7 @@ export async function convertSidebars(context: SidebarContext): Promise<SidebarN
     return { group: item.label, id, ...(href ? { href } : {}), ...(collapsed ? { collapsed: true } : {}), pages };
   };
 
-  for (const [, items] of sidebars) result.groups.push(...topLevelGroups(expand(items).map((item) => convert(item, "")).filter((item): item is NavigationItem => !!item)));
+  for (const [, items] of sidebars) result.groups.push(...topLevelGroups(expand(items).map((item) => convert(item, "")).filter((item): item is NavigationItem => !!item), result.groups.length));
   placeUnlisted(result.groups, docs.filter((entry) => !entry.draft && !listed.has(entry.id)).map((entry) => context.reference(entry)));
   return result;
 }

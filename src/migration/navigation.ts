@@ -65,13 +65,15 @@ export function groupIds(): (parent: string, label: string, fallback: string) =>
 
 /**
  * Top-level navigation is a list of groups. Runs of top-level pages and links,
- * which source frameworks show without a heading, become unlabelled groups.
+ * which source frameworks show without a heading, become unlabelled groups,
+ * named by their place in the navigation: `before` groups precede these,
+ * as one sidebar's do another's in the navigation they make together.
  */
-export function topLevelGroups(items: readonly NavigationItem[]): GroupConfig[] {
+export function topLevelGroups(items: readonly NavigationItem[], before = 0): GroupConfig[] {
   const groups: GroupConfig[] = [];
   let loose: NavigationItem[] = [];
   const flush = () => {
-    if (loose.length) groups.push({ group: "", id: `ungrouped-${groups.length + 1}`, pages: loose });
+    if (loose.length) groups.push({ group: "", id: `ungrouped-${before + groups.length + 1}`, pages: loose });
     loose = [];
   };
   for (const item of items) {
