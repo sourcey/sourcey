@@ -109,7 +109,7 @@ function createChangelogPage(overrides?: Partial<ChangelogPage>): ChangelogPage 
           {
             type: "added",
             label: "Added",
-            entries: [{ text: "Added feeds", html: "Added feeds", links: [], refs: [] }],
+            entries: [{ markdown: "Added feeds", text: "Added feeds", html: "Added feeds", links: [], refs: [] }],
           },
         ],
         sourceOrder: 0,

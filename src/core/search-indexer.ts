@@ -142,9 +142,8 @@ export function buildSearchIndex(
       const entry: SearchEntry = {
         title: page.title,
         searchText: page.kind === "markdown" ? page.readerMarkdown ?? page.markdown : summarizeChangelog(page),
-        content: page.kind === "markdown"
-          ? page.description || stripHtml(page.html).slice(0, 200)
-          : page.description || summarizeChangelog(page).slice(0, 200),
+        // A Markdown page's text is already its search text, so its content is its description alone.
+        content: page.kind === "markdown" ? page.description : page.description || summarizeChangelog(page).slice(0, 200),
         url: href,
         tab: tabLabel,
         category: "Pages",
@@ -234,13 +233,6 @@ function markOpenings(entries: SearchEntry[], owners: Map<SearchEntry, string>, 
       }
     }
   }
-}
-
-/**
- * Strip HTML tags from a string to get plain text.
- */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function summarizeChangelog(page: Extract<DocsPage, { kind: "changelog" }>): string {

@@ -6,6 +6,7 @@ import {
   siteMarkdownOptions,
   extractHeadings,
   extractFirstParagraph,
+  htmlText,
   stripMarkdownLinks,
   type CalloutRenderOptions,
   type MarkdownRenderOptions,
@@ -85,16 +86,6 @@ export function rewriteGeneratedDoxygenHtmlLinks(html: string): string {
 const QUALIFIER =
   /^(?:public|protected|private|virtual|static|const|inline|explicit|nodiscard|constexpr|consteval|override|final|noexcept(?:\(.*\))?|&|&amp;|&&|&amp;&amp;|-&gt; .+)$/;
 
-function plainText(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, "")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function qualifierSpans(codes: string): string {
   return codes.replace(/<code>([^<]+)<\/code>/g, '<span class="api-qualifier">$1</span>');
 }
@@ -116,16 +107,16 @@ export function polishGeneratedDoxygenHtml(
   let out = html.replace(
     /^\s*(<p><a id="[^"]+"><\/a><\/p>\n)?<h1 id="([^"]+)">([\s\S]*?)<\/h1>\n?/,
     (match, anchor: string | undefined, id: string, inner: string) =>
-      plainText(inner) === page.title.trim() ? `${anchor ?? ""}<a id="${id}"></a>\n` : match,
+      htmlText(inner) === page.title.trim() ? `${anchor ?? ""}<a id="${id}"></a>\n` : match,
   );
 
-  const description = page.description ? plainText(page.description) : "";
+  const description = page.description ? htmlText(page.description) : "";
   if (description) {
     const firstSection = out.search(/<h[2-6][\s>]/);
     const head = firstSection === -1 ? out : out.slice(0, firstSection);
     const repeated = head
       .match(/<p>((?:(?!<\/p>)[\s\S])*)<\/p>\n?/g)
-      ?.find((p) => plainText(p) === description);
+      ?.find((p) => htmlText(p) === description);
     if (repeated) out = out.replace(repeated, "");
   }
 

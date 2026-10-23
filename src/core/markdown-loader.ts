@@ -4,7 +4,7 @@ import { normalizeChangelog } from "./changelog-normalizer.js";
 import { slugify } from "../utils/slug.js";
 import { smartypants } from "../utils/typography.js";
 import {
-  decodeEntities,
+  htmlText,
   renderMarkdownInline,
   extractFirstParagraph,
   firstHeadingText,
@@ -313,7 +313,7 @@ export function drawDocsSource(source: DocsSource, navigation?: SiteTab, documen
   if (source.layout === "page" || source.layout === "blank") return { ...page, html: smart ? smartypants(html) : html };
   let cleanHtml = html.replace(/^\s*<h1([^>]*)>(.*?)<\/h1>\s*/i, (match, attributes: string, inner: string) => {
     // The heading's visible text against the title, so a title with an apostrophe or ampersand still matches.
-    if (decodeEntities(visibleText(inner)) !== source.title.replace(/\s+/g, " ").trim()) return match;
+    if (htmlText(inner) !== source.title.replace(/\s+/g, " ").trim()) return match;
     const id = attributes.match(/\bid="([^"]+)"/)?.[1];
     const aliases = inner.match(/<span\b[^>]*\bid="[^"]+"[^>]*><\/span>/g)?.join("") ?? "";
     return `${id ? `<span id="${id}" aria-hidden="true"></span>` : ""}${aliases}`;
@@ -322,7 +322,7 @@ export function drawDocsSource(source: DocsSource, navigation?: SiteTab, documen
   if (source.description && !explicitDescription) {
     const opening = cleanHtml.match(/^(?:\s*<span\b[^>]*aria-hidden="true"[^>]*><\/span>)*\s*<p>([\s\S]*?)<\/p>\s*/);
     // The lede is plain text: an opening paragraph with links, code or emphasis stays in the body.
-    if (opening && !/<[a-z]/i.test(opening[1]) && !openingHasComponent(nodes) && visibleText(opening[1]) === visibleText(renderMarkdownInline(source.description))) cleanHtml = opening[0].replace(/<p>[\s\S]*?<\/p>\s*$/, "") + cleanHtml.slice(opening[0].length);
+    if (opening && !/<[a-z]/i.test(opening[1]) && !openingHasComponent(nodes) && htmlText(opening[1]) === htmlText(renderMarkdownInline(source.description))) cleanHtml = opening[0].replace(/<p>[\s\S]*?<\/p>\s*$/, "") + cleanHtml.slice(opening[0].length);
     else hideLede = true;
   }
   return { ...page, html: smart ? smartypants(cleanHtml) : cleanHtml, ...(hideLede ? { hideLede } : {}) };
@@ -337,13 +337,6 @@ export function docsExport(source: MarkdownSource, navigation?: SiteTab, documen
   try {
     return { markdown: readableContent(nodes, "agents", links), ...(hasAgentContent(nodes) && { readerMarkdown: readableContent(nodes, "people", links) }) };
   } catch (error) { throw new Error(`${source.sourcePath}: ${(error as Error).message}`, { cause: error }); }
-}
-
-function visibleText(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /**

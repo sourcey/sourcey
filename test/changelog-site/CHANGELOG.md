@@ -19,6 +19,7 @@ All notable changes for the changelog integration fixture.
 ### Fixed
 
 - Fixed release search indexing
+- Fixed the reader's `search` shortcut
 
 ## 1.1.0 - 2026-04-10
 

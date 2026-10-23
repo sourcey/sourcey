@@ -352,6 +352,11 @@ describe("buildDocs (integration)", () => {
       expect(rss).toContain("1.2.0");
       expect(rss).toContain("<link>https://docs.example.com/reference/changelog.html</link>");
 
+      // A release's export carries its entries as written, their links resolved.
+      const releaseMarkdown = await readFile(resolve(outputDir, "changelog/1-2-0.md"), "utf-8");
+      expect(releaseMarkdown).toContain("- Linked to the [Introduction](https://docs.example.com/reference/introduction.md) page\n");
+      expect(releaseMarkdown).toContain("- Fixed the reader's `search` shortcut\n");
+
       const llms = await readFile(resolve(outputDir, "llms.txt"), "utf-8");
       expect(llms).toContain("[Changelog]");
       expect(llms).toContain("changelog.md");
@@ -365,6 +370,33 @@ describe("buildDocs (integration)", () => {
       expect(searchIndex).toContain("/reference/changelog.html#1-2-0");
 
       expect(existsSync(resolve(outputDir, "_og/changelog/1-2-0.png"))).toBe(true);
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes text as a reader reads it in every text output, never as HTML entities", async () => {
+    const outputDir = resolve(import.meta.dirname, "../../.test-output-text-site");
+    const configDir = resolve(import.meta.dirname, "../text-site");
+    try {
+      await buildSiteDocs({ configDir, outputDir, generateOgImages: false });
+
+      // Exports, llms files, the documents index and search: an entity in any of them is HTML read as text.
+      const files = (await readdir(outputDir, { recursive: true })).filter((file) => /\.(md|txt|json)$/.test(file));
+      expect(files.length).toBeGreaterThan(10);
+      for (const file of files) {
+        expect(await readFile(resolve(outputDir, file), "utf-8"), file).not.toMatch(/&(?:#39|quot|amp|lt|gt);/);
+      }
+      const vocabulary = files.filter((file) => /^_search\/.+\/v\d+\.json$/.test(file));
+      expect(vocabulary.length).toBeGreaterThan(0);
+      for (const file of vocabulary) {
+        const words: string[] = JSON.parse(await readFile(resolve(outputDir, file), "utf-8"));
+        expect(words.filter((word) => ["quot", "amp", "lt", "gt", "39", "copy"].includes(word)), file).toEqual([]);
+      }
+
+      // Exports carry content as written.
+      expect(await readFile(resolve(outputDir, "changelog.md"), "utf-8")).toContain("- The reader's \"search\" & `a<b` shortcut works.\n");
+      expect(await readFile(resolve(outputDir, "introduction.md"), "utf-8")).toContain("A reader's \"first\" page & its <abbr>HTML</abbr>, with `a<b && c` in code.");
     } finally {
       await rm(outputDir, { recursive: true, force: true });
     }

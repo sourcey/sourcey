@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info:
+  title: Tom's "Pets" & Toys
+  version: 1.0.0
+  description: A reader's "pets" & their toys.
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List Tom's "pets" & toys
+      description: Returns a reader's "pets" & their toys, where `count < 10`.
+      responses:
+        "200":
+          description: The reader's "pets" & toys.

@@ -97,7 +97,7 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
             version.summary,
             ...version.sections.map(
               (section) =>
-                `### ${section.label}\n\n${section.entries.map((entry) => `- ${entry.text}`).join("\n")}`,
+                `### ${section.label}\n\n${section.entries.map((entry) => `- ${entry.markdown}`).join("\n")}`,
             ),
           ]
             .filter(Boolean)

@@ -1,6 +1,6 @@
 import type { Token, Tokens } from "marked";
 import { slugify } from "../utils/slug.js";
-import { lexMarkdown, renderMarkdownInline, PAGE_CONTENT } from "../utils/markdown.js";
+import { inlineText, lexMarkdown, renderInlineMarkdown, PAGE_CONTENT } from "../utils/markdown.js";
 import type {
   ChangelogChangeType,
   ChangelogDiagnostic,
@@ -237,10 +237,7 @@ function parseReferenceLinks(markdown: string): VersionLink[] {
 }
 
 function headingText(heading: Tokens.Heading): string {
-  return heading.tokens
-    .map((token) => ("text" in token ? token.text : token.raw))
-    .join("")
-    .trim();
+  return inlineText(heading.tokens).trim();
 }
 
 function shouldContributeToDescription(token: Token): boolean {
@@ -337,12 +334,12 @@ function createEntry(
   repoUrl: string | undefined,
 ): NormalizedChangelogEntry {
   const compact = markdown.replace(/\n+/g, " ").trim();
-  const html = renderMarkdownInline(compact, PAGE_CONTENT);
-  const text = stripHtml(html);
+  const { html, tokens } = renderInlineMarkdown(compact, PAGE_CONTENT);
+  const text = inlineText(tokens).replace(/\s+/g, " ").trim();
   const links = extractInlineLinks(compact);
   const refs = extractRefs(compact, repoUrl);
 
-  return { text, html, links, refs };
+  return { markdown: compact, text, html, links, refs };
 }
 
 function extractInlineLinks(markdown: string): ChangelogInlineLink[] {
@@ -605,10 +602,6 @@ function normalizeVersionKey(version: string): string {
   const cleaned = version.trim().replace(/^\[|\]$/g, "");
   if (/^unreleased$/i.test(cleaned)) return "unreleased";
   return cleaned.replace(/^v/i, "").toLowerCase();
-}
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 interface ParsedSemver {

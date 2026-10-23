@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   extractFirstParagraph,
+  htmlText,
+  inlineText,
+  renderInlineMarkdown,
   renderMarkdown,
   renderMarkdownInline,
   stripMarkdownLinks,
@@ -81,6 +84,24 @@ describe("renderMarkdownInline", () => {
     const html = renderMarkdownInline("**bold** text");
     expect(html).toContain("<strong>bold</strong>");
     expect(html).not.toContain("<p>");
+  });
+
+  it("reads text a reader sees from the tokens it rendered, which draw as Marked's own rendering does", () => {
+    for (const markdown of [
+      "A reader's \"quote\" &amp; `a<b &lt; c` [link](https://example.com)",
+      "With <b>authored HTML</b>, which is sanitized",
+    ]) {
+      expect(`<p>${renderInlineMarkdown(markdown).html}</p>\n`).toBe(renderMarkdown(markdown));
+    }
+    const { tokens } = renderInlineMarkdown("A reader's \"quote\" &amp; `a<b &lt; c` <b>bold</b> [link](https://example.com)");
+    // Code shows its entities as written; prose decodes the ones its author wrote.
+    expect(inlineText(tokens)).toBe("A reader's \"quote\" & a<b &lt; c bold link");
+  });
+});
+
+describe("htmlText", () => {
+  it("reads rendered HTML as a reader does: tags dropped, entities decoded, spaces collapsed", () => {
+    expect(htmlText("<code>A</code> reader&#39;s &quot;quote&quot; &amp;\n<em>more</em>")).toBe("A reader's \"quote\" & more");
   });
 });
 

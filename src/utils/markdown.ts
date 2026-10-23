@@ -485,18 +485,30 @@ function headingSource(tokens: Token[]): string {
 }
 
 /**
- * A heading's text as a reader sees it, for the table of contents and a
- * fallback page title: inline HTML tags dropped, entities decoded.
+ * Inline Markdown's text as a reader sees it, for a table of contents, a title
+ * or a search entry: inline HTML tags dropped, entities decoded, and code as
+ * written, since a code span shows its entities as text.
  */
-function headingText(tokens: Token[]): string {
+export function inlineText(tokens: readonly Token[]): string {
   return tokens
     .map((token) => {
-      const nested = (token as { tokens?: Token[] }).tokens;
-      if (nested?.length) return headingText(nested);
       if (token.type === "html") return "";
+      if (token.type === "codespan") return (token as Tokens.Codespan).text;
+      if (token.type === "br") return " ";
+      const nested = (token as { tokens?: Token[] }).tokens;
+      if (nested?.length) return inlineText(nested);
       return decodeEntities("text" in token ? (token as { text: string }).text : token.raw);
     })
     .join("");
+}
+
+/**
+ * A fragment of rendered HTML as a reader reads it, where only the HTML is at
+ * hand, as when a drawn heading is compared with a title: tags dropped,
+ * entities decoded, spaces collapsed.
+ */
+export function htmlText(html: string): string {
+  return decodeEntities(html.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
 }
 
 /** Decode readable HTML entities through the same standards-complete owner. */
@@ -506,7 +518,7 @@ export function headingInfo(heading: Tokens.Heading) {
   const explicit = heading.text.match(/\s+\{#([^}]+)\}\s*$/);
   const markdown = explicit ? heading.text.slice(0, explicit.index) : heading.text;
   const inline = Lexer.lexInline(markdown);
-  const text = headingText(inline);
+  const text = inlineText(inline);
   const source = headingSource(inline);
   const id = explicit?.[1] ?? (githubSlug(text) || "section");
   return { id, text, markdown, explicit: !!explicit, previousId: slugify(source) };
@@ -525,7 +537,7 @@ export function extractHeadings(input: string): PageHeading[] {
       if (depth === 2 || depth === 3) {
         const heading = token as Tokens.Heading;
         const explicit = heading.text.match(/\s+\{#([^}]+)\}\s*$/);
-        const text = headingText(heading.tokens).replace(/\s+\{#[^}]+\}\s*$/, "");
+        const text = inlineText(heading.tokens).replace(/\s+\{#[^}]+\}\s*$/, "");
         headings.push({ level: depth as 2 | 3, text, id: explicit?.[1] ?? slugify(headingSource(heading.tokens)) });
       }
     }
@@ -657,20 +669,23 @@ function findMarkdownHrefEnd(input: string, start: number): number {
   return -1;
 }
 
-/**
- * Render Markdown to HTML.
- */
 const parsersByOptions = new WeakMap<MarkdownRenderOptions, Marked>();
 
-/** `generated` is HTML the build drew, placed in `input` by `generatedMarker`. */
+/** The parser for a set of options: a shared options object, such as an adapter's, builds its parser once. */
+function markdownParser(options?: MarkdownRenderOptions): Marked {
+  if (!options) return marked;
+  let parser = parsersByOptions.get(options);
+  if (!parser) parsersByOptions.set(options, (parser = createMarkdownParser(options)));
+  return parser;
+}
+
+/**
+ * Render Markdown to HTML. `generated` is HTML the build drew, placed in
+ * `input` by `generatedMarker`.
+ */
 export function renderMarkdown(input?: string, options?: MarkdownRenderOptions, generated?: readonly string[]): string {
   if (!input) return "";
-  let parser = marked;
-  if (options) {
-    // A shared options object, such as an adapter's, builds its parser once.
-    parser = parsersByOptions.get(options) ?? createMarkdownParser(options);
-    parsersByOptions.set(options, parser);
-  }
+  const parser = markdownParser(options);
   return rendered(() => parser.parse(input, { async: false }) as string, options?.operationLinks, generated);
 }
 
@@ -688,8 +703,21 @@ export function pageLinkHref(value: string): string | null {
  * Render Markdown to inline HTML (strip wrapping <p> tags).
  */
 export function renderMarkdownInline(input?: string, options?: MarkdownRenderOptions): string {
-  if (!input) return "";
-  const parser = options ? parsersByOptions.get(options) ?? createMarkdownParser(options) : marked;
-  if (options) parsersByOptions.set(options, parser);
-  return rendered(() => parser.parseInline(input, { async: false }) as string, options?.operationLinks);
+  return input ? renderInlineMarkdown(input, options).html : "";
+}
+
+/**
+ * Inline Markdown rendered from one lexing, with the tokens it was rendered
+ * from, so its text is read with `inlineText` rather than taken back out of
+ * the HTML. The steps are Marked's own `parseInline`: lex, walk, render.
+ */
+export function renderInlineMarkdown(input: string, options?: MarkdownRenderOptions): { html: string; tokens: Token[] } {
+  const parser = markdownParser(options);
+  const settings = { ...parser.defaults };
+  const tokens = parser.Lexer.lexInline(input, settings);
+  const html = rendered(() => {
+    if (settings.walkTokens) parser.walkTokens(tokens, settings.walkTokens);
+    return parser.Parser.parseInline(tokens, settings);
+  }, options?.operationLinks);
+  return { html, tokens };
 }

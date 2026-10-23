@@ -352,6 +352,9 @@ export interface ChangelogRef {
 }
 
 export interface NormalizedChangelogEntry {
+  /** The entry as written, on one line: what its Markdown export carries. */
+  markdown: string;
+  /** The entry as a reader reads it, without markup. */
   text: string;
   html: string;
   links: ChangelogInlineLink[];

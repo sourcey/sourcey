@@ -448,6 +448,7 @@ function relinked(source: DocsPage, scope: LinkScope): DocsPage {
     if (version.summary) version.summary = rewriteMarkdownLinks(version.summary, scope);
     for (const section of version.sections) {
       for (const entry of section.entries) {
+        entry.markdown = rewriteMarkdownLinks(entry.markdown, scope);
         entry.html = rewriteHtmlLinks(entry.html, scope);
         entry.links = entry.links.map((link) => ({ ...link, href: resolveInternalHref(link.href, scope) ?? link.href }));
       }

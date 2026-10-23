@@ -28,6 +28,16 @@ describe("normalizeChangelog", () => {
     expect(changelog.diagnostics).toEqual([]);
   });
 
+  it("keeps an entry as written and its text as a reader reads it", () => {
+    const changelog = normalizeChangelog(
+      "# Changelog\n\n## 1.0.0 - 2026-01-01\n\n### Fixed\n\n- A reader's \"quoted\" `code` & [link](./guide.md)\n",
+    );
+    const [entry] = changelog.versions[0].sections[0].entries;
+
+    expect(entry.markdown).toBe("A reader's \"quoted\" `code` & [link](./guide.md)");
+    expect(entry.text).toBe("A reader's \"quoted\" code & link");
+  });
+
   it("detects conventional changelog section names and maps them to canonical change types", () => {
     const markdown = readFileSync(resolve(FIXTURE_DIR, "changelog-conventional.md"), "utf-8");
     const changelog = normalizeChangelog(markdown);
