@@ -340,6 +340,17 @@ describe("native compilation", () => {
     ]) await expect(buildSourceySite({ config: await resolveConfigFromRaw({ ...raw, redirects }, root), generateOgImages: false })).rejects.toThrow(/Redirect|redirect/);
   }));
 
+  it("reads a section's own page before the pages it holds, with pages before and after it", () => fixture(async root => {
+    for (const name of ["intro", "agent", "install", "upgrade"]) await file(root, `${name}.md`, `# ${name[0].toUpperCase()}${name.slice(1)}\n\nText.\n`);
+    const groups = [{ group: "", pages: ["intro"] }, { group: "Agent", href: "/agent.html", pages: [{ page: "agent", hidden: true }, "install", "upgrade"] }];
+    const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups }) }] } }, root);
+    const files = await sourceyArtifacts(await buildSourceySite({ config, generateOgImages: false }));
+    const adjacent = (page: string) => [...(files.get(page)!.toString().match(/aria-label="Previous and next page"[\s\S]*?<\/nav>/)?.[0] ?? "").matchAll(/<a href="([^"]+)"/g)].map((link) => link[1]);
+    expect(adjacent("intro.html")).toEqual(["/agent.html"]);
+    expect(adjacent("agent.html")).toEqual(["/intro.html", "/install.html"]);
+    expect(adjacent("install.html")).toEqual(["/agent.html", "/upgrade.html"]);
+  }));
+
   it("keeps article pagination across branches that the bounded sidebar omits", () => fixture(async root => {
     // An authored tree is shown whole up to 400 pages; past that, only the branch around the page.
     const names = Array.from({ length: 402 }, (_, index) => `page-${index}`);

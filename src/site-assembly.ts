@@ -291,6 +291,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       const slug = `_sections/${slugify(group.label) || "pages"}-${createHash("sha256").update(id).digest("hex").slice(0,8)}`;
       const title = context.localeConfig.messages.navigation?.[group.id ?? ""] ?? group.label;
       group.href = sectionPage(id, slug, title, () => [...walkNavItems([group])].map(item => `- [${item.label.replace(/\]/g, "\\]")}](${item.href})`).join("\n"));
+      group.composed = true;
     }
   }
   if (config.changelog.permalinks) addPermalinkPages(pageMap, config.prettyUrls);

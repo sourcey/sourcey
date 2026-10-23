@@ -46,6 +46,8 @@ export interface SiteNavGroup {
   id?: string;
   /** The page of this tab its link leads to: the section's own page, current when that page is. */
   page?: string;
+  /** Its page is one the build composed to list a long section, not a page of the tab's own. */
+  composed?: true;
   items: (SiteNavItem | SiteNavGroup)[];
 }
 
@@ -306,9 +308,10 @@ function navigationIndex(tab: SiteTab): NavigationIndex {
     }
   }
   visit(tab.groups);
-  // Previous and next lead to other pages: a link to a section of a page already listed is not one.
+  // Previous and next lead to other pages, a section's own page before the pages it holds: a link
+  // to a section of a page already listed is not one.
   const seen = new Set<string>(), pages = new Set<string>();
-  const ordered = [...walkNavItems(tab.groups)].filter(item => {
+  const ordered = [...readingPages(tab.groups)].filter(item => {
     const page = item.href.split("#")[0] || item.id;
     if (seen.has(item.id) || pages.has(page)) return false;
     seen.add(item.id); pages.add(page); return true;
@@ -339,6 +342,17 @@ function navigationIndex(tab: SiteTab): NavigationIndex {
     if (own) index.adjacent.set(own.page, adjacent);
   }
   navigationIndexes.set(tab, index); return index;
+}
+
+/** A tab's pages in reading order: a section's own page, then the pages it holds. A page the build composed to list a section is not one to read through. */
+function* readingPages(groups: readonly SiteNavGroup[]): Generator<SiteNavItem> {
+  for (const group of groups) {
+    if (group.page && group.href && !group.composed) yield { label: group.label, href: group.href, id: group.page };
+    for (const item of group.items) {
+      if (isNavGroup(item)) yield* readingPages([item]);
+      else yield item;
+    }
+  }
 }
 
 /** Keep unrelated sections at their destinations; the active branch stays expanded. */
