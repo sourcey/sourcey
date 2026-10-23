@@ -689,12 +689,25 @@ describe("sourcey migrate docusaurus", () => {
       "```",
       "</details>",
       "",
+      // A line that opens another element after the Markdown opens raw lines again.
+      "<div style={{ display: 'flex' }}>",
+      "<div style={{ flex: '0 0 20%' }}>",
+      "<Admonition type=\"note\">Card.</Admonition>",
+      "</div>",
+      "<div style={{ flex: '1' }}>",
+      "It connects **feeds** to your firewall.",
+      "",
+      "Check it.",
+      "</div>",
+      "</div>",
+      "",
     ].join("\n");
-    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+    await withProject({ ...site, "docs/start/02-install.mdx": `import Admonition from '@theme/Admonition';\n\n${page}` }, async (root) => {
       await migrateProject({ framework: "docusaurus", root });
       const converted = await read(root, "docs/start/02-install.mdx");
       expect(converted).toContain('<snippet-extract data-extract="signup">\n\n## Sign Up\n');
       expect(converted).toContain('<details>\n<summary>JSON <em>Schema</em></summary>\n\n```json\n{ "type": "object" }\n```\n</details>');
+      expect(converted).toContain('<div style="display: flex">\n<div style="flex: 0 0 20%">\n<Note>Card.</Note>\n</div>\n<div style="flex: 1">\nIt connects <strong>feeds</strong> to your firewall.\n\nCheck it.\n</div>\n</div>');
     });
   });
 

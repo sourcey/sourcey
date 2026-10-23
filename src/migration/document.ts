@@ -1051,37 +1051,64 @@ const MARKDOWN_BLOCKS = new Set(["heading", "code", "list", "blockquote", "table
 
 /**
  * MDX reads Markdown inside an HTML element; CommonMark prints an HTML
- * block's lines, from its first tag to a blank line, as raw HTML. The first
- * block of Markdown on those lines, such as a heading or a fenced code block
- * after `<details>`, gets the blank line before it that ends the HTML block,
- * as do components. Inline Markdown on the lines before it is written as the
+ * block's lines, from the line that opens it with a tag to a blank line, as
+ * raw HTML, and reads Markdown after that until a line opens another. Each
+ * block of Markdown on raw lines, such as a heading or a fenced code block
+ * right after `<details>` and its `<summary>`, gets the blank line before it
+ * that ends the HTML block. Inline Markdown on raw lines is written as the
  * HTML MDX made of it: code spans, emphasis, strikethrough, links and
- * backslash escapes. Components keep their own conversion.
+ * backslash escapes. Components keep their own conversion, which native reads
+ * on raw lines too.
  */
 function rawBlockMarkdown(source: string, element: SyntaxNode): TextEdit[] {
   const { start, end } = span(element);
-  const blank = /\n[ \t]*\n/.exec(source.slice(start, end));
-  let rawEnd = blank ? start + blank.index : end;
   const edits: TextEdit[] = [];
-  const markdown = [...walk(element)].map(({ node }) => node).find((node) => {
-    if (!node.position || node === element || span(node).start >= rawEnd) return false;
-    const component = node.type === "mdxJsxFlowElement" && !!node.name && !/^[a-z]/.test(node.name);
-    return component || MARKDOWN_BLOCKS.has(node.type);
-  });
-  if (markdown) {
-    const line = source.lastIndexOf("\n", span(markdown).start - 1) + 1;
-    // Four columns in, the block would read as indented code after the blank line.
-    if (line > start && span(markdown).start - line < 4) {
-      edits.push({ start: line, end: line, text: "\n" });
-      rawEnd = line;
+  const lineOf = (offset: number) => source.lastIndexOf("\n", offset - 1) + 1;
+  // The blocks of Markdown in the element, by the line they open on; a component's content is its own.
+  const blocks = new Map<number, number>();
+  const find = (node: SyntaxNode): void => {
+    for (const child of node.children ?? []) {
+      if (!child.position || (child.name && !/^[a-z]/.test(child.name))) continue;
+      if (MARKDOWN_BLOCKS.has(child.type)) {
+        if (!blocks.has(lineOf(span(child).start))) blocks.set(lineOf(span(child).start), span(child).end);
+      } else find(child);
     }
+  };
+  find(element);
+  const raw: [number, number][] = [];
+  let open = true;
+  let paragraph = false;
+  for (let line = lineOf(start); line < end; ) {
+    const next = lineEnd(source, line);
+    const text = source.slice(line, next);
+    const block = blocks.get(line);
+    if (!text.trim()) {
+      open = paragraph = false;
+    } else if (block !== undefined) {
+      // Four columns in, the block would read as indented code after the blank line; it stays raw.
+      const indent = text.length - text.trimStart().length;
+      if (open && indent < 4 && line > lineOf(start)) {
+        edits.push({ start: line, end: line, text: "\n" });
+        open = false;
+      }
+      if (!open) {
+        paragraph = false;
+        line = lineEnd(source, Math.max(block - 1, line));
+        continue;
+      }
+    } else if (!open && opensHtmlBlock(text, paragraph)) open = true;
+    else if (!open) paragraph = true;
+    if (open) raw.push([line, next]);
+    line = next;
   }
+  const rawAt = (offset: number) => raw.some(([from, to]) => offset >= from && offset < to);
   const TAGS: Record<string, string> = { emphasis: "em", strong: "strong", delete: "del" };
   const visit = (node: SyntaxNode): void => {
     for (const child of node.children ?? []) {
       if (!child.position) continue;
       const at = span(child);
-      if (at.start >= rawEnd) return;
+      if (at.start >= end) return;
+      if (!rawAt(at.start) && child.type !== "mdxJsxFlowElement" && child.type !== "mdxJsxTextElement" && child.type !== "paragraph") continue;
       const written = source.slice(at.start, at.end);
       if (child.type === "mdxJsxFlowElement" || child.type === "mdxJsxTextElement") {
         if (child.name && /^[a-z]/.test(child.name) && !child.name.includes(".")) visit(child);
@@ -1106,6 +1133,17 @@ function rawBlockMarkdown(source: string, element: SyntaxNode): TextEdit[] {
   };
   visit(element);
   return edits;
+}
+
+/**
+ * Whether a line opens an HTML block, as CommonMark reads it: a block-level
+ * tag, or any one tag alone on the line, which cannot interrupt a paragraph.
+ */
+function opensHtmlBlock(line: string, inParagraph: boolean): boolean {
+  const tag = /^ {0,3}<\/?([A-Za-z][A-Za-z0-9-]*)(?=[\s/>]|$)/.exec(line);
+  if (!tag) return /^ {0,3}<!--/.test(line);
+  if (HTML_BLOCK_TAGS.has(tag[1].toLowerCase())) return true;
+  return !inParagraph && /^ {0,3}<\/?[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>\s*$/.test(line);
 }
 
 function escapeAttribute(value: string): string {
