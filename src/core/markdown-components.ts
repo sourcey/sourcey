@@ -964,7 +964,7 @@ function linksIn(token: Token): boolean {
 /** Resolve heading and field identity once, in document order, before any output is rendered. */
 function normalizeHeadings(nodes: readonly ContentNode[], lex: (node: Extract<ContentNode, { kind: "markdown" }>) => Token[], linked: (token: Token) => boolean): ContentNode[] {
   const pending: { node: { id: string; aliases?: string[] }; automatic: boolean; previousId?: string }[] = [];
-  function expand(nodes: readonly ContentNode[]): ContentNode[] {
+  function expand(nodes: readonly ContentNode[], within = false): ContentNode[] {
     return nodes.flatMap<ContentNode>(node => {
       // Agent-only headings never take part, so they cannot renumber the page's visible anchors.
       if (forAgents(node)) return [node];
@@ -972,19 +972,30 @@ function normalizeHeadings(nodes: readonly ContentNode[], lex: (node: Extract<Co
         let data = node.resolved.data;
         if (isField(node)) { const field = { ...(node.resolved.data as FieldData) }; pending.push({ node: field, automatic: !field.explicit }); data = field; }
         for (const id of accordionAnchor(node)) pending.push({ node: { id }, automatic: false });
-        return [{ ...node, resolved: { ...node.resolved, data, content: expand(node.resolved.content) } }];
+        return [{ ...node, resolved: { ...node.resolved, data, content: expand(node.resolved.content, true) } }];
       }
       if (node.kind === "heading") {
         const copy = { ...node }; pending.push({ node: copy, automatic: false }); return [copy];
       }
       if (node.kind !== "markdown") return [node];
-      return lex(node).map(token => {
-        if (token.type !== "heading") return { kind: "markdown" as const, value: token.raw, ...(linked(token) && { links: true as const }) };
+      // A page's blocks are each a node, so its export rewrites only those holding a link. A component's
+      // Markdown stays whole between the headings it names, so its renderHtml arranges the nodes it returned.
+      const blocks: ContentNode[] = [];
+      let run: Token[] = [];
+      const flush = () => {
+        if (run.length) blocks.push({ kind: "markdown", value: run.map(token => token.raw).join(""), ...(run.some(linked) && { links: true as const }) });
+        run = [];
+      };
+      for (const token of lex(node)) {
+        if (token.type !== "heading") { run.push(token); if (!within) flush(); continue; }
+        flush();
         const heading = headingInfo(token as Tokens.Heading);
-        const node: Extract<ContentNode, { kind: "heading" }> = { kind: "heading", level: (token as Tokens.Heading).depth, text: heading.markdown, id: heading.id, ...(linked(token) && { links: true as const }) };
-        pending.push({ node, automatic: !heading.explicit, previousId: heading.explicit ? undefined : heading.previousId });
-        return node;
-      });
+        const named: Extract<ContentNode, { kind: "heading" }> = { kind: "heading", level: (token as Tokens.Heading).depth, text: heading.markdown, id: heading.id, ...(linked(token) && { links: true as const }) };
+        pending.push({ node: named, automatic: !heading.explicit, previousId: heading.explicit ? undefined : heading.previousId });
+        blocks.push(named);
+      }
+      flush();
+      return blocks;
     });
   }
   const result = expand(nodes), primary = new Set<string>(), aliases = new Set<string>();

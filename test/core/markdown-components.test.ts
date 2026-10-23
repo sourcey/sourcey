@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { markdown } from "../../src/index.js";
 import { resolveConfigFromRaw } from "../../src/config.js";
 import { buildSourceySite, sourceyArtifacts } from "../../src/site.js";
-import { contentDiagnostics, defineComponent, parseComponents, renderContent, type ContentNode, type NativeComponentDefinition } from "../../src/core/markdown-components.js";
+import { contentDiagnostics, defineComponent, parseComponents, readableContent, renderContent, type ContentNode, type NativeComponentDefinition } from "../../src/core/markdown-components.js";
 import { messagesFor } from "../../src/core/messages.js";
 import { InputReader } from "../../src/core/loader.js";
 import { diagramSvgs } from "../../src/core/diagrams.js";
@@ -312,6 +312,29 @@ describe("included files", () => {
     const Include = defineComponent({ parseProps: attributes => attributes, resolve: ({ children }) => ({ content: children }), renderHtml: (result, helpers) => `<aside>${helpers.render(result.content)}</aside>` });
     expect(renderContent(await parse('<Include src="./missing.md">\n\nKept as written.\n\n</Include>\n', { Include }), ENGLISH.messages)).toContain("<aside><p>Kept as written.</p>\n</aside>");
   }));
+});
+
+describe("a site's components", () => {
+  it("arrange the nodes they return, their Markdown whole between the headings it names", async () => {
+    const root = await mkdtemp(join(tmpdir(), "sourcey-arrange-"));
+    try {
+      // What readers are told comes first; the page draws only what the page wrote inside.
+      const Panel = defineComponent({
+        parseProps: attributes => attributes,
+        resolve: ({ children }) => ({ content: [{ kind: "markdown" as const, value: "\n\nFor readers alone.\n\nAnd its second line.\n\n" }, ...children] }),
+        renderHtml: (result, helpers) => `<aside>${helpers.render(result.content.slice(1))}</aside>`,
+      });
+      const nodes = await parseComponents("<Panel>\n\nWritten **inside**.\n\n## Named\n\nAfter it.\n\n</Panel>\n", { source: join(root, "guide.md"), root, input: new InputReader(), context: ENGLISH, components: { Panel } });
+      const html = renderContent(nodes, ENGLISH.messages);
+      expect(html).not.toContain("For readers alone.");
+      expect(html).toContain("<p>Written <strong>inside</strong>.</p>");
+      expect(html).toContain('<h2 id="named">Named</h2>');
+      expect(html).toContain("<p>After it.</p>");
+      expect(readableContent(nodes)).toContain("For readers alone.\n\nAnd its second line.");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("directives", () => {

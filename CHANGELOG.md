@@ -22,6 +22,7 @@
 
 ### Fixed
 
+- A site's component draws the nodes its `resolve` returned, as `renderHtml` arranges them. The build had split each of its Markdown nodes into blocks, so a component that drew some of its nodes by their place drew the wrong ones: text written for readers alone showed on the page, and what the page wrote inside it was left out. A component's Markdown now stays whole between the headings it names, which still become nodes of their own.
 - A migration draws a link to a project's Discourse forum, on its `discourse.` subdomain, with Discourse's icon, as it draws GitHub's and Discord's.
 - `sourcey migrate docusaurus` titles a page by the level-one heading it shows under a component, such as a product's header component, as Docusaurus does: the heading is the native title and leaves the body, and the frontmatter title names the page in navigation. Native had shown the frontmatter title above the page and the heading again below the component. A migration's check of each page counts its title as prose a reader sees.
 - Two tabs that share a label, each with its own slug, stay two tabs. The header had shown the first tab twice, and the second tab's pages had no sidebar.

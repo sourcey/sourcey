@@ -143,7 +143,7 @@ Register the definition with `components: { Options }` in `defineConfig`.
 
 Use `<Options />` in the page. `context.readText` and `readJson` register the input dependency; `asset`, `figure` and `diagram` use the shared asset builders. `context.context` identifies the selected locale, content language, release and UI messages.
 
-Return semantic `content` for facts the reader needs. Optional `renderHtml` can arrange those nodes. Generated headings and prose then remain available to the table of contents, search and agents. Executable JSX attributes require conversion; native attributes are static values.
+Return semantic `content` for facts the reader needs. Optional `renderHtml` can arrange those nodes: each Markdown node stays whole, apart from a heading it holds, which becomes a node of its own. Generated headings and prose then remain available to the table of contents, search and agents. Executable JSX attributes require conversion; native attributes are static values.
 
 ## Optional browser behaviour
 
