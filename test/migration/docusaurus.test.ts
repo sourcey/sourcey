@@ -656,6 +656,31 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("keeps a paragraph written as <p> at its column in a tab, so the code beside it stays code", async () => {
+    const page = [
+      "import Tabs from '@theme/Tabs';",
+      "import TabItem from '@theme/TabItem';",
+      "import CodeBlock from '@theme/CodeBlock';",
+      "",
+      "# Installation",
+      "",
+      "<Tabs>",
+      "  <TabItem value=\"deb\" label=\"Deb\">",
+      "    <p>Refresh the cache.</p>",
+      "    <CodeBlock className=\"language-bash\">sudo apt update</CodeBlock>",
+      "    Then add the key:",
+      "",
+      "    <CodeBlock className=\"language-bash\">curl -fsSL https://example.com/key</CodeBlock>",
+      "  </TabItem>",
+      "</Tabs>",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/02-install.mdx")).toContain('<Tab title="Deb">\n\n    Refresh the cache.\n\n    ```bash\n    sudo apt update\n    ```\n    Then add the key:\n');
+    });
+  });
+
   it("leads a redirect to its page as the site spells addresses, with or without a trailing slash", async () => {
     const config = site["docusaurus.config.js"] as string;
     for (const [slash, to, written] of [["true", "/start", "/start/"], ["false", "/start/", "/start"]]) {

@@ -108,8 +108,9 @@ describe("sourcey migrate astro (custom documentation)", () => {
           "",
           '<Warning title="Careful">',
           // A plain <p> is a paragraph; as raw HTML, CommonMark would swallow the link line after it.
+          // It keeps its column, so the component's children dedent together.
           "",
-          "Back up first.",
+          "  Back up first.",
           "",
           "  Then run the [installer](/documentation/advanced/).",
           "</Warning>",

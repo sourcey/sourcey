@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- A migration keeps a paragraph written as `<p>` at the column its element stands at. Inside a component indented four spaces, such as a tab, the paragraph had moved to the margin, so native read the code blocks and text beside it as indented code.
 - `sourcey migrate docusaurus` leads a client redirect to its page as the site spells addresses, applying `trailingSlash` as Docusaurus does. A redirect written to `/start` on a site whose pages end in a slash had stopped the native build at a target that does not exist.
 - `sourcey migrate docusaurus` names a navbar link that has no label by its title, as the only name Docusaurus gives an item it draws as an icon. It had become a link without a name.
 - `sourcey migrate docusaurus` names the pages each sidebar lists before its first category by their place in the one navigation its sidebars make. With several sidebars that each opened with such pages, the native build had stopped at a duplicate group ID.

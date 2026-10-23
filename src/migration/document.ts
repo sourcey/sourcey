@@ -967,9 +967,12 @@ function unwrapParagraph(source: string, element: { start: number; end: number }
 
   const openLine = lineStart(element.start);
   const openAlone = blank(openLine, element.start);
+  // The paragraph keeps the column its element stands at, as the content around it does: a component's
+  // children are read at their common indentation, where a paragraph moved out of it would read the rest as code.
+  const indent = openAlone ? source.slice(openLine, element.start) : "";
   const contentStart = blank(opening, lineEnd(source, opening)) ? lineEnd(source, opening) : opening;
   const before = openAlone && openLine > 0 && !blank(lineStart(openLine - 1), openLine - 1) ? "\n" : "";
-  edits.push({ start: openAlone ? openLine : element.start, end: contentStart, text: openAlone ? before : "\n\n" });
+  edits.push({ start: openAlone ? openLine : element.start, end: contentStart, text: openAlone ? before + (contentStart === opening ? indent : "") : "\n\n" });
 
   const closeLine = lineStart(close);
   const closeAlone = blank(closeLine, close) && closeLine >= contentStart;
@@ -984,8 +987,8 @@ function unwrapParagraph(source: string, element: { start: number; end: number }
   const contentEnd = closeAlone && restBlank ? closeLine : close;
   for (let line = lineStart(contentStart); line < contentEnd; line = lineEnd(source, line)) {
     if (line < contentStart) continue;
-    const indent = source.slice(line).match(/^[ \t]+/)?.[0].length ?? 0;
-    if (indent && line + indent <= contentEnd) edits.push({ start: line, end: line + indent, text: "" });
+    const own = source.slice(line).match(/^[ \t]*/)![0].length;
+    if (line + own < contentEnd && source[line + own] !== "\n" && source.slice(line, line + own) !== indent) edits.push({ start: line, end: line + own, text: indent });
   }
   return edits;
 }
