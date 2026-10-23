@@ -4,6 +4,7 @@ import type { ReferenceTargets, ResolvedSiteContext, RouteRecord, RouteTable } f
 import { definitionAnchor, operationAnchor, referenceOperation } from "./reference-identity.js";
 import { isNavGroup, readingOrder, walkNavGroups, walkNavItems, type SiteNavGroup, type SiteNavItem, type SiteTab } from "./navigation.js";
 import { markdownPages } from "../adapters/shared.js";
+import { referenceTag, tagDisplayName } from "./tag-utils.js";
 import { toPublicPath } from "../site-url.js";
 
 /** Resolve authored browsing edges against the one completed document graph. */
@@ -54,7 +55,8 @@ export function navigationResolver(config: ResolvedConfig, routes: RouteTable, r
       const page = route.page.currentPage;
       if (page.kind === "markdown") return page.markdown.navTitle ?? page.markdown.title;
       if (page.kind === "changelog") return page.changelog.title;
-      if (page.kind === "spec") return page.view?.kind === "operation" ? referenceOperation(page.spec, page.view.id).summary ?? page.view.id : page.view?.kind === "schema" ? page.view.name : page.spec.info.title;
+      if (page.kind === "spec") return page.view?.kind === "operation" ? referenceOperation(page.spec, page.view.id).summary ?? page.view.id
+        : page.view?.kind === "section" ? tagDisplayName(referenceTag(page.spec, page.view.tag)) : page.view?.kind === "schema" ? page.view.name : page.spec.info.title;
       return page.title;
     }
     function resolve(item: SiteNavItem, target: NavigationTarget): boolean {
@@ -109,12 +111,16 @@ export function navigationResolver(config: ResolvedConfig, routes: RouteTable, r
       }
       for (const name of Object.keys(spec.schemas)) if (destinations.schemas[name]) generated.set(definitionAnchor(name, spec), destinations.schemas[name].href);
       if (overview && !tab.navigation) {
-        // Split into pages, the reference's introduction is its overview page.
-        const split = tab.reference.split === "operations";
+        // Split into pages, the reference's introduction is its overview page, and a section
+        // with a page of its own leads there.
+        const split = overview.page.currentPage.kind === "spec" && overview.page.currentPage.view?.kind === "overview";
         for (const anchor of ["introduction", "authentication"]) if (overview.anchors.has(anchor)) generated.set(anchor, split && anchor === "introduction" ? overview.publicPath : `${overview.publicPath}#${anchor}`);
+        const sectionPages = new Map((byOwner.get(tab.slug) ?? []).flatMap(route => route.page.currentPage.kind === "spec" && route.page.currentPage.view?.kind === "section" ? [[route.page.pageSlug, route.publicPath]] : []));
         function sections(groups: SiteNavGroup[]) {
           for (const value of groups) {
-            if (value.id && value.href && overview!.anchors.has(value.id)) value.href = `${overview!.publicPath}#${value.id}`;
+            const own = value.id ? sectionPages.get(value.id) : undefined;
+            if (own) value.href = own;
+            else if (value.id && value.href && overview!.anchors.has(value.id)) value.href = `${overview!.publicPath}#${value.id}`;
             sections(value.items.filter(isNavGroup));
           }
         }

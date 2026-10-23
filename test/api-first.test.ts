@@ -113,9 +113,11 @@ describe("api-first theme", () => {
     expect(api).toContain("https://cheese.sourcey.com/v2</span>");
     expect(mcp).not.toContain("data-try-it-trigger");
     expect(mcp).toContain('class="operation-split"');
-    expect(mcp).toMatch(
-      /<div class="operation-line" data-method="tool"><span class="operation-line-method">TOOL<\/span><\/div>/,
-    );
+    // A tool under "Tools" whose title is its name says neither again beneath it; a
+    // resource's address is more than its name.
+    expect(mcp).not.toMatch(/<div class="operation-line" data-method="tool">/);
+    expect(mcp).not.toContain('class="operation-line-method"');
+    expect(mcp).toMatch(/<div class="operation-line" data-method="resource"><span class="operation-line-path">[a-z]+:\/\//);
   });
 
   it("leaves the default theme's layout and neutrals as they were", async () => {

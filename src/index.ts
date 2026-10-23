@@ -79,6 +79,7 @@ export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<Sit
     godocDiagnostics: sourceySite.godocDiagnostics,
     rustdocDiagnostics: sourceySite.rustdocDiagnostics,
     overlayDiagnostics: sourceySite.overlayDiagnostics,
+    referenceDiagnostics: sourceySite.referenceDiagnostics,
     contentDiagnostics: sourceySite.contentDiagnostics,
     anchorDiagnostics: sourceySite.anchorDiagnostics,
     siteDiagnostics: sourceySite.siteDiagnostics,
@@ -108,6 +109,7 @@ export type {
   DoxygenSourceOptions,
   GodocSourceOptions,
   MarkdownSourceOptions,
+  McpGroups,
   McpSourceOptions,
   OpenApiSourceOptions,
   ResolvedTabSource,
@@ -138,7 +140,7 @@ export type {
 export type { OverlayDiagnostic } from "./core/overlay.js";
 export type { ContentDiagnostic } from "./core/markdown-loader.js";
 export type { AnchorDiagnostic } from "./core/site-model.js";
-export type { BuildDiagnostics } from "./core/build-diagnostics.js";
+export type { BuildDiagnostics, ReferenceDiagnostic } from "./core/build-diagnostics.js";
 
 export { defineComponent } from "./core/markdown-components.js";
 export type { NativeComponentDefinition, ContentNode, ComponentBuildContext, NativeContentContext, ResolvedComponent, StaticAttributes } from "./core/markdown-components.js";

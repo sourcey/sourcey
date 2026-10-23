@@ -2,7 +2,7 @@ import { access } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { markdownPages } from "./adapters/shared.js";
 import { loadConfig, resolveConfigFromRaw, type ResolvedConfig } from "./config.js";
-import { enforceBuildDiagnostics } from "./core/build-diagnostics.js";
+import { enforceBuildDiagnostics, type ReferenceDiagnostic } from "./core/build-diagnostics.js";
 import { closeDiagramRenderer } from "./core/diagrams.js";
 import type { GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import { canonicalInputPath } from "./core/loader.js";
@@ -68,6 +68,7 @@ export interface SourceySiteArtifacts {
   godocDiagnostics: GodocLoaderDiagnostic[];
   rustdocDiagnostics: RustdocLoaderDiagnostic[];
   overlayDiagnostics: OverlayDiagnostic[];
+  referenceDiagnostics: ReferenceDiagnostic[];
   contentDiagnostics: ContentDiagnostic[];
   anchorDiagnostics: AnchorDiagnostic[];
   siteDiagnostics: SiteDiagnostic[];
@@ -128,6 +129,7 @@ export async function buildSourceySite(
     godocDiagnostics: assembled.godocDiagnostics,
     rustdocDiagnostics: assembled.rustdocDiagnostics,
     overlayDiagnostics: assembled.overlayDiagnostics,
+    referenceDiagnostics: assembled.referenceDiagnostics,
     contentDiagnostics: assembled.contentDiagnostics,
     anchorDiagnostics: assembled.anchorDiagnostics,
     siteDiagnostics: collectSiteDiagnostics(pages, assembled.routes, config),

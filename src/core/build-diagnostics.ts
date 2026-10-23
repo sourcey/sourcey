@@ -11,8 +11,21 @@ export interface BuildDiagnostics {
   godocDiagnostics: GodocLoaderDiagnostic[];
   rustdocDiagnostics: RustdocLoaderDiagnostic[];
   overlayDiagnostics: OverlayDiagnostic[];
+  referenceDiagnostics: ReferenceDiagnostic[];
   contentDiagnostics: ContentDiagnostic[];
   anchorDiagnostics: AnchorDiagnostic[];
+}
+
+/**
+ * How an OpenAPI or MCP reference publishes against its shape: entries its
+ * groups leave out, a split with one section to split by, a page too long to
+ * read as one.
+ */
+export interface ReferenceDiagnostic {
+  severity: "warning";
+  code: "mcp-ungrouped" | "one-section" | "long-page";
+  tab: string;
+  message: string;
 }
 
 /** One reporting projection for the CLI, preview server and host integrations. */
@@ -22,6 +35,7 @@ export function formatBuildDiagnostics(result: BuildDiagnostics): string[] {
     ...result.godocDiagnostics.map(formatGodocDiagnostic),
     ...result.rustdocDiagnostics.map(formatRustdocDiagnostic),
     ...result.overlayDiagnostics.map(formatOverlayDiagnostic),
+    ...result.referenceDiagnostics.map(diagnostic => `WARNING ${diagnostic.code} (${diagnostic.tab}): ${diagnostic.message}`),
     ...result.contentDiagnostics.map(formatContentDiagnostic),
     ...result.anchorDiagnostics.map(diagnostic => `anchor [${diagnostic.code}]: ${diagnostic.message} Unmatched aliases are omitted.`),
   ];

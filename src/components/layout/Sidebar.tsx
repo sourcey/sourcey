@@ -8,6 +8,7 @@ import { PrimaryAction } from "../ui/PrimaryAction.js";
 import { Logo, logoHref } from "../ui/Logo.js";
 import { isNavGroup, walkNavItems, type SiteNavGroup } from "../../core/navigation.js";
 import { joinHref } from "../../site-url.js";
+import { kindTells } from "../../core/reference-identity.js";
 import { linkTarget } from "../../utils/html.js";
 import { ContextNotice } from "./ContextControls.js";
 
@@ -115,11 +116,12 @@ function NavGroup({ group, activePageSlug, base }: {
   // A row sits on its siblings' edge and what opens beneath it moves one step in; a heading
   // within a list is set in, above the links it heads.
   const collapsible = isCollapsible(group);
+  const methods = group.items.flatMap(item => !isNavGroup(item) && item.method ? [item.method] : []);
   const contents = <ul class={collapsible ? "pl-3 space-y-px" : "space-y-px"}>{group.items.map(item => isNavGroup(item)
     ? leadsAnywhere(item) && <li key={item.id ?? item.label} class={isRow(item) ? undefined : "pl-3 pt-3"}><NavGroup group={item} activePageSlug={activePageSlug} base={base} /></li>
     : <li key={item.id}><a href={joinHref(base, item.href)} class={`nav-link${item.id === activePageSlug ? " active" : ""}`}
         aria-current={item.id === activePageSlug ? (item.href.includes("#") ? "location" : "page") : undefined}>
-        {item.method && <MethodPill method={item.method} />}<span class="flex-1 break-words [word-break:break-word]"><Breakable text={item.label} /></span>
+        {item.method && kindTells(item.method, methods) && <MethodPill method={item.method} />}<span class="flex-1 break-words [word-break:break-word]"><Breakable text={item.label} /></span>
       </a></li>)}</ul>;
   const active = current || [...walkNavItems([group])].some(item => item.id === activePageSlug);
   if (!collapsible) return <>{group.label && label}{contents}</>;

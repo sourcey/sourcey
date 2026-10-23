@@ -309,15 +309,30 @@ function navigationIndex(tab: SiteTab): NavigationIndex {
     seen.add(item.id); pages.add(page); return true;
   });
   index.pages = pages.size;
+  // A section with a page of its own, such as a reference section's, lists places on that page:
+  // its first entry stands for the page, under the section's name.
+  const ownPage = (item: SiteNavItem) => {
+    const section = sections.get(item.id);
+    const [page, place] = item.href.split("#");
+    return place !== undefined && section?.page && section.href === page ? section as SiteNavGroup & { page: string; href: string } : undefined;
+  };
   // Away from its section, a label the tab repeats, such as each module's "Overview", names the
   // section the page opens.
   const repeats = new Map<string, number>();
   for (const item of ordered) repeats.set(item.label, (repeats.get(item.label) ?? 0) + 1);
   const neighbour = (item: SiteNavItem | undefined) => {
-    const section = item && sections.get(item.id);
-    return item && section?.label && section.items[0] === item && repeats.get(item.label)! > 1 ? { ...item, label: section.label } : item;
+    if (!item) return undefined;
+    const own = ownPage(item);
+    if (own) return { href: own.href, label: own.label };
+    const section = sections.get(item.id);
+    return section?.label && section.items[0] === item && repeats.get(item.label)! > 1 ? { ...item, label: section.label } : item;
   };
-  for (const [position, item] of ordered.entries()) index.adjacent.set(item.id, { previous: neighbour(ordered[position - 1]), next: neighbour(ordered[position + 1]) });
+  for (const [position, item] of ordered.entries()) {
+    const adjacent = { previous: neighbour(ordered[position - 1]), next: neighbour(ordered[position + 1]) };
+    index.adjacent.set(item.id, adjacent);
+    const own = ownPage(item);
+    if (own) index.adjacent.set(own.page, adjacent);
+  }
   navigationIndexes.set(tab, index); return index;
 }
 

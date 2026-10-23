@@ -32,16 +32,22 @@ export function openapi(specOrOptions: string | OpenApiSourceOptions): SourceAda
 }
 
 export function mcp(specOrOptions: string | McpSourceOptions): SourceAdapter {
-  const spec = typeof specOrOptions === "string" ? specOrOptions : specOrOptions.spec;
+  const { spec, groups } = typeof specOrOptions === "string" ? { spec: specOrOptions } : specOrOptions;
   return {
     name: "mcp",
     async resolve(ctx) {
-      if (ctx.isUrl(spec)) {
-        return { kind: "mcp", spec };
+      if (groups !== undefined) {
+        if (!groups || typeof groups !== "object" || Array.isArray(groups)) throw new Error(`MCP groups in tab "${ctx.tabName}" must map each section's name to the names it lists`);
+        for (const [group, names] of Object.entries(groups)) {
+          if (!group.trim()) throw new Error(`MCP groups in tab "${ctx.tabName}" need a name for each section`);
+          if (!Array.isArray(names) || !names.length || names.some(name => typeof name !== "string" || !name))
+            throw new Error(`MCP group "${group}" in tab "${ctx.tabName}" must list the names of its tools, resources or prompts`);
+        }
       }
+      if (ctx.isUrl(spec)) return { kind: "mcp", spec, groups };
       const absPath = ctx.resolvePath(spec);
       await ctx.assertExists(absPath, `MCP spec "${spec}" in tab "${ctx.tabName}"`);
-      return { kind: "mcp", spec: absPath, watchPaths: [absPath] };
+      return { kind: "mcp", spec: absPath, groups, watchPaths: [absPath] };
     },
   };
 }
@@ -170,6 +176,7 @@ export type {
   DoxygenSourceOptions,
   GodocSourceOptions,
   MarkdownSourceOptions,
+  McpGroups,
   McpSourceOptions,
   OpenApiSourceOptions,
   PageMarkdownOptions,

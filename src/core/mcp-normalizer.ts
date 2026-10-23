@@ -25,11 +25,17 @@ import type {
   CodeSample,
   HttpMethod,
 } from "./types.js";
+import type { McpGroups } from "../adapters/types.js";
 import { generateExample } from "../utils/example-generator.js";
 
 // ── Public API ────────────────────────────────────────────────────────
 
-export function normalizeMcpSpec(spec: McpSpec): NormalizedSpec {
+/**
+ * The reference an MCP snapshot documents, its sections in the groups' order
+ * and then, for anything no group names, one per kind: Tools, Resources and
+ * Prompts. `ungrouped` names what the groups left out; without groups it is empty.
+ */
+export function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): { spec: NormalizedSpec; ungrouped: string[] } {
   const connectionInfo: McpConnectionInfo = {
     transport: spec.transport
       ? {
@@ -46,25 +52,41 @@ export function normalizeMcpSpec(spec: McpSpec): NormalizedSpec {
     capabilities: spec.capabilities as Record<string, unknown> | undefined,
   };
 
-  const toolOps = (spec.tools ?? []).map((t: McpTool) => toolToOperation(t, connectionInfo));
-  const resourceOps = (spec.resources ?? []).map((r: McpResource) =>
-    resourceToOperation(r, connectionInfo),
-  );
-  const templateOps = (spec.resourceTemplates ?? []).map((t: McpResourceTemplate) =>
-    resourceTemplateToOperation(t, connectionInfo),
-  );
-  const promptOps = (spec.prompts ?? []).map((p: McpPrompt) =>
-    promptToOperation(p, connectionInfo),
-  );
+  // Each entry by its name, the one a group lists it by.
+  const named: [string, NormalizedOperation][] = [
+    ...(spec.tools ?? []).map((t: McpTool) => [t.name, toolToOperation(t, connectionInfo)] as [string, NormalizedOperation]),
+    ...(spec.resources ?? []).map((r: McpResource) => [r.name, resourceToOperation(r, connectionInfo)] as [string, NormalizedOperation]),
+    ...(spec.resourceTemplates ?? []).map((t: McpResourceTemplate) => [t.name, resourceTemplateToOperation(t, connectionInfo)] as [string, NormalizedOperation]),
+    ...(spec.prompts ?? []).map((p: McpPrompt) => [p.name, promptToOperation(p, connectionInfo)] as [string, NormalizedOperation]),
+  ];
+  const allOps = named.map(([, operation]) => operation);
 
-  const allOps = [...toolOps, ...resourceOps, ...templateOps, ...promptOps];
-
-  // Build tags — only for non-empty groups
   const tags: NormalizedTag[] = [];
-  if (toolOps.length) tags.push({ name: "Tools", operations: toolOps });
-  if (resourceOps.length || templateOps.length)
-    tags.push({ name: "Resources", operations: [...resourceOps, ...templateOps] });
-  if (promptOps.length) tags.push({ name: "Prompts", operations: promptOps });
+  const placed = new Set<NormalizedOperation>();
+  const listed = new Set<string>();
+  for (const [group, names] of Object.entries(groups)) {
+    const operations: NormalizedOperation[] = [];
+    for (const name of names) {
+      if (listed.has(name)) throw new Error(`MCP groups list "${name}" twice`);
+      listed.add(name);
+      const matches = named.filter(([candidate]) => candidate === name).map(([, operation]) => operation);
+      if (!matches.length) throw new Error(`MCP group "${group}" lists "${name}", which the server does not have`);
+      operations.push(...matches);
+    }
+    for (const operation of operations) { operation.tags = [group]; placed.add(operation); }
+    tags.push({ name: group, operations });
+  }
+  // What no group lists keeps its kind's section, after the groups.
+  const kinds = [["Tools", "tool"], ["Resources", "resource"], ["Prompts", "prompt"]] as const;
+  for (const [section, kind] of kinds) {
+    const operations = allOps.filter(operation => !placed.has(operation) && operation.mcpExtras!.type === kind);
+    if (!operations.length) continue;
+    for (const operation of operations) operation.tags = [section];
+    const existing = tags.find(tag => tag.name === section);
+    if (existing) existing.operations.push(...operations);
+    else tags.push({ name: section, operations });
+  }
+  const ungrouped = Object.keys(groups).length ? named.filter(([, operation]) => !placed.has(operation)).map(([name]) => name) : [];
 
   // Shared schema definitions from $defs
   const schemas: Record<string, NormalizedSchema> = {};
@@ -75,26 +97,26 @@ export function normalizeMcpSpec(spec: McpSpec): NormalizedSpec {
   }
 
   return {
-    info: {
-      title: spec.server.name,
-      version: spec.server.version,
-      description: spec.description,
+    spec: {
+      info: {
+        title: spec.server.name,
+        version: spec.server.version,
+        description: spec.description,
+      },
+      servers: spec.transport?.url ? [{ url: spec.transport.url }] : [],
+      tags,
+      operations: allOps,
+      schemas,
+      securitySchemes: {},
+      webhooks: [],
     },
-    servers: spec.transport?.url ? [{ url: spec.transport.url }] : [],
-    tags,
-    operations: allOps,
-    schemas,
-    securitySchemes: {},
-    webhooks: [],
+    ungrouped,
   };
 }
 
 // ── Tool → Operation ──────────────────────────────────────────────────
 
 function toolToOperation(tool: McpTool, connection: McpConnectionInfo): NormalizedOperation {
-  const group = (tool as unknown as Record<string, unknown>)["x-sourcey-group"] as
-    | string
-    | undefined;
   const inputSchema = convertSchema(tool.inputSchema);
   const outputSchema = tool.outputSchema ? convertSchema(tool.outputSchema) : undefined;
 
@@ -113,7 +135,7 @@ function toolToOperation(tool: McpTool, connection: McpConnectionInfo): Normaliz
     description: tool.description,
     method: "tool" as HttpMethod,
     path: tool.name,
-    tags: [group ?? "Tools"],
+    tags: [],
     parameters,
     requestBody,
     responses: [],
@@ -142,17 +164,13 @@ function resourceToOperation(
   resource: McpResource,
   connection: McpConnectionInfo,
 ): NormalizedOperation {
-  const group = (resource as unknown as Record<string, unknown>)["x-sourcey-group"] as
-    | string
-    | undefined;
-
   return {
     operationId: resourceOperationId(resource.name),
     summary: resource.name,
     description: resource.description,
     method: "resource" as HttpMethod,
     path: resource.uri,
-    tags: [group ?? "Resources"],
+    tags: [],
     parameters: [],
     responses: [],
     security: [],
@@ -171,17 +189,13 @@ function resourceTemplateToOperation(
   template: McpResourceTemplate,
   connection: McpConnectionInfo,
 ): NormalizedOperation {
-  const group = (template as unknown as Record<string, unknown>)["x-sourcey-group"] as
-    | string
-    | undefined;
-
   return {
     operationId: resourceOperationId(template.name),
     summary: template.name,
     description: template.description,
     method: "resource" as HttpMethod,
     path: template.uriTemplate,
-    tags: [group ?? "Resources"],
+    tags: [],
     parameters: extractUriTemplateParams(template.uriTemplate),
     responses: [],
     security: [],
@@ -197,10 +211,6 @@ function resourceTemplateToOperation(
 // ── Prompt → Operation ────────────────────────────────────────────────
 
 function promptToOperation(prompt: McpPrompt, connection: McpConnectionInfo): NormalizedOperation {
-  const group = (prompt as unknown as Record<string, unknown>)["x-sourcey-group"] as
-    | string
-    | undefined;
-
   const parameters: NormalizedParameter[] = (prompt.arguments ?? []).map((arg) => ({
     name: arg.name,
     in: "argument" as const,
@@ -216,7 +226,7 @@ function promptToOperation(prompt: McpPrompt, connection: McpConnectionInfo): No
     description: prompt.description,
     method: "prompt" as HttpMethod,
     path: prompt.name,
-    tags: [group ?? "Prompts"],
+    tags: [],
     parameters,
     responses: [],
     security: [],

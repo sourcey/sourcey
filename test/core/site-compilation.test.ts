@@ -384,7 +384,7 @@ describe("native compilation", () => {
 
   it("frames a split reference's pages as each theme frames a guide", () => fixture(async root => {
     const responses = { "200": { description: "OK" } };
-    await file(root, "spec.json", JSON.stringify({ openapi: "3.2.0", info: { title: "Pets API", version: "1", description: "Welcome.\n\n## Rate limits\n\nTen a second." },
+    await file(root, "spec.json", JSON.stringify({ openapi: "3.2.0", info: { title: "Pets API", version: "1", description: "Welcome.\n\n## Rate limits\n\nTen a second.\n\n## Errors\n\nAs JSON." },
       tags: [{ name: "Pets" }, { name: "Toys", parent: "Pets" }, { name: "Stores" }], security: [{ key: [] }],
       components: { securitySchemes: { key: { type: "apiKey", in: "header", name: "X-Key" } }, schemas: { Pet: { type: "object", properties: { name: { type: "string" } } } } },
       paths: { "/pets": { get: { operationId: "listPets", summary: "List pets", description: "Every pet.", tags: ["Pets"], parameters: [{ name: "limit", in: "query", schema: { type: "integer" } }], responses }, post: { operationId: "addPet", summary: "Add a pet", tags: ["Pets"], responses } },
@@ -410,14 +410,15 @@ describe("native compilation", () => {
       const order = (theme === "api-first" ? ["operation-split-intro", "operation-split-examples", "operation-split-content"] : ["operation-intro", "sourcey-operation-examples", "operation-details"]).map(name => operation.indexOf(`class="${name}"`));
       expect(order.every(position => position > -1)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
-      // The overview lists its own sections where the theme has a contents column.
+      // The overview's contents list its introduction's own headings, where the theme has a
+      // contents column; its sections, authentication and models are the sidebar's to list.
       const overview = main("introduction");
       const contents = overview.slice(overview.search(/id="toc"|class="docs-toc"/));
       if (theme === "minimal") expect(overview).not.toMatch(/id="toc"/);
-      else for (const label of ["Rate limits", "Authentication", "Pets", "Stores", "Models"]) expect(contents).toContain(`>${label}</a>`);
-      // A child tag sits beneath its parent where the contents nest, and out of a flat list.
-      if (theme === "default" || theme === "api-first") expect(contents).toMatch(/>Pets<\/a><ul[^>]*><li[^>]*><a[^>]*>Toys<\/a>/);
-      if (theme === "reader") expect(contents.slice(0, contents.indexOf("</aside>"))).not.toContain(">Toys</a>");
+      else {
+        for (const label of ["Rate limits", "Errors"]) expect(contents).toContain(`>${label}</a>`);
+        for (const label of ["Authentication", "Pets", "Toys", "Stores", "Models"]) expect(contents.slice(0, contents.search(/<\/aside>/))).not.toContain(`>${label}</a>`);
+      }
       expect(main("schema:Pet").match(/sourcey-operation-examples/g)).toHaveLength(1);
     }
   }));

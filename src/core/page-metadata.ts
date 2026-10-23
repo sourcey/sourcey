@@ -1,6 +1,7 @@
 import { Parser } from "htmlparser2";
 import type { CurrentPage } from "./site-model.js";
-import { referenceOperation } from "./reference-identity.js";
+import { referenceOperation, sectionBodies } from "./reference-identity.js";
+import { referenceTag, tagDisplayName } from "./tag-utils.js";
 import type { NormalizedOperation, NormalizedSchema } from "./types.js";
 import { extractFirstParagraph, renderMarkdownInline } from "../utils/markdown.js";
 
@@ -44,6 +45,11 @@ export function pageMetadata(
       title = operation.summary || `${operation.method.toUpperCase()} ${operation.path}`;
       summary = metadataSummary(operation.description) || metadataSummary(operation.summary);
       outline = operationOutline(operation);
+    } else if (view?.kind === "section") {
+      const tag = referenceTag(spec, view.tag);
+      title = tagDisplayName(tag);
+      summary = metadataSummary(tag.description);
+      outline = namesOutline((sectionBodies(spec).get(view.tag) ?? []).map(operation => operation.summary || `${operation.method.toUpperCase()} ${operation.path}`), "Covers");
     } else if (view?.kind === "schema") {
       title = view.name;
       summary = metadataSummary(spec.schemas[view.name]?.description);
@@ -92,18 +98,21 @@ function operationOutline(operation: NormalizedOperation): string {
   return `${operation.method.toUpperCase()} ${operation.path}${parts.length ? `: ${parts.join(", ")}` : ""}.`;
 }
 
+/** Names as a sentence: the first six, then how many more. */
+function namesOutline(names: string[], noun: string): string {
+  if (!names.length) return "";
+  const shown = names.slice(0, 6);
+  const rest = names.length - shown.length;
+  const words = rest > 0 ? `${shown.join(", ")} and ${rest} more` : shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}` : shown[0];
+  return `${noun}: ${words}.`;
+}
+
 /** A model with no description, described by what it holds: its fields, or its values. */
 function schemaOutline(schema: NormalizedSchema | undefined): string {
   if (!schema) return "";
-  const list = (names: string[], noun: string) => {
-    const shown = names.slice(0, 6);
-    const rest = names.length - shown.length;
-    const words = rest > 0 ? `${shown.join(", ")} and ${rest} more` : shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}` : shown[0];
-    return `${noun}: ${words}.`;
-  };
   const fields = Object.keys(schema.properties ?? {});
-  if (fields.length) return list(fields, fields.length === 1 ? "Field" : "Fields");
-  if (schema.enum?.length) return list(schema.enum.map(String), "One of");
+  if (fields.length) return namesOutline(fields, fields.length === 1 ? "Field" : "Fields");
+  if (schema.enum?.length) return namesOutline(schema.enum.map(String), "One of");
   if (schema.items?.refName) return `A list of ${schema.items.refName}.`;
   return "";
 }

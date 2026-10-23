@@ -1,4 +1,11 @@
-import type { NormalizedTag } from "./types.js";
+import type { NormalizedSpec, NormalizedTag } from "./types.js";
+
+/** A reference's tag by name; a page names only tags its reference has. */
+export function referenceTag(spec: Pick<NormalizedSpec, "tags">, name: string): NormalizedTag {
+  const tag = spec.tags.find(candidate => candidate.name === name);
+  if (!tag) throw new Error(`Reference has no tag ${JSON.stringify(name)}`);
+  return tag;
+}
 
 export function tagDisplayName(tag: Pick<NormalizedTag, "name" | "summary">): string {
   return tag.summary ?? tag.name;

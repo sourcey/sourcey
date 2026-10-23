@@ -5,7 +5,8 @@ import type { NormalizedOperation, NormalizedSchema, NormalizedSpec } from "../c
 import type { ResolvedSiteContext, SitePage } from "../core/site-model.js";
 import type { SiteConfig } from "../renderer/context.js";
 import { slugify } from "../utils/slug.js";
-import { operationAnchor, definitionAnchor, referenceOperation } from "../core/reference-identity.js";
+import { operationAnchor, definitionAnchor, referenceOperation, sectionBodies } from "../core/reference-identity.js";
+import { referenceTag } from "../core/tag-utils.js";
 import { generateCodeSamples } from "../utils/code-samples.js";
 import { toPublicUrl } from "../site-url.js";
 import { fencedCode } from "./markdown.js";
@@ -125,7 +126,11 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
       }
       const reference = (name: string) =>
         spec.schemas[name] ? publicUrl(schemaMarkdownPath(page.outputPath, name)) : undefined;
-      for (const operation of view?.kind === "overview" ? [] : spec.operations) {
+      // The single page holds every operation and model, a section's page its operations; an
+      // overview lists them where they are.
+      const shown = view?.kind === "overview" ? [] : view?.kind === "section" ? sectionBodies(spec).get(view.tag) ?? [] : spec.operations;
+      const linked = view?.kind === "section" ? published : reference;
+      for (const operation of shown) {
         if (operation.hidden) continue;
         const operationFile = operationMarkdownPath(page.outputPath, operation, spec);
         const operationMetadata = pageMetadata({ kind: "spec", spec, view: { kind: "operation", id: operationName(operation) } }, site);
@@ -144,11 +149,11 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
             markdown: publicUrl(operationFile),
             file: operationFile,
           },
-          content: operationMarkdown(operation, spec, site, reference),
+          content: operationMarkdown(operation, spec, site, linked),
           aggregate: false,
         });
       }
-      for (const [name, schema] of view?.kind === "overview" ? [] : Object.entries(spec.schemas)) {
+      for (const [name, schema] of view ? [] : Object.entries(spec.schemas)) {
         const schemaFile = schemaMarkdownPath(page.outputPath, name);
         const schemaMetadata = pageMetadata({ kind: "spec", spec, view: { kind: "schema", name } }, site);
         sources.set(schemaFile, schema);
@@ -170,9 +175,11 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
         });
       }
       body = [
-        spec.info.summary || spec.info.description,
-        spec.info.version ? `Version: ${spec.info.version}` : "",
-        securityMarkdown(spec),
+        ...view?.kind === "section" ? [referenceTag(spec, view.tag).description] : [
+          spec.info.summary || spec.info.description,
+          spec.info.version ? `Version: ${spec.info.version}` : "",
+          securityMarkdown(spec),
+        ],
         ...children.map((child) => child.content.replace(/^# /, "## ")),
       ]
         .filter(Boolean)
@@ -188,7 +195,9 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
           documentId: page.identity.document,
           ...contextMetadata,
           kind: "page",
-          searchText: page.currentPage.kind === "spec" ? referenceOverviewSearchText(page.currentPage.spec) : body,
+          searchText: page.currentPage.kind !== "spec" ? body : page.currentPage.view?.kind === "section"
+            ? [title, referenceTag(page.currentPage.spec, page.currentPage.view.tag).description].filter(Boolean).join(" ")
+            : referenceOverviewSearchText(page.currentPage.spec),
           title,
           description: metadata.description,
           tab: page.tabSlug,

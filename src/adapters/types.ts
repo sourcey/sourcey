@@ -51,6 +51,7 @@ export interface ResolvedOpenApiSource {
 export interface ResolvedMcpSource {
   kind: "mcp";
   spec: string;
+  groups?: McpGroups;
   watchPaths?: string[];
 }
 
@@ -106,7 +107,16 @@ export interface OpenApiSourceOptions {
 
 export interface McpSourceOptions {
   spec: string;
+  /**
+   * The sections the reference lists the server in, in order: each names its
+   * tools, resources and prompts. The snapshot stays as captured. Anything no
+   * section names is listed by kind after them, and the build says so.
+   */
+  groups?: McpGroups;
 }
+
+/** Section names, each with the tools, resources and prompts it lists, by name. */
+export type McpGroups = Record<string, string[]>;
 
 export type DoxygenSourceOptions = DoxygenConfig;
 export type GodocSourceOptions = GodocConfig | string;

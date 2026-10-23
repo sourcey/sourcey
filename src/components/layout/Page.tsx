@@ -23,7 +23,8 @@ import { Sidebar } from "./Sidebar.js";
 import { TableOfContents } from "./TableOfContents.js";
 import { Introduction } from "../openapi/Introduction.js";
 import { SecurityDefinitions } from "../openapi/Security.js";
-import { Tags } from "../openapi/Tags.js";
+import { TagSection, Tags } from "../openapi/Tags.js";
+import { referenceTag } from "../../core/tag-utils.js";
 import { Operation } from "../openapi/Operation.js";
 import { Definition } from "../openapi/Definition.js";
 import { useReferenceOutline } from "../openapi/outline.js";
@@ -159,6 +160,7 @@ function SpecPageContent({ className = "", bare = false }: { className?: string;
     const operation = referenceOperation(spec, view.id);
     return <div id="content-area" class={area}>{place}{operation && <Operation operation={operation} />}{end}</div>;
   }
+  if (view?.kind === "section") return <div id="content-area" class={area}>{place}<TagSection tag={referenceTag(spec, view.tag)} showOperations page />{end}</div>;
   if (view?.kind === "schema") return <div id="content-area" class={area}>{place}<Definition name={view.name} schema={spec.schemas[view.name]} />{end}</div>;
 
   return (

@@ -4,7 +4,7 @@ import type { Redirect, ResolvedConfig, ResolvedTab } from "./config.js";
 import { joinHref, normalizeBaseUrl, pageOutputPath, tabPath, toPublicPath, toPublicUrl } from "./site-url.js";
 import { markdownPages } from "./adapters/shared.js";
 import type { ResolvedDoxygenSource, ResolvedGodocSource, ResolvedMarkdownSource, ResolvedMcpSource, ResolvedOpenApiSource, ResolvedRustdocSource } from "./adapters/types.js";
-import type { BuildDiagnostics } from "./core/build-diagnostics.js";
+import type { BuildDiagnostics, ReferenceDiagnostic } from "./core/build-diagnostics.js";
 import { convertToOpenApi3 } from "./core/converter.js";
 import { loadDoxygenTab } from "./core/doxygen-loader.js";
 import { loadGodocTab, type GodocLoaderDiagnostic } from "./core/godoc-loader.js";
@@ -17,23 +17,26 @@ import { navigationResolver } from "./core/navigation-targets.js";
 import { normalizeSpec } from "./core/normalizer.js";
 import { applyOverlays, type OverlayDiagnostic } from "./core/overlay.js";
 import { parseSpec } from "./core/parser.js";
-import { definitionAnchor, operationAnchor, operationKey, operationPagePath, referenceOperation, schemaPagePath } from "./core/reference-identity.js";
+import { definitionAnchor, operationAnchor, operationKey, operationPagePath, referenceOperation, schemaPagePath, sectionBodies, tagAnchor } from "./core/reference-identity.js";
 import { shareReferenceSnapshot } from "./core/reference-snapshot.js";
 import { RouteTable, SITE_PAGES, identityKey, reportUnmatchedAnchor, validateAnchorAliases, type AnchorDiagnostic, type ReferenceTargets, type ResolvedSiteContext, type SitePage } from "./core/site-model.js";
 import { pageLinks, resolveInternalHref, rewriteHtmlLinks, rewriteMarkdownLinks, siteLinks, type LinkedReference, type LinkScope } from "./core/site-links.js";
 import { sitePageFiles } from "./core/site-pages.js";
 import type { ArtifactBody } from "./core/source-file.js";
-import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
+import type { ChangelogDiagnostic, NormalizedOperation, NormalizedSpec } from "./core/types.js";
 import { loadRustdocTab, type RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
 import { slugify } from "./utils/slug.js";
 import { renderMarkdown } from "./utils/markdown.js";
 import { attachSiteFiles } from "./site-assets.js";
 import { addPermalinkPages, attachChangelogFeeds } from "./site-changelog.js";
 
+/** Past this many operations, a reference on one page is slow to open and to search. */
+const LONG_REFERENCE = 100;
+
 export interface AssemblyCache {
   reader: InputReader;
   documents: Map<string, DocsSource>;
-  references: Map<string, { key: string; spec: NormalizedSpec; publicDocument?: Record<string, unknown>; diagnostics?: OverlayDiagnostic[] }>;
+  references: Map<string, { key: string; spec: NormalizedSpec; publicDocument?: Record<string, unknown>; diagnostics?: OverlayDiagnostic[]; ungrouped?: string[] }>;
   /** Each page as drawn and linked, by output path, with the source and the routes it was drawn from. */
   pages: Map<string, { source: DocsSource | DocsPage; key: string; page: DocsPage }>;
 }
@@ -60,6 +63,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   const godocDiagnostics: GodocLoaderDiagnostic[] = [];
   const rustdocDiagnostics: RustdocLoaderDiagnostic[] = [];
   const overlayDiagnostics: OverlayDiagnostic[] = [];
+  const referenceDiagnostics: ReferenceDiagnostic[] = [];
   const anchorDiagnostics: AnchorDiagnostic[] = [];
   const tabs = config.contexts.flatMap(context => context.tabs);
   // A page drawn from content is outlined as it is added and drawn once the site's routes and
@@ -125,7 +129,8 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     const slug = currentPage.kind === "spec" ? document === "introduction" ? "index" : document : currentPage.kind === "markdown" ? currentPage.markdown.slug : currentPage.changelog.slug;
     const outputPath = outputPathFor(tab, document, slug);
     const view = currentPage.kind === "spec" ? currentPage.view : undefined;
-    const active = currentPage.kind === "spec" ? view?.kind === "operation" ? operationAnchor(referenceOperation(currentPage.spec, view.id), currentPage.spec) : view?.kind === "schema" ? definitionAnchor(view.name, currentPage.spec) : "introduction" : slug;
+    const active = currentPage.kind === "spec" ? view?.kind === "operation" ? operationAnchor(referenceOperation(currentPage.spec, view.id), currentPage.spec)
+      : view?.kind === "section" ? tagAnchor(view.tag, currentPage.spec) : view?.kind === "schema" ? definitionAnchor(view.name, currentPage.spec) : "introduction" : slug;
     const page: SitePage = { outputPath, currentPage, tabSlug: tab.slug, pageSlug: active, anchorAliases: tab.anchors?.[document], anchorUnmatched: tab.anchorUnmatched,
       identity: { tab: tab.id, kind: currentPage.kind === "spec" && currentPage.view && currentPage.view.kind !== "overview" ? currentPage.view.kind : currentPage.kind, document }, context, contentLocale, source,
       hidden: currentPage.kind === "markdown" ? currentPage.markdown.hideInMenu : undefined };
@@ -134,11 +139,14 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     pageMap.set(key, page);
     return page;
   }
-  /** An OpenAPI or MCP reference: its overview, and in a split reference each operation's and model's own page. */
+  /**
+   * An OpenAPI or MCP reference: its overview, and when split, a page for
+   * each section or each operation, and for each model.
+   */
   async function addReference(context: ResolvedSiteContext, tab: ResolvedTab, source: ResolvedOpenApiSource | ResolvedMcpSource): Promise<void> {
     const input = await reader.read(source.spec, context.key);
     const overlays = source.kind === "openapi" ? await Promise.all((source.overlays ?? []).map(async file => [file, (await reader.read(file, source.spec)).digest])) : [];
-    const owner = JSON.stringify([source.kind, source.spec, source.kind === "openapi" ? source.overlays ?? [] : undefined, source.kind === "openapi" ? source.overlayUnmatched ?? "error" : undefined, config.exports.openapi]);
+    const owner = JSON.stringify([source.kind, source.spec, source.kind === "openapi" ? source.overlays ?? [] : source.groups ?? {}, source.kind === "openapi" ? source.overlayUnmatched ?? "error" : undefined, config.exports.openapi]);
     const key = JSON.stringify([input.digest, overlays]);
     const prior = previous?.references.get(owner);
     let reference = cache.references.get(owner);
@@ -151,11 +159,14 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
         reference = { key, spec: shareReferenceSnapshot(normalizeSpec(await convertToOpenApi3(parsed)), prior?.spec), publicDocument: parsed.publicDocument, diagnostics };
       } else {
         const { parseString } = await import("mcp-parser");
-        reference = { key, spec: shareReferenceSnapshot(normalizeMcpSpec(parseString(input.body.toString("utf8"))), prior?.spec) };
+        const normalized = normalizeMcpSpec(parseString(input.body.toString("utf8")), source.groups);
+        reference = { key, spec: shareReferenceSnapshot(normalized.spec, prior?.spec), ungrouped: normalized.ungrouped };
       }
     }
     cache.references.set(owner, reference);
     overlayDiagnostics.push(...reference.diagnostics ?? []);
+    if (reference.ungrouped?.length) referenceDiagnostics.push({ severity: "warning", code: "mcp-ungrouped", tab: tab.label,
+      message: `No group lists ${reference.ungrouped.join(", ")}; the reference shows ${reference.ungrouped.length === 1 ? "it" : "them"} by kind after the groups.` });
     const spec = reference.spec;
     references.set(tab.slug, spec);
     if (reference.publicDocument) publicSpecs.set(tab.slug, reference.publicDocument);
@@ -164,15 +175,37 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
     siteTabs.push(navTab);
     const current: Extract<SitePage["currentPage"], { kind: "spec" }> = { kind: "spec", spec, specKey: tab.slug,
       tryIt: source.kind === "mcp" ? false : tab.tryIt ?? config.tryIt };
-    const split = tab.reference.split === "operations";
-    const overview = add(context, tab, { ...current, view: split ? { kind: "overview" } : undefined }, "introduction", source.spec, tab.contentLocale);
     const operations = spec.operations.filter(op => !op.hidden);
+    const sections = [...sectionBodies(spec)].filter(([, members]) => members.length);
+    // A list of one section says nothing, so a reference with one is its own page.
+    let split = tab.reference.split;
+    if (split === "sections" && sections.length < 2) {
+      referenceDiagnostics.push({ severity: "warning", code: "one-section", tab: tab.label,
+        message: sections.length ? `Split by section, but every operation is in ${sections[0][0]}, so the reference is one page. Group its operations, or split it by operation.` : "Split by section, but the reference has no operations, so it is one page." });
+      split = undefined;
+    }
+    if (!split && operations.length > LONG_REFERENCE) referenceDiagnostics.push({ severity: "warning", code: "long-page", tab: tab.label,
+      message: `${operations.length} operations on one page are slow to open and to search. Split it with reference.split: "sections", or "operations".` });
+    const overview = add(context, tab, { ...current, view: split ? { kind: "overview" } : undefined }, "introduction", source.spec, tab.contentLocale);
+    const page = toPublicPath(overview.outputPath, config.baseUrl, config.prettyUrls);
+    // An operation's or model's own address stays permanent wherever the reference shows it,
+    // redirecting to its place on a page, so the reference can split or join again.
+    const permanent = (address: string | undefined, to: string) => {
+      if (address) referenceRedirects.set(toPublicPath(routeOutputPath(tab, address), config.baseUrl, config.prettyUrls), { to, status: 301 });
+    };
+    const operationAddress = (operation: NormalizedOperation) => tab.routes?.[operationKey(operation)] ?? (tab.reference.operations && operationPagePath(operation, spec, tab.reference.operations));
     if (split) {
       const models = !tab.navigation && navTab.groups.find(group => group.label === "Models");
       if (models) { models.href = toPublicUrl(overview.outputPath, undefined, config.baseUrl, config.prettyUrls) + "#models"; models.id = "models"; }
-      for (const operation of operations) {
+      if (split === "operations") for (const operation of operations) {
         const document = operationKey(operation);
         add(context, { ...tab, routes: { ...tab.routes, [document]: tab.routes?.[document] ?? operationPagePath(operation, spec, tab.reference.operations) } }, { ...current, view: { kind: "operation", id: document } }, document, source.spec, tab.contentLocale);
+      }
+      else for (const [tag, members] of sections) {
+        const document = `section:${tag}`;
+        const record = add(context, { ...tab, routes: { ...tab.routes, [document]: tab.routes?.[document] ?? tagAnchor(tag, spec).slice("tag-".length) } }, { ...current, view: { kind: "section", tag } }, document, source.spec, tab.contentLocale);
+        const at = toPublicPath(record.outputPath, config.baseUrl, config.prettyUrls);
+        for (const operation of members) permanent(operationAddress(operation), `${at}#${operationAnchor(operation, spec)}`);
       }
       for (const name of Object.keys(spec.schemas)) {
         const document = `schema:${name}`;
@@ -180,14 +213,8 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       }
       return;
     }
-    // On one page, an operation's or model's own address stays permanent: it
-    // redirects to the section, so the reference can split or join again.
-    const page = toPublicPath(overview.outputPath, config.baseUrl, config.prettyUrls);
-    const permanent = (address: string | undefined, anchor: string) => {
-      if (address) referenceRedirects.set(toPublicPath(routeOutputPath(tab, address), config.baseUrl, config.prettyUrls), { to: `${page}#${anchor}`, status: 301 });
-    };
-    for (const operation of operations) permanent(tab.routes?.[operationKey(operation)] ?? (tab.reference.operations && operationPagePath(operation, spec, tab.reference.operations)), operationAnchor(operation, spec));
-    for (const name of Object.keys(spec.schemas)) permanent(tab.routes?.[`schema:${name}`], definitionAnchor(name, spec));
+    for (const operation of operations) permanent(operationAddress(operation), `${page}#${operationAnchor(operation, spec)}`);
+    for (const name of Object.keys(spec.schemas)) permanent(tab.routes?.[`schema:${name}`], `${page}#${definitionAnchor(name, spec)}`);
   }
   /** A reference a Doxygen, Go or Rust source generates, its pages drawn by its loader. */
   async function addGeneratedReference(context: ResolvedSiteContext, tab: ResolvedTab, source: ResolvedDoxygenSource | ResolvedGodocSource | ResolvedRustdocSource): Promise<void> {
@@ -359,7 +386,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
   const extraFiles = attachChangelogFeeds(pages, config);
   await attachSiteFiles(extraFiles, pages, tabs, config, reader);
   const contentDiagnostics = [...new Map(pages.flatMap(page => page.currentPage.kind === "markdown" ? page.currentPage.markdown.diagnostics ?? [] : []).map(diagnostic => [JSON.stringify(diagnostic), diagnostic])).values()];
-  return { publicSpecs, siteTabs, references, pageMap, routes, referenceTargets: targetsByTab, cache, changelogDiagnostics, godocDiagnostics, rustdocDiagnostics, overlayDiagnostics, contentDiagnostics, anchorDiagnostics, extraFiles };
+  return { publicSpecs, siteTabs, references, pageMap, routes, referenceTargets: targetsByTab, cache, changelogDiagnostics, godocDiagnostics, rustdocDiagnostics, overlayDiagnostics, referenceDiagnostics, contentDiagnostics, anchorDiagnostics, extraFiles };
 }
 
 /** A page still to draw from its content: its source, and the navigation and document its page lists read. */

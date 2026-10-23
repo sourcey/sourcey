@@ -368,13 +368,36 @@ Standalone builds emit HTML fallback pages and a `_redirects` file for hosts tha
 
 ## Reference pages
 
-An OpenAPI or MCP reference is one page by default. `reference: { split: "operations" }` publishes a page for each operation and model, beside an overview that lists them. Both use the same reference components, examples and schema links. OpenAPI operations keep their request console. On a split reference's overview, each operation and model keeps the anchor its section has on the single page, so a link from before the split lands on its entry. Each theme frames those pages as it frames a guide: the section listing the operation over its title, previous and next in navigation order, and an overview at reading width with "On this page".
+An OpenAPI or MCP reference publishes in one of three shapes, chosen by its size and how it reads:
+
+| `reference.split` | Publishes | Suits |
+| --- | --- | --- |
+| none (default) | One page holding everything | A small reference: a few dozen operations |
+| `"sections"` | A page for each section, an OpenAPI tag or MCP group, holding its operations in full | An MCP server, or an API whose tags hold a modest number of light operations |
+| `"operations"` | A page for each operation | A large API, or one whose operations carry large schemas |
+
+A split reference also publishes a page for each model, beside an overview that lists the sections and their operations. Every shape uses the same reference components, examples and schema links, and OpenAPI operations keep their request console. On a split reference's overview, each operation and model keeps the anchor its section has on the single page, so a link from before the split lands on its entry. Each theme frames those pages as it frames a guide: the section's name over an operation's title, previous and next in navigation order, and an overview at reading width whose "On this page" lists its introduction's headings, as the sidebar lists the sections. A reference split by section with only one section to split by stays one page, and the build says so; one page holding more than 100 operations builds with a warning, as it is slow to open and to search.
+
+An MCP server's sections are its kinds, Tools, Resources and Prompts, unless its groups say otherwise. Name them as the server's authors divide it, each with the tools, resources and prompts it lists, in order:
+
+```ts
+source: mcp({
+  spec: "./mcp.json",
+  groups: {
+    Authentication: ["login", "logout"],
+    Timer: ["timer_status", "start_timer", "stop_timer"],
+  },
+}),
+reference: { split: "sections" },
+```
+
+The snapshot stays as captured, so it can be refreshed from the server without losing its sections. A name the server lacks, or one listed twice, fails the build. Anything no group names is listed by kind after the groups, and the build names it. An entry's kind shows beside it only in a section that mixes kinds.
 
 Schema alternatives use a native picker, labelled from their titles, reference names or discriminator values. Without JavaScript every alternative remains available. A field link opens the matching alternative and its parent disclosures; readable Markdown retains all alternatives. Typed map values use the same field rows as named properties, including descriptions, constraints and nested values.
 
 A named type never opens inside itself: a field of the type it sits in reads "Same fields as" and links up to where that type is drawn. A schema that would draw more than 500 field rows, as large Kubernetes types do, draws each named type once, at its shallowest place, and its other fields link there. Generated examples follow the same rule: a property that would repeat its own type is left out (empty where it is required), and an example longer than 400 lines shows each named object type once.
 
-Set `reference.operations` to give every operation a permanent address. `{operation}` uses the authored operation ID, or the path when no ID exists. `{operationId}` requires an ID; `{method}` and `{path}` are also available. Values use the native heading slug rules. A split reference publishes each operation's page there; a single page redirects the address to the operation's section, so the reference can split or join without breaking a link. Explicit tab `routes` for operations and models work the same way and win over the pattern. Duplicate physical paths fail the build.
+Set `reference.operations` to give every operation a permanent address. `{operation}` uses the authored operation ID, or the path when no ID exists. `{operationId}` requires an ID; `{method}` and `{path}` are also available. Values use the native heading slug rules. A reference split by operation publishes each operation's page there; one page, or a page per section, redirects the address to the operation where it is, so the reference can change shape without breaking a link. Explicit tab `routes` for operations and models work the same way and win over the pattern. Duplicate physical paths fail the build.
 
 Link an operation from any page by name, as navigation names it: `[List keys](<operation:GET /keys>)`, or `operation:TOOL search` for an MCP tool. The link lands wherever the operation is published, on its page or its section, and follows a split. When two references publish the same operation, name the reference's tab ID: `operation:rest:GET /keys`. A link to an operation no reference publishes fails the build. Cards take the same `href`.
 

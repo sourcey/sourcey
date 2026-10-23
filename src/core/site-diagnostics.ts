@@ -2,6 +2,7 @@ import { decodeHTMLAttribute } from "entities";
 import { pageMetadata } from "./page-metadata.js";
 import { operationKey } from "./reference-identity.js";
 import { identityKey, type RouteTable, type SitePage } from "./site-model.js";
+import { referenceTag } from "./tag-utils.js";
 import type { ResolvedConfig } from "../config.js";
 import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
 
@@ -80,6 +81,7 @@ function sourceLinks(page: SitePage): string[] {
   const source = current.kind === "markdown" ? current.markdown : current.kind === "changelog" ? current.changelog
     : current.kind === "spec" ? view?.kind === "operation"
       ? current.spec.operations.find(operation => operationKey(operation) === view.id) ?? current.spec
+      : view?.kind === "section" ? referenceTag(current.spec, view.tag)
       : view?.kind === "schema" ? current.spec.schemas[view.name] : current.spec
     : undefined;
   if (!source) return [];

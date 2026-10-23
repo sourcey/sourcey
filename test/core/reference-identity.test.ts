@@ -18,7 +18,7 @@ const document = {
     ["/items/{id}", "/items/id", "/plain"].map((path) => [
       path,
       {
-        get: { tags: ["All", "Other"], responses: { "200": { description: "OK" } } },
+        get: { tags: path === "/plain" ? ["Other"] : ["All", "Other"], responses: { "200": { description: "OK" } } },
       },
     ]),
   ),
@@ -54,8 +54,8 @@ describe("reference identities", () => {
       expect(operationAnchor(op, reordered)).toBe(operationAnchor(op, spec));
   });
 
-  it.each(["single", "split"] as const)(
-    "keeps %s HTML, navigation, routes, search and readable exports in agreement",
+  it.each(["single", "sections", "operations"] as const)(
+    "keeps HTML, navigation, routes, search and readable exports in agreement on %s",
     async (mode) => {
       const root = await mkdtemp(join(tmpdir(), "sourcey-reference-"));
       roots.push(root);
@@ -63,7 +63,7 @@ describe("reference identities", () => {
       const config = await resolveConfigFromRaw(
         {
           theme: { fonts: { google: false } },
-          navigation: { tabs: [{ tab: "API", openapi: "api.json", reference: mode === "split" ? { split: "operations" } : {} }] },
+          navigation: { tabs: [{ tab: "API", openapi: "api.json", reference: mode === "single" ? {} : { split: mode } }] },
         },
         root,
       );
@@ -115,6 +115,16 @@ describe("reference identities", () => {
       if (mode === "single") {
         const html = htmlByPath.get(owner.outputPath)!;
         for (const tag of spec.tags) expect(html).toContain(`id="${tagAnchor(tag.name, spec)}"`);
+      }
+      if (mode === "sections") {
+        // Each tag is a page under its own heading; an operation filed under both is shown
+        // under the first and linked from the second.
+        const pages = site.pages.filter((page) => page.currentPage.kind === "spec" && page.currentPage.view?.kind === "section");
+        expect(pages.map((page) => page.outputPath)).toEqual(["api/all.html", "api/other.html"]);
+        const other = htmlByPath.get("api/other.html")!;
+        expect(other).toMatch(/<h1 class="reference-page-title[^"]*">Other<\/h1>/);
+        expect(other).toContain(`href="${targets.operations["GET /items/{id}"].href}"`);
+        expect(targets.operations["GET /items/{id}"].href).toBe(`${site.assembly.routes.byOutputPath.get("api/all.html")!.publicPath}#${operationAnchor(spec.operations[0], spec)}`);
       }
     },
   );

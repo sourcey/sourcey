@@ -1,7 +1,8 @@
 import { useContext } from "preact/hooks";
 import { Breakable, bareName } from "../ui/Breakable.js";
 import type { NormalizedOperation, NormalizedRequestBody } from "../../core/types.js";
-import { operationAnchor, operationFieldRoot, referenceFieldPath, operationSectionAnchor, operationSections, type OperationSection } from "../../core/reference-identity.js";
+import { kindTells, operationAnchor, operationFieldRoot, operationSectionName, referenceFieldPath, operationSectionAnchor, operationSections, type OperationSection } from "../../core/reference-identity.js";
+import { referenceTag } from "../../core/tag-utils.js";
 import { SECTION_LABELS } from "./outline.js";
 import { PageContext, SiteContext, SpecContext, isOperationPage } from "../../renderer/context.js";
 import { AnchorAliases } from "../ui/AnchorAliases.js";
@@ -68,6 +69,7 @@ function OperationIdentity({ operation: op }: OperationProps) {
   const standalone = isOperationPage(page);
   const Heading = standalone ? "h1" : "h2";
   const mcp = op.mcpExtras;
+  const { kind, named } = useMcpLine(op);
   return (
     <>
       <header class="mb-6">
@@ -79,13 +81,21 @@ function OperationIdentity({ operation: op }: OperationProps) {
           {mcp?.annotations && <AnnotationBadges annotations={mcp.annotations} />}
         </div>
       </header>
-      {mcp ? (
-        <McpEndpointBar method={op.method} path={op.path} />
-      ) : (
-        <EndpointBar operation={op} />
-      )}
+      {!mcp ? <EndpointBar operation={op} /> : (kind || named) && <McpEndpointBar method={kind ? op.method : undefined} path={op.path} />}
     </>
   );
+}
+
+/**
+ * What an MCP entry's line under its title says: its kind where its section
+ * holds several, and its name or address where the title is not already that.
+ */
+function useMcpLine(op: NormalizedOperation): { kind: boolean; named: boolean } {
+  const spec = useContext(SpecContext);
+  if (!op.mcpExtras) return { kind: true, named: true };
+  const section = operationSectionName(op, spec);
+  const listed = section ? referenceTag(spec, section).operations.filter(other => !other.hidden).map(other => other.method) : [];
+  return { kind: kindTells(op.method, listed), named: (op.summary ?? op.path) !== op.path };
 }
 
 /**
@@ -120,6 +130,7 @@ function SplitOperationIdentity({ operation: op }: OperationProps) {
   const standalone = isOperationPage(page);
   const Heading = standalone ? "h1" : "h2";
   const mcp = op.mcpExtras;
+  const { kind, named } = useMcpLine(op);
   return (
     <>
       <header class="operation-split-header">
@@ -130,13 +141,10 @@ function SplitOperationIdentity({ operation: op }: OperationProps) {
           {op.deprecated && <DeprecatedBadge />}
           {mcp?.annotations && <AnnotationBadges annotations={mcp.annotations} />}
         </div>
-        {mcp && (
+        {mcp && (kind || named) && (
           <div class="operation-line" data-method={op.method.toLowerCase()}>
-            <span class="operation-line-method">{op.method.toUpperCase()}</span>
-            {/* An MCP tool's path is its name, already the title. */}
-            {(op.summary ?? op.path) !== op.path && (
-              <span class="operation-line-path">{op.path}</span>
-            )}
+            {kind && <span class="operation-line-method">{op.method.toUpperCase()}</span>}
+            {named && <span class="operation-line-path">{op.path}</span>}
           </div>
         )}
       </header>

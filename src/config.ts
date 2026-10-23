@@ -441,13 +441,17 @@ export interface TabConfig {
 }
 
 export interface ReferenceConfig {
-  /** `"operations"`: a page for each operation and model, beside an overview that lists them. */
-  split?: "operations";
+  /**
+   * `"sections"`: a page for each section (an OpenAPI tag, an MCP group or
+   * kind) holding its operations, and one for each model. `"operations"`: a
+   * page for each operation and model. Either way an overview lists them.
+   */
+  split?: "sections" | "operations";
   /**
    * Each operation's permanent address, built from `{operationId}`, `{method}`,
-   * `{path}` or `{operation}` (its ID, or its path when it has none). A split
-   * reference publishes the operation's page there; a single page redirects it
-   * to the operation's section.
+   * `{path}` or `{operation}` (its ID, or its path when it has none). A
+   * reference split by operation publishes the operation's page there; one
+   * page, or a page per section, redirects it to the operation where it is.
    */
   operations?: string;
 }
@@ -928,7 +932,7 @@ async function resolveTabs(
     });
     if (tab.anchorUnmatched !== undefined && !["error", "warn", "ignore"].includes(tab.anchorUnmatched)) throw new Error(`Invalid anchorUnmatched in tab "${tab.tab}"; expected error, warn or ignore`);
     const reference = tab.reference ?? {};
-    if (reference.split !== undefined && reference.split !== "operations") throw new Error(`Invalid reference.split in tab "${tab.tab}"; expected "operations"`);
+    if (reference.split !== undefined && reference.split !== "sections" && reference.split !== "operations") throw new Error(`Invalid reference.split in tab "${tab.tab}"; expected "sections" or "operations"`);
     if (reference.operations !== undefined && (typeof reference.operations !== "string" || !reference.operations.trim())) throw new Error(`Invalid reference.operations in tab "${tab.tab}"; expected an address such as "{operationId}"`);
     resolved.push({
       ...resolvedTabFromSource(tab.tab, slug, source),

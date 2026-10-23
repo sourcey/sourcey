@@ -1,4 +1,4 @@
-import type { NormalizedSpec, UnmatchedTargetPolicy } from "./types.js";
+import type { NormalizedOperation, NormalizedSpec, UnmatchedTargetPolicy } from "./types.js";
 import type { ChangelogPage, MarkdownPage } from "./markdown-loader.js";
 import type { ResolvedTab, TryItConfig, VersionItem, LocaleConfig, Redirect } from "../config.js";
 import type { SiteNavigation } from "./navigation.js";
@@ -9,6 +9,7 @@ import {
   definitionAnchors,
   tagAnchor,
   referenceOperation,
+  sectionBodies,
 } from "./reference-identity.js";
 import { toPublicPath, normalizeBaseUrl } from "../site-url.js";
 import { Parser } from "htmlparser2";
@@ -63,7 +64,7 @@ export type CurrentPage =
       tryIt?: false | TryItConfig;
       specKey?: string;
       view?:
-        { kind: "operation"; id: string } | { kind: "schema"; name: string } | { kind: "overview" };
+        { kind: "operation"; id: string } | { kind: "section"; tag: string } | { kind: "schema"; name: string } | { kind: "overview" };
     }
   | { kind: "markdown"; markdown: MarkdownPage }
   | { kind: "changelog"; changelog: ChangelogPage }
@@ -180,6 +181,9 @@ function pageAnchors(current: CurrentPage): string[] {
     );
   if (view?.kind === "schema")
     return definitionAnchors(view.name, spec);
+  // A section's page holds its operations as the single page does.
+  if (view?.kind === "section")
+    return [tagAnchor(view.tag, spec), ...(sectionBodies(spec).get(view.tag) ?? []).flatMap((op) => operationAnchors(op, spec, false))];
   const result = [
     "introduction",
     ...spec.tags.filter((tag) => !tag.hidden).map((tag) => tagAnchor(tag.name, spec)),
@@ -451,6 +455,12 @@ export class RouteTable {
         route.page.currentPage.kind === "spec" &&
         (!route.page.currentPage.view || route.page.currentPage.view.kind === "overview"),
     )!;
+    // An operation is published on its own page, its section's, or the reference's one page.
+    const sections = new Map<NormalizedOperation, RouteRecord>();
+    for (const [tag, operations] of sectionBodies(spec)) {
+      const route = byDocument.get(JSON.stringify(["section", `section:${tag}`]));
+      if (route) for (const operation of operations) sections.set(operation, route);
+    }
     return {
       overview: { href: overview.publicPath, outputPath: overview.outputPath },
       operations: Object.fromEntries(
@@ -459,12 +469,13 @@ export class RouteTable {
           .map((op) => {
             const id = `${op.method.toUpperCase()} ${op.path}`;
             const own = byDocument.get(JSON.stringify(["operation", id]));
+            const page = own ?? sections.get(op) ?? overview;
             const anchor = own ? undefined : operationAnchor(op, spec);
             return [
               id,
               {
-                href: own?.publicPath ?? `${overview.publicPath}#${anchor}`,
-                outputPath: own?.outputPath ?? overview.outputPath,
+                href: own ? page.publicPath : `${page.publicPath}#${anchor}`,
+                outputPath: page.outputPath,
                 anchor,
               },
             ];

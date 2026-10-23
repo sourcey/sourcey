@@ -90,6 +90,46 @@ export function tagAnchor(name: string, spec: NormalizedSpec): string {
   return requireAnchor(anchors(spec).tags, name);
 }
 
+/**
+ * The operations each section shows in full, by tag name. An operation filed
+ * under several tags is shown under the first and only linked from the others.
+ */
+export function sectionBodies(spec: NormalizedSpec): ReadonlyMap<string, readonly NormalizedOperation[]> {
+  let result = bodies.get(spec);
+  if (!result) {
+    const shown = new Set<NormalizedOperation>();
+    result = new Map(spec.tags.filter(tag => !tag.hidden).map(tag => {
+      const own = tag.operations.filter(operation => !operation.hidden && !shown.has(operation));
+      for (const operation of own) shown.add(operation);
+      return [tag.name, own];
+    }));
+    bodies.set(spec, result);
+  }
+  return result;
+}
+const bodies = new WeakMap<NormalizedSpec, ReadonlyMap<string, readonly NormalizedOperation[]>>();
+
+/** The section an operation is shown in full under, by tag name. */
+export function operationSectionName(operation: NormalizedOperation, spec: NormalizedSpec): string | undefined {
+  let owners = sectionOwners.get(spec);
+  if (!owners) {
+    owners = new Map([...sectionBodies(spec)].flatMap(([name, operations]) => operations.map(member => [member, name] as const)));
+    sectionOwners.set(spec, owners);
+  }
+  return owners.get(operation);
+}
+const sectionOwners = new WeakMap<NormalizedSpec, ReadonlyMap<NormalizedOperation, string>>();
+
+const MCP_KINDS = new Set(["tool", "resource", "prompt"]);
+/**
+ * Whether an entry's method tells the reader something beside the entries
+ * listed with it: an HTTP method always does, an MCP kind (tool, resource or
+ * prompt) only among other kinds, as a section's name already says the one.
+ */
+export function kindTells(method: string, listed: readonly string[]): boolean {
+  return !MCP_KINDS.has(method) || listed.some(other => other !== method);
+}
+
 export type OperationSection = "request-body" | "parameters" | "authentication" | "returns" | "responses" | `response-${string}`;
 export function operationSectionAnchor(operation: NormalizedOperation, spec: NormalizedSpec, section: OperationSection, standalone: boolean): string {
   return standalone ? section : `${operationAnchor(operation, spec)}-${section}`;
