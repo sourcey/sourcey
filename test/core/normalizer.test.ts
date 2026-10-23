@@ -50,6 +50,18 @@ describe("normalizeSpec", () => {
     expect(body(2).properties!.id.type).toBe("string");
   });
 
+  it("names a reference left in place by its own pointer, whatever the resolver marked on it", () => {
+    // A resolver leaves a component that recurs as its reference, and need mark it no other way.
+    const task = { type: "object", properties: { title: { type: "string" }, subtasks: { type: "array", items: { $ref: "#/components/schemas/Task" } } } };
+    const spec = normalizeSpec({
+      source: "inline.json",
+      document: { openapi: "3.0.3", info: { title: "Tasks", version: "1" }, paths: { "/tasks": { get: { responses: { "200": { description: "OK", content: { "application/json": { schema: { $ref: "#/components/schemas/Task" } } } } } } } }, components: { schemas: { Task: task } } },
+    } as unknown as ParsedSpec);
+    const body = spec.operations[0].responses[0].content!["application/json"].schema!;
+    expect(body.refName).toBe("Task");
+    expect(body.properties!.subtasks.items).toMatchObject({ refName: "Task" });
+  });
+
   it("expands a recursive component wherever it is used and links it where it would repeat", async () => {
     const spec = await loadAndNormalize("recursive-schema.yaml");
     const body = spec.operations[0].requestBody!.content["application/json"].schema!;

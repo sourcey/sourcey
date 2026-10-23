@@ -603,7 +603,9 @@ function normalizeSchemaAt(schema: Record<string, unknown>, components: Componen
     const expanded = normalizeSchema(components[target], components, undefined, [...path, target]);
     return { ...expanded, description: optStr(schema.description) ?? expanded.description, refName: target };
   }
-  const own = optStr(schema["x-ref-name"]);
+  // A reference left in place, where its component would repeat, is named by its own pointer:
+  // a resolver need not mark it, and json-schema-ref-parser 16.0.5 does not.
+  const own = optStr(schema["x-ref-name"]) ?? (target && components[target] ? target : undefined);
   const inner = own && !path.includes(own) ? [...path, own] : path;
   const child = (value: unknown) => normalizeSchema(value as Record<string, unknown>, components, undefined, inner);
   // Handle nullable: OpenAPI 3.0 uses x-nullable or nullable,
@@ -641,7 +643,7 @@ function normalizeSchemaAt(schema: Record<string, unknown>, components: Componen
     example: schema.example,
     examples: Array.isArray(schema.examples) ? schema.examples : undefined,
     // A component is its own named type, referenced from elsewhere or not.
-    refName: optStr(schema["x-ref-name"]) ?? name,
+    refName: own ?? name,
   };
 
   // Object properties
