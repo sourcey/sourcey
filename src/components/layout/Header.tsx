@@ -96,17 +96,18 @@ export function Header() {
 
   const base = options.assetBase;
   const home = logoHref(site, nav, base);
-  // The full-width theme keeps site controls and section navigation in its frame.
-  const wide = site.theme.name === "api-first";
+  // Each row runs the window's width, so a theme can colour it edge to edge, and holds its
+  // contents to the page's frame. The full-width theme's frame is the window.
+  const framed = site.theme.name !== "api-first";
 
   return (
     <header id="navbar" class="z-30 fixed lg:sticky top-0 w-full">
       <div class="navbar-band absolute w-full h-full flex-none border-b border-[rgb(var(--color-gray-200)/0.7)] dark:border-[rgb(var(--color-gray-300)/0.06)] bg-[rgb(var(--color-background-light))] dark:bg-[rgb(var(--color-background-dark))]" />
 
-      <div class={wide ? "relative w-full" : "max-w-[92rem] mx-auto relative"}>
+      <div class="relative">
         {/* Row 1: Logo + Search + Actions */}
         <div class="sourcey-header-top relative">
-          <div class="sourcey-header-frame flex items-center h-16 min-w-0 mx-4 lg:mx-0">
+          <div class={`sourcey-header-frame flex items-center h-16 min-w-0 mx-4 ${framed ? "max-w-[92rem] lg:mx-auto" : "lg:mx-0"}`}>
             <div
               class="sourcey-header-top-inner h-full relative flex-1 flex items-center gap-x-4 min-w-0"
             >
@@ -188,7 +189,7 @@ export function Header() {
           </div>
         </div>
 
-        <div class="sourcey-header-navigation" data-desktop={nav.tabs.length > 1 || hasContextChoices(options.equivalents)}>
+        <div class={`sourcey-header-navigation${framed ? " max-w-[92rem] mx-auto" : ""}`} data-desktop={nav.tabs.length > 1 || hasContextChoices(options.equivalents)}>
           <MobileBreadcrumbs nav={nav} />
           {nav.tabs.length > 1 && <nav class="sourcey-section-tabs" aria-label={messages.sectionsNavigation}>
             {nav.tabs.map((tab) => {

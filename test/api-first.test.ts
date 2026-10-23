@@ -123,6 +123,10 @@ describe("api-first theme", () => {
   it("leaves the default theme's layout and neutrals as they were", async () => {
     const { guide, api } = await buildDemo("default");
     expect(guide).toContain("max-w-[92rem]");
+    // Each header row runs the window's width, so a theme can colour it edge to edge, and holds
+    // its contents to the page's frame.
+    expect(guide).toMatch(/<div class="sourcey-header-top relative"><div class="sourcey-header-frame [^"]* max-w-\[92rem\] lg:mx-auto">/);
+    expect(guide).toContain('<div class="sourcey-header-navigation max-w-[92rem] mx-auto"');
     expect(guide).not.toContain("--color-gray-50:");
     expect(guide).toContain("--color-background-dark: 11 12 16;");
     expect(guide).not.toContain("page-trail");
