@@ -4,7 +4,7 @@
 
 ### Added
 
-- `sourcey migrate docusaurus` converts `@theme/CodeBlock` to a fenced code block. Its language comes from `language` or its `language-` class, its title from `title` or the metastring, and its code is what Docusaurus shows: the string it is given, or the lines written inside it without their indentation. A code block written inline as its paragraph's only content converts too. Verification reads the block's text as code, so a conversion that changes it stops. `showLineNumbers` is named in the report, since native code blocks do not number their lines.
+- `sourcey migrate docusaurus` converts `@theme/CodeBlock` to a fenced code block. Its language comes from `language` or its `language-` class, its title from `title` or the metastring, and its code is what Docusaurus shows: the string it is given, or the text written inside it, read as MDX reads it. A code block written on its own line within a paragraph converts too, as the block Docusaurus shows there. Verification reads the block's text as code, so a conversion that changes it stops. `showLineNumbers` is named in the report, since native code blocks do not number their lines.
 - `sourcey migrate docusaurus` converts `@theme/ThemedImage` to a native figure with its light and dark pictures, read from the site's static directories.
 - `sourcey migrate docusaurus` evaluates `useBaseUrl()` with static arguments as Docusaurus's `addBaseUrl` does, so an attribute or image source written with it keeps its address.
 

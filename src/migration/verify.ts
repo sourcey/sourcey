@@ -15,7 +15,7 @@ import { buildSourceySite, sourceyArtifacts, type SourceySiteArtifacts } from ".
 import { identityKey } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
 import { documentScope, elementBinding } from "./document.js";
-import { parseDocument, parseMarkdown, textContent, walk, type SyntaxNode } from "./mdx.js";
+import { childrenText, parseDocument, parseMarkdown, textContent, walk, type SyntaxNode } from "./mdx.js";
 import { configFile, type NativePlan, type PlannedDocument } from "./plan.js";
 import type { ProjectFiles } from "./project-files.js";
 import { fragmentSlugger, type FragmentRule } from "./slugs.js";
@@ -296,7 +296,7 @@ const ALERT_MARKER = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n|$)/;
  * syntax is compared by what a reader sees; attribute text reads as the inline
  * Markdown both sides render it as. With `alerts`, a GitHub alert
  * reads as native and GitHub show it: titled by its type. A `code` element's
- * children are its code: its text, or its paragraphs one after another.
+ * children are its code, as a reader sees their text.
  */
 async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean; code?: (node: SyntaxNode) => boolean } = {}): Promise<{ prose: string[]; code: string[] }> {
   const prose: string[] = [];
@@ -329,7 +329,7 @@ async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean; code
           if (TEXT_ATTRIBUTES.has(name.toLowerCase())) prose.push(normalise(decodeHTML(double ?? single)));
     }
     else if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
-      const shown = isCode(node) && codeText(node.type === "mdxJsxFlowElement" ? (node.children ?? []).map(textContent).join("\n\n") : textContent(node));
+      const shown = isCode(node) && codeText(childrenText(node) ?? "");
       if (shown) code.push(shown);
       for (const attribute of node.attributes ?? [])
         if (attribute.name && TEXT_ATTRIBUTES.has(attribute.name) && typeof attribute.value === "string") prose.push(normalise(textContent(await parseMarkdown(attribute.value, 0))));

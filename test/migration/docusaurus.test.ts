@@ -360,6 +360,10 @@ describe("sourcey migrate docusaurus", () => {
         "",
         "<CodeBlock language=\"js\" showLineNumbers>{`run()`}</CodeBlock>",
         "",
+        "Find the address:",
+        "<CodeBlock className=\"language-bash\">curl -I https://\\<your-host\\>/health</CodeBlock>",
+        "Then check it.",
+        "",
         "- Check the port:",
         "",
         "  <CodeBlock className=\"language-bash\">sudo ss -tlpn | grep 7422 &amp;&amp; echo up</CodeBlock>",
@@ -378,6 +382,7 @@ describe("sourcey migrate docusaurus", () => {
       expect(page).toContain('```bash title="Install"\nnpm i example\n```');
       expect(page).toContain("```ini\n[example]\nname=example_repo\nurl=https://example.com/repo\n```");
       expect(page).toContain("```js\nrun()\n```");
+      expect(page).toContain("Find the address:\n```bash\ncurl -I https://<your-host>/health\n```\nThen check it.\n");
       expect(page).toContain("- Check the port:\n\n  ```bash\n  sudo ss -tlpn | grep 7422 && echo up\n  ```\n");
       expect(page).toContain('<Figure src="../../static/img/logo.svg" darkSrc="../../static/img/logo-dark.svg" alt="The example logo" />');
       expect(page).toContain('<img src="/docs/img/favicon.png" alt="Icon" />');

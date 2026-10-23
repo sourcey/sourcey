@@ -9,7 +9,7 @@ import type { JsonValue } from "../core/markdown-components.js";
 import { identityKey, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
 import { evaluate, exportedConstant, scopeFromProgram, toJson, type CallValue, type ImportBinding, type JsonResult, type ModuleScope } from "./javascript.js";
-import { closingTagStart, openingTagEnd, span, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
+import { childrenText, closingTagStart, openingTagEnd, span, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
 import type { ProjectFiles } from "./project-files.js";
 import { applyEdits, lineAt, lineEnd, markdownText, type TextEdit } from "./text-edits.js";
 
@@ -103,7 +103,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
 
   // `inHtml`: inside a plain HTML element, whose one raw HTML block holds its children.
   // `parent`: the nearest component around the node, as its converter read it.
-  // `alone`: an element that is its paragraph's only content, standing on its own lines as a block does.
+  // `alone`: an element on its own lines in its paragraph, which can stand as a block does.
   const visit = async (node: SyntaxNode, inTable = false, inHtml = false, parent?: ElementInput["parent"], alone = false): Promise<void> => {
     if (node.position && inside(node.position.start.offset)) return;
     const jsx = node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement";
@@ -117,9 +117,8 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       return;
     }
     const html = inHtml || (jsx && !!node.name && /^[a-z]/.test(node.name) && !node.name.includes("."));
-    const content = node.type === "paragraph" ? (node.children ?? []).filter((child) => !(child.type === "text" && !child.value?.trim())) : [];
-    const sole = content.length === 1 && content[0].type === "mdxJsxTextElement" ? content[0] : undefined;
-    for (const child of node.children ?? []) await visit(child, inTable || node.type === "table", html, within, child === sole);
+    const lines = node.type === "paragraph" ? ownLines(node) : undefined;
+    for (const child of node.children ?? []) await visit(child, inTable || node.type === "table", html, within, !!lines?.has(child));
   };
 
   /**
@@ -174,6 +173,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       bindings,
       children: close === undefined ? "" : source.slice(opening, close),
       childValue: await childValue(node),
+      childText: childrenText(node),
       ...(parent && { parent }),
       route,
       section: (path) => context.sections?.get(path.replace(/\/?$/, "/")),
@@ -407,6 +407,21 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
  * and pages keep CommonMark's indented code. Its first line moves back to the
  * container's indentation; continuation lines may stay indented.
  */
+/** The elements of a paragraph that stand on their own lines: only line breaks part them from the text before and after. */
+function ownLines(paragraph: SyntaxNode): Set<SyntaxNode> {
+  const children = paragraph.children ?? [];
+  const blank = (child: SyntaxNode) => child.type === "text" && !child.value?.trim();
+  const lines = new Set<SyntaxNode>();
+  children.forEach((child, index) => {
+    if (child.type !== "mdxJsxTextElement") return;
+    const before = children[index - 1], after = children[index + 1];
+    const opens = children.slice(0, index).every(blank) || (before.type === "text" && /\n[ \t]*$/.test(before.value ?? ""));
+    const closes = children.slice(index + 1).every(blank) || (after.type === "text" && /^[ \t]*\n/.test(after.value ?? ""));
+    if (opens && closes) lines.add(child);
+  });
+  return lines;
+}
+
 function paragraphIndents(tree: SyntaxNode, source: string): TextEdit[] {
   const edits: TextEdit[] = [];
   for (const { node, parents } of walk(tree)) {

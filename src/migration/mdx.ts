@@ -262,3 +262,18 @@ export function textContent(node: SyntaxNode): string {
   if (node.type === "break") return "\n";
   return (node.children ?? []).map(textContent).join("");
 }
+
+/** Text and its formatting, which hold no element or expression. */
+const PHRASING = new Set(["text", "emphasis", "strong", "delete", "inlineCode", "link", "linkReference", "break"]);
+
+/**
+ * The text a reader sees in an element whose children are only text, as MDX
+ * reads it: its line, or its paragraphs one after another. Undefined when the
+ * children hold an element, an expression or another kind of block.
+ */
+export function childrenText(node: SyntaxNode): string | undefined {
+  const plain = (child: SyntaxNode): boolean => PHRASING.has(child.type) && (child.children ?? []).every(plain);
+  const children = node.children ?? [];
+  if (node.type !== "mdxJsxFlowElement") return children.every(plain) ? textContent(node) : undefined;
+  return children.every((child) => child.type === "paragraph" && (child.children ?? []).every(plain)) ? children.map(textContent).join("\n\n") : undefined;
+}

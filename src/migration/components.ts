@@ -19,6 +19,8 @@ export interface ElementInput {
   children: string;
   /** The static value of children that are one expression, such as a code block's `{`npm i`}`. */
   childValue?: JsonValue;
+  /** The text a reader sees in children that are only text: its line, or its paragraphs one after another. */
+  childText?: string;
   /** The nearest component around this one, as its converter read it: Docusaurus's tabs label their items. */
   parent?: { module: string; export: string; props: Record<string, JsonValue> };
   /** Public path the document is published at. */
