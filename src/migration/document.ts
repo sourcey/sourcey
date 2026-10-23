@@ -4,12 +4,13 @@
  */
 import { posix } from "node:path";
 import type { IconSet } from "../config.js";
+import { escapeHtml } from "../utils/html.js";
 import { indentColumns } from "../utils/indentation.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import { identityKey, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
 import { evaluate, exportedConstant, scopeFromProgram, toJson, type CallValue, type ImportBinding, type JsonResult, type ModuleScope } from "./javascript.js";
-import { childrenText, closingTagStart, openingTagEnd, span, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
+import { childrenText, closingTagStart, openingTagEnd, span, textContent, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
 import type { ProjectFiles } from "./project-files.js";
 import { applyEdits, lineAt, lineEnd, markdownText, type TextEdit } from "./text-edits.js";
 
@@ -49,6 +50,7 @@ export interface DocumentPlace {
   dialect: {
     globals?: ReadonlyMap<string, string>;
     mdx1?: boolean;
+    headingIds?: boolean;
     calls?: ReadonlyMap<string, (args: readonly JsonValue[]) => JsonValue | undefined>;
     statics?: { base: string; directories: readonly string[] };
   };
@@ -301,6 +303,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       const after = lineEnd(source, span(node).end);
       if (after < source.length && source.slice(span(node).end, after).trim() === "" && source.slice(after, lineEnd(source, after)).trim())
         edits.push({ start: after, end: after, text: "\n" });
+      if (startsHtmlBlock(source, node)) edits.push(...rawBlockMarkdown(source, node));
     }
     for (const attribute of node.attributes ?? []) {
       if (!attribute.position) continue;
@@ -400,7 +403,16 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
   }
 
   for (const child of tree.children ?? []) await visit(child);
-  if (!document.dialect.mdx1) edits.push(...paragraphIndents(tree, source).filter((edit) => !inside(edit.end)));
+  // Docusaurus reads a heading line's first `{#`, escaped or not, as where its id starts (`escapeMarkdownHeadingIds`); native reads it unescaped.
+  if (document.dialect.headingIds)
+    for (const { node } of walk(tree)) {
+      if (node.type !== "heading" || !node.position || inside(node.position.start.offset)) continue;
+      const start = node.position.start.offset;
+      const line = source.slice(start, lineEnd(source, start));
+      const at = line.indexOf("{#");
+      if (line.startsWith("#") && at > 0 && line[at - 1] === "\\") edits.push({ start: start + at - 1, end: start + at, text: "" });
+    }
+  if (!document.dialect.mdx1) edits.push(...[...paragraphIndents(tree, source), ...tableRowIndents(tree, source)].filter((edit) => !inside(edit.end)));
   if (diagnostics.errors.length > before) return { text: source, failed: true };
   return { text: applyEdits(source, edits), failed: false };
 }
@@ -436,6 +448,28 @@ function paragraphIndents(tree: SyntaxNode, source: string): TextEdit[] {
     const prefix = source.slice(line, start);
     const base = parent.type === "root" ? 0 : bodyIndent(source, parent);
     if (/^[ \t]*$/.test(prefix) && indentColumns(prefix) >= base + 4) edits.push({ start: line, end: start, text: " ".repeat(base) });
+  }
+  return edits;
+}
+
+/**
+ * GFM reads a table row indented four columns past its table as a row, as
+ * GitHub and MDX do; native ends the table there and reads the row as code.
+ * Such a row is written at its table's indentation.
+ */
+function tableRowIndents(tree: SyntaxNode, source: string): TextEdit[] {
+  const edits: TextEdit[] = [];
+  for (const { node } of walk(tree)) {
+    if (node.type !== "table" || !node.position) continue;
+    const start = node.position.start.offset;
+    const base = indentColumns(source.slice(source.lastIndexOf("\n", start - 1) + 1, start).replace(/[^\t]/g, " "));
+    for (const row of (node.children ?? []).slice(1)) {
+      if (!row.position) continue;
+      const at = row.position.start.offset;
+      const line = source.lastIndexOf("\n", at - 1) + 1;
+      const prefix = source.slice(line, at);
+      if (/^[ \t]*$/.test(prefix) && indentColumns(prefix) >= base + 4) edits.push({ start: line, end: at, text: " ".repeat(base) });
+    }
   }
   return edits;
 }
@@ -555,6 +589,64 @@ function formatProps(props: Record<string, JsonValue>): string {
       return ` ${name}={${JSON.stringify(value)}}`;
     })
     .join("");
+}
+
+/** CommonMark's HTML block tags: a line opening with one starts a block read as raw HTML to the next blank line. */
+const HTML_BLOCK_TAGS = new Set([
+  "address", "article", "aside", "base", "basefont", "blockquote", "body", "caption", "center", "col", "colgroup", "dd", "details", "dialog",
+  "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6",
+  "head", "header", "hr", "html", "iframe", "legend", "li", "link", "main", "menu", "menuitem", "nav", "noframes", "ol", "optgroup", "option",
+  "p", "param", "search", "section", "summary", "table", "tbody", "td", "tfoot", "th", "thead", "title", "tr", "track", "ul",
+]);
+
+/** Whether CommonMark reads an HTML element starting a line as an HTML block: a block tag, or any tag alone on its line. */
+function startsHtmlBlock(source: string, element: SyntaxNode): boolean {
+  if (HTML_BLOCK_TAGS.has(element.name!.toLowerCase())) return true;
+  const opening = openingTagEnd(source, element);
+  return !source.slice(opening, lineEnd(source, opening)).trim();
+}
+
+/**
+ * MDX reads Markdown inside an HTML element; CommonMark prints an HTML
+ * block's lines, from its first tag to a blank line, as raw HTML. Inline
+ * Markdown on those lines is written as the HTML MDX made of it: code spans,
+ * emphasis, strikethrough, links and backslash escapes. Components keep
+ * their own conversion.
+ */
+function rawBlockMarkdown(source: string, element: SyntaxNode): TextEdit[] {
+  const { start, end } = span(element);
+  const blank = /\n[ \t]*\n/.exec(source.slice(start, end));
+  const rawEnd = blank ? start + blank.index : end;
+  const edits: TextEdit[] = [];
+  const TAGS: Record<string, string> = { emphasis: "em", strong: "strong", delete: "del" };
+  const visit = (node: SyntaxNode): void => {
+    for (const child of node.children ?? []) {
+      if (!child.position) continue;
+      const at = span(child);
+      if (at.start >= rawEnd) return;
+      const written = source.slice(at.start, at.end);
+      if (child.type === "mdxJsxFlowElement" || child.type === "mdxJsxTextElement") {
+        if (child.name && /^[a-z]/.test(child.name) && !child.name.includes(".")) visit(child);
+      } else if (child.type === "inlineCode") {
+        edits.push({ start: at.start, end: at.end, text: `<code>${escapeHtml(child.value ?? "")}</code>` });
+      } else if (child.type in TAGS || child.type === "link") {
+        const inner = child.children?.filter((item) => item.position) ?? [];
+        const open = child.type === "link" ? `<a href="${escapeAttribute(child.url ?? "")}"${child.title ? ` title="${escapeAttribute(child.title)}"` : ""}>` : `<${TAGS[child.type]}>`;
+        const close = child.type === "link" ? "</a>" : `</${TAGS[child.type]}>`;
+        // A bare address GFM links has no delimiters: the whole of it is the link's text.
+        if (!inner.length || (child.type === "link" && !written.startsWith("["))) edits.push({ start: at.start, end: at.end, text: `${open}${escapeHtml(textContent(child))}${close}` });
+        else {
+          edits.push({ start: at.start, end: span(inner[0]).start, text: open }, { start: span(inner.at(-1)!).end, end: at.end, text: close });
+          visit(child);
+        }
+      } else if (child.type === "text") {
+        for (const escape of written.matchAll(/\\([!-/:-@[-`{-~])/g))
+          edits.push({ start: at.start + escape.index, end: at.start + escape.index + 2, text: escapeHtml(escape[1]) });
+      } else visit(child);
+    }
+  };
+  visit(element);
+  return edits;
 }
 
 function escapeAttribute(value: string): string {

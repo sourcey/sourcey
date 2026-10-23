@@ -21,6 +21,7 @@ export interface SyntaxNode {
   meta?: string | null;
   depth?: number;
   url?: string;
+  title?: string | null;
   alt?: string | null;
   attributes?: JsxAttribute[];
   /** MDX expression syntax, or a directive's label paragraph. */

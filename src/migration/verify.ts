@@ -285,6 +285,9 @@ async function codeElement(project: ProjectFiles, document: PlannedDocument, sou
   };
 }
 
+/** HTML elements that sit in a line of text, which a reader reads straight through. */
+const INLINE_TAGS = new Set(["a", "abbr", "b", "bdi", "bdo", "cite", "code", "data", "del", "dfn", "em", "i", "ins", "kbd", "mark", "q", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var"]);
+
 /** Component attributes whose values a reader sees as text. */
 const TEXT_ATTRIBUTES = new Set(["title", "description", "label", "alt", "caption"]);
 
@@ -326,7 +329,8 @@ async function contentBlocks(tree: SyntaxNode, options: { alerts?: string; code?
     // Comments show nothing; the text between tags does, and an image's alternative text or a title, as a component's.
     else if (node.type === "html") {
       const html = (node.value ?? "").replace(/<!--[\s\S]*?(?:-->|$)/g, " ");
-      prose.push(normalise(html.replace(/<[^>]*>/g, " ")));
+      // Text runs on through an inline tag and breaks at a block's; character references read as their characters.
+      prose.push(normalise(decodeHTML(html.replace(/<\/?([a-z][\w-]*)?[^>]*>/gi, (_tag, name: string | undefined) => (name && INLINE_TAGS.has(name.toLowerCase()) ? "" : " ")))));
       for (const [tag] of html.matchAll(/<[a-z][^>]*>/gi))
         for (const [, name, double, single] of tag.matchAll(/\s([a-z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi))
           if (TEXT_ATTRIBUTES.has(name.toLowerCase())) prose.push(normalise(decodeHTML(double ?? single)));

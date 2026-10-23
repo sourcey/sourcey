@@ -485,6 +485,32 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("reads a heading's escaped \\{#id} as its id, as Docusaurus does", async () => {
+    const page = "# Installation\n\n## Query it \\{#canonical}\n\nSee [the command](#canonical).\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/02-install.mdx")).toContain("## Query it {#canonical}\n");
+    });
+  });
+
+  it("writes Markdown inside an HTML block as the HTML MDX made of it, where native reads the block as raw HTML", async () => {
+    const page = "# Installation\n\n<details>\n<summary><strong>Using `edit-config` (*recommended*) with [the guide](/start/setup/) \\<here\\></strong></summary>\n\nThe body stays **Markdown**.\n\n</details>\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      const converted = await read(root, "docs/start/02-install.mdx");
+      expect(converted).toContain('<summary><strong>Using <code>edit-config</code> (<em>recommended</em>) with <a href="/start/setup/">the guide</a> &lt;here&gt;</strong></summary>');
+      expect(converted).toContain("The body stays **Markdown**.");
+    });
+  });
+
+  it("writes a table row indented past its table at the table's indentation, as GFM reads it", async () => {
+    const page = "# Installation\n\n| Rule | Notes |\n| --- | --- |\n| Daily | Runs at noon |\n| Weekly |\n        | Silences the weekend |\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/02-install.mdx")).toContain("| Weekly |\n| Silences the weekend |\n");
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

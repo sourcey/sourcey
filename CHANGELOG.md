@@ -23,6 +23,9 @@
 - A migration's check of each page's prose reads an image's alternative text and a title in HTML, as it reads them on a component: an `<img alt>` kept as written had read as lost.
 - `sourcey migrate docusaurus` keeps a navbar logo or favicon given as a web address.
 - `sourcey migrate docusaurus` writes the client redirects plugin's paths below the site's base URL, where Docusaurus publishes them. On a site with a base URL other than `/`, the native build had stopped at a redirect outside it.
+- `sourcey migrate docusaurus` reads a heading's escaped `\{#id}` as its id, as Docusaurus does, where the native page had shown it as text.
+- A migration writes inline Markdown inside an HTML block, which native reads as raw HTML, as the HTML MDX made of it: code spans, emphasis, links and backslash escapes. Its check of each page reads HTML text as a reader does, straight through inline tags and with character references as their characters.
+- A migration writes a table row indented four columns past its table at the table's indentation, where native had ended the table there and read the row as code.
 - A migration keeps GitHub alert syntax that the source framework shows as text, such as `> [!NOTE]` in a Docusaurus page, as text, where the native build had read it as a callout. Its check of each page reads an alert from the text as written, where an escaped `\[!NOTE]` is text.
 - A migration's check of each page's fragments passes over a heading with no text, which has no fragment to link to, where it had stopped at it.
 - A migration keeps a site's own `llms.txt` or `llms-full.txt` from its public files as written, and turns off the native build's generation of that index, where the native build had stopped at the two colliding.
