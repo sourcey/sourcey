@@ -8,7 +8,7 @@ import type { GroupConfig, IconSet } from "../config.js";
 import { slugFromPath } from "../core/markdown-loader.js";
 import { Call, type ConfigSource, type ConfigValue } from "./config-writer.js";
 import type { HostDependency } from "./types.js";
-import { convertMdxDocument, expandStaticMaps, type DocumentContext } from "./document.js";
+import { convertMdxDocument, expandStaticJsx, type DocumentContext } from "./document.js";
 import { normaliseFences } from "./code-fences.js";
 import { alertMarker, parseDocument, SourceSyntaxError, walk, type Dialect, type SyntaxNode } from "./mdx.js";
 import type { JsonValue } from "../core/markdown-components.js";
@@ -186,8 +186,8 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
     }
     let text = source;
     if (document.dialect.mdx ?? document.file.endsWith(".mdx")) {
-      // A list the page draws from static data converts as the elements it draws.
-      const expanded = await expandStaticMaps(document, source, tree, project);
+      // A list the page draws from static data, and its own components, convert as the elements they draw.
+      const expanded = await expandStaticJsx(document, source, tree, project);
       if (expanded !== source) {
         reported = reported.withLines(document.file, lineMap(source, expanded));
         source = expanded;

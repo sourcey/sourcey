@@ -583,46 +583,57 @@ describe("sourcey migrate docusaurus", () => {
       expect(converted).toContain('<Tip title="Back up first">');
       expect(converted).not.toContain("export");
     });
-    const code = "export const toc = [];\nexport const pill = (color) => ({ color });\n\n# Installation\n\nText.\n";
+    // A helper the page passes on as a value would still run.
+    const code = "export const toc = [];\nexport const pill = (color) => ({ color });\nexport const pills = [pill];\n\n# Installation\n\nText.\n";
     await withProject({ ...site, "docs/start/02-install.mdx": code }, async (root) => {
       const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
       expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => [item.line, item.message])).toEqual([
         [1, "This export runs code when the page renders, which native Markdown does not execute"],
         [2, "This export runs code when the page renders, which native Markdown does not execute"],
+        [3, "This export runs code when the page renders, which native Markdown does not execute"],
       ]);
     });
   });
 
-  it("writes a list a page draws from static data as the elements it draws, and stops at one that reads anything else", async () => {
-    const steps = "export const steps = [\n  { title: 'Back up first', kind: 'tip' },\n  { title: 'Run it once', kind: 'warning', note: 'Twice resets it.' },\n  { title: 'Check it', kind: 'info', note: null },\n];\n";
+  it("writes what a page draws from static data as the elements it draws, through its own helpers and components, and stops at what reads anything else", async () => {
+    // The data sits beside a component that exports it again, as a site's components often do.
+    const steps = {
+      "src/data/steps.ts": "export interface Step { title: string; kind: string; note?: string | null }\nexport const steps: Step[] = [\n  { title: 'Back up first', kind: 'tip' },\n  { title: 'Run it once', kind: 'warning', note: 'Twice resets it.' },\n  { title: 'Check it', kind: 'info', note: null },\n];\n",
+      "src/components/steps.tsx": "import { type Step, steps } from '../data/steps';\n\nexport { steps };\n\nexport default function Steps({ items }: { items: Step[] }) {\n  return <ol>{items.map((item) => <li key={item.title}>{item.title}</li>)}</ol>;\n}\n",
+    };
     const page = [
       "import Admonition from '@theme/Admonition';",
-      "import { steps } from '@site/src/data/steps';",
+      "import useBaseUrl from '@docusaurus/useBaseUrl';",
+      "import { steps } from '@site/src/components/steps';",
+      "export const title = 'Install';",
+      "export const label = (name, index) => `${index + 1}. ${name.toUpperCase()}`;",
+      "export const Pill = ({ text, tone = 'muted' }) => <span className={`pill ${tone}`}>{text}</span>;",
       "",
       "# Installation",
       "",
+      "Runs on <Pill text=\"Linux\" />.",
+      "",
       "{steps.map(({ title, kind, note = 'Once is enough.' }) => (",
-      "  <Admonition key={title} type={kind} title={title}>{note}</Admonition>",
+      "  <Admonition key={title} type={kind} title={title}>{note}{kind === 'warning' && <Pill text=\"Careful\" tone=\"loud\" />}</Admonition>",
       "))}",
       "",
-      "{['npm', 'yarn'].map((name, index) => <Admonition key={name} type=\"note\" title={`${index + 1}. ${name}`} />)}",
+      "{['npm', 'yarn'].map((name, index) => <Admonition key={name} type=\"note\" title={label(name, index)}>{useBaseUrl(`/img/${name}.svg`)}</Admonition>)}",
       "",
     ].join("\n");
-    await withProject({ ...site, "src/data/steps.js": steps, "docs/start/02-install.mdx": page }, async (root) => {
+    await withProject({ ...site, ...steps, "docs/start/02-install.mdx": page }, async (root) => {
       await migrateProject({ framework: "docusaurus", root });
       const converted = await read(root, "docs/start/02-install.mdx");
-      expect(converted).toContain('<Tip title="Back up first">Once is enough.</Tip>\n<Warning title="Run it once">Twice resets it.</Warning>\n<Info title="Check it"></Info>');
-      expect(converted).toContain('<Note title="1. npm" />\n<Note title="2. yarn" />');
-      expect(converted).not.toContain(".map(");
+      expect(converted).toContain('Runs on <span class="pill muted">Linux</span>.');
+      // A parameter is the item's, never the page's constant of that name.
+      expect(converted).toContain('<Tip title="Back up first">Once is enough.</Tip>\n<Warning title="Run it once">Twice resets it.<span class="pill loud">Careful</span></Warning>\n<Info title="Check it"></Info>');
+      expect(converted).toContain('<Note title="1. NPM">/img/npm.svg</Note>\n<Note title="2. YARN">/img/yarn.svg</Note>');
+      expect(converted).not.toMatch(/\.map\(|export|Pill/);
     });
-    // A callback's name is its item's, never the page's constant of that name.
-    for (const title of ["title.toUpperCase()", "useBaseUrl(title)"]) {
-      const live = page.replace("title={title}", `title={${title}}`).replace("\n# Installation", "import useBaseUrl from '@docusaurus/useBaseUrl';\nexport const title = 'Install';\n\n# Installation");
-      await withProject({ ...site, "src/data/steps.js": steps, "docs/start/02-install.mdx": live }, async (root) => {
-        const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
-        expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => item.line)).toEqual([8]);
-      });
-    }
+    const live = page.replace("title={title}", "title={title.split(' ')[0]}");
+    await withProject({ ...site, ...steps, "docs/start/02-install.mdx": live }, async (root) => {
+      const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
+      expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => item.line)).toEqual([12]);
+    });
   });
 
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {

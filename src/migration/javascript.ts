@@ -103,7 +103,8 @@ export async function scopeFromProgram(
       for (const specifier of (statement.specifiers as EstreeNode[]) ?? []) {
         const local = identifierName(specifier.local as EstreeNode);
         const exported = identifierName(specifier.exported as EstreeNode);
-        const init = scope.constants.get(local);
+        // An imported name exported again reads as the import it names.
+        const init = scope.constants.get(local) ?? (!statement.source && scope.imports.has(local) ? (specifier.local as EstreeNode) : undefined);
         if (init) scope.exports.set(exported, init);
       }
     }
