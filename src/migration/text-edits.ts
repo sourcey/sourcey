@@ -61,9 +61,10 @@ export function frontmatterEdits(
   const set = Object.entries(changes.set ?? {});
   const remove = new Set(changes.remove ?? []);
   if (!set.length && !remove.size) return [];
-  const lines = (value: string, key: string) => `${key}: ${yamlScalar(value)}`;
+  // A flag or a number is written as YAML reads it back; text is quoted wherever it would read as one.
+  const lines = (value: string | boolean | number, key: string) => `${key}: ${typeof value === "string" ? yamlScalar(value) : String(value)}`;
   if (!frontmatter.yaml) {
-    return [{ start: 0, end: 0, text: `---\n${set.map(([key, value]) => lines(String(value), key)).join("\n")}\n---\n\n` }];
+    return [{ start: 0, end: 0, text: `---\n${set.map(([key, value]) => lines(value, key)).join("\n")}\n---\n\n` }];
   }
   const { start, end } = frontmatter.yaml;
   // Entries are a top-level key line plus its indented or blank continuation lines, kept verbatim.
@@ -78,13 +79,13 @@ export function frontmatterEdits(
   for (const entry of entries) {
     if (entry.key && remove.has(entry.key)) continue;
     if (entry.key && pending.has(entry.key)) {
-      output.push(lines(String(pending.get(entry.key)), entry.key));
+      output.push(lines(pending.get(entry.key)!, entry.key));
       pending.delete(entry.key);
       continue;
     }
     output.push(entry.text);
   }
-  for (const [key, value] of pending) output.push(lines(String(value), key));
+  for (const [key, value] of pending) output.push(lines(value, key));
   // A block left empty goes entirely, with the blank line that separated it from the body.
   if (!output.join("").trim()) {
     const blank = source.slice(frontmatter.bodyStart).match(/^[ \t]*\r?\n/)?.[0].length ?? 0;

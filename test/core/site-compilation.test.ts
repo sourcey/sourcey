@@ -265,6 +265,21 @@ describe("native compilation", () => {
     expect(page.markdown.markdown).toContain("Later `code` span.");
   }));
 
+  it("links a page's own edit address, or none, as its frontmatter names", () => fixture(async root => {
+    await file(root, "docs/guide.md", "---\neditUrl: https://github.com/example/agent/edit/main/docs/guide.md\n---\n\n# Guide\n\nWritten in the agent's repository.\n");
+    await file(root, "docs/chat.md", "---\neditUrl: false\n---\n\n# Chat\n\nNothing to edit.\n");
+    await file(root, "docs/plain.md", "# Plain\n\nWritten here.\n");
+    const navigation = { tabs: [{ tab: "Docs", slug: "", source: markdown({ root: "docs", groups: [{ group: "Start", pages: ["guide", "chat", "plain"] }] }) }] };
+    const config = await resolveConfigFromRaw({ repo: "https://github.com/example/project", editBranch: "main", theme: { fonts: { google: false } }, navigation }, root);
+    const files = await sourceyArtifacts(await buildSourceySite({ config, generateOgImages: false }));
+    const edit = (page: string) => files.get(page)!.toString().match(/class="sourcey-edit-page[^"]*"><a href="([^"]+)"/)?.[1];
+    expect(edit("guide.html")).toBe("https://github.com/example/agent/edit/main/docs/guide.md");
+    expect(edit("chat.html")).toBeUndefined();
+    expect(edit("plain.html")).toBe("https://github.com/example/project/edit/main/docs/plain.md");
+    await file(root, "docs/chat.md", "---\neditUrl: docs/chat.md\n---\n\n# Chat\n");
+    await expect(buildSourceySite({ config, generateOgImages: false })).rejects.toThrow("editUrl is an http(s) address, or false for no edit link");
+  }));
+
   it("keeps config-relative source links, revision-correct edits and unchanged link projections", () => fixture(async root => {
     const guide = await file(root, "docs/guide.md", "# Guide\n\n[Implementation](../src/index.ts)\n");
     await file(root, "docs/second.md", "# Second\n\n[Guide](guide.md)\n");

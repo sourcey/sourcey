@@ -254,6 +254,7 @@ function useEditUrl(): string | undefined {
   const site = useContext(SiteContext);
   const page = useContext(PageContext);
   const options = useContext(OptionsContext);
+  if (page.kind === "markdown" && page.markdown.editUrl) return page.markdown.editUrl;
   const editBranch = options.sourceRevision ?? site.editBranch;
   const editPath =
     page.kind === "markdown"

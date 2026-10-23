@@ -23,6 +23,7 @@ Docusaurus configuration and sidebar files are programs: they can read files, br
 | `versions.json`, `versioned_docs`, `versioned_sidebars`, `lastVersion`, `versions` | tab versions with the same paths and labels; `banner` becomes the version's status and `noIndex` keeps it out of search engines |
 | `i18n.locales`, `localeConfigs` | `i18n` with the same URL prefixes, labels, language and direction |
 | `editUrl` (a string) | `repo`, `editBranch`, `editBasePath` |
+| frontmatter `custom_edit_url` | frontmatter `editUrl` (`null` becomes `false`) |
 | `staticDirectories` | `publicDir`; several directories are merged into one |
 | `themeConfig.navbar` logo, links, doc links and dropdowns, `footer` links and copyright | `logo`, `navbar.links` (dropdowns as menus), `footer.links`, `footer.text` |
 | `colorMode`, `--ifm-color-primary` in custom CSS | `theme.appearance`, `theme.colors` |

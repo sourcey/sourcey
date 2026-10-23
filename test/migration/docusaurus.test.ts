@@ -541,6 +541,27 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("writes an unlisted page's hideInMenu as the flag native reads, not as text", async () => {
+    const unlisted = { ...site, "docs/start/01-configure.md": "---\nid: setup\ntitle: Configure\nunlisted: true\n---\n\nSettings come first.\n" };
+    await withProject(unlisted, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/start/01-configure.md")).toBe("---\ntitle: Configure\nslug: start/setup\nhideInMenu: true\n---\n\nSettings come first.\n");
+    });
+  });
+
+  it("keeps a page's custom_edit_url as its own edit link, and a null one as none", async () => {
+    const edited = {
+      ...site,
+      "docs/intro.md": "---\nsidebar_position: 1\ncustom_edit_url: https://github.com/example/agent/edit/main/intro.md\n---\n\n# Introduction\n\nHello.\n",
+      "docs/start/01-configure.md": "---\nid: setup\ntitle: Configure\ncustom_edit_url: null\n---\n\nSettings come first.\n",
+    };
+    await withProject(edited, async (root) => {
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/intro.md")).toBe('---\neditUrl: "https://github.com/example/agent/edit/main/intro.md"\n---\n\n# Introduction\n\nHello.\n');
+      expect(await read(root, "docs/start/01-configure.md")).toContain("editUrl: false\n");
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {

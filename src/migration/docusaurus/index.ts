@@ -34,11 +34,11 @@ import { readVersions, type DocsVersion } from "./versions.js";
  * navigation now carries. A Docusaurus `id` names a page within its directory;
  * native identity is the file path, as translations and versions mirror it.
  */
-const CONSUMED = ["id", "sidebar_position", "sidebar_label", "sidebar_key", "parse_number_prefixes", "slug", "unlisted"];
+const CONSUMED = ["id", "sidebar_position", "sidebar_label", "sidebar_key", "parse_number_prefixes", "slug", "unlisted", "custom_edit_url"];
 /** Frontmatter with no native equivalent; it is removed and named in the report. */
 const UNCARRIED = [
   "keywords", "image", "hide_title", "hide_table_of_contents", "toc_min_heading_level", "toc_max_heading_level", "pagination_label",
-  "pagination_next", "pagination_prev", "custom_edit_url", "last_update", "displayed_sidebar", "sidebar_class_name", "sidebar_custom_props",
+  "pagination_next", "pagination_prev", "last_update", "displayed_sidebar", "sidebar_class_name", "sidebar_custom_props",
 ];
 
 /** Plugin and theme names (by substring) and what becomes of each. */
@@ -326,6 +326,10 @@ function documentFrontmatter(doc: DocusaurusDoc, slug: string | undefined, text:
   if (shown !== doc.title || (typeof data.title !== "string" && firstHeadingText(body, 1) !== doc.title)) set.title = shown;
   if (doc.label !== shown) set.navTitle = doc.label;
   if (doc.unlisted) set.hideInMenu = true;
+  // A page's own edit link, or none, as Docusaurus reads `custom_edit_url`.
+  if (data.custom_edit_url === null) set.editUrl = false;
+  else if (typeof data.custom_edit_url === "string" && /^https?:\/\//.test(data.custom_edit_url)) set.editUrl = data.custom_edit_url;
+  else if (data.custom_edit_url !== undefined) diagnostics.review({ file: doc.file, code: "docusaurus-frontmatter", message: `custom_edit_url ${JSON.stringify(data.custom_edit_url)} is not an http(s) address, so the page keeps the site's edit link` });
   const uncarried = UNCARRIED.filter((key) => data[key] !== undefined);
   if (uncarried.length) diagnostics.review({ file: doc.file, code: "docusaurus-frontmatter", message: `Frontmatter ${uncarried.join(", ")} has no native equivalent and is removed` });
   if (data.tags !== undefined) diagnostics.error({ file: doc.file, code: "docusaurus-frontmatter", message: "Tags publish tag pages, which have no native equivalent yet" });

@@ -8,6 +8,7 @@
 
 ### Added
 
+- A page's frontmatter `editUrl` names its own edit address, for a page edited somewhere other than the site's repository, and `editUrl: false` leaves the link off. `sourcey migrate docusaurus` writes a page's `custom_edit_url` as it.
 - `navbar.links` takes a menu, `{ type: "menu", label, links }`: links under one label that open below it in the header, one menu at a time, and stand under the label in the mobile drawer. `NavbarLink`, `NavbarMenu` and `NavbarEntry` are exported for configurations written in parts.
 - `sourcey migrate docusaurus` carries a navbar dropdown as a menu, and a `doc` item as a link to its document in the default version, where both had been left out.
 - `sourcey migrate docusaurus` converts `@theme/CodeBlock` to a fenced code block. Its language comes from `language` or its `language-` class, its title from `title` or the metastring, and its code is what Docusaurus shows: the string it is given, or the text written inside it, read as MDX reads it. A code block written on its own line within a paragraph converts too, as the block Docusaurus shows there. Verification reads the block's text as code, so a conversion that changes it stops. `showLineNumbers` is named in the report, since native code blocks do not number their lines.
@@ -16,6 +17,7 @@
 
 ### Fixed
 
+- A migration writes a frontmatter flag or number, such as `hideInMenu: true` for an unlisted page, as YAML reads it back; it had written `"true"`, which native read as text, so such pages stayed in the menu.
 - The sidebar opens every section on the way to a section's own page, such as a category's index, where it had opened only that section and left the way to it closed.
 - Text read from Markdown, for search, descriptions, changelog entries and exports, holds the characters a reader sees. 3.9.0 wrote quotes and ampersands in a changelog's text as `&#39;`, `&quot;` and `&amp;`, and indexed a page without a description by the first 200 characters of its HTML, cut mid-word, with entities and the copy button's label among its search words. Text is read from the tokens its Markdown was rendered from, in the same lexing, and a page's search content is its description.
 - A release's Markdown export carries its entries as written, with their inline code and links, rather than as plain text.

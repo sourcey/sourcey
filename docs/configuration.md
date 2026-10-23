@@ -150,7 +150,7 @@ footer: {
 },
 ```
 
-`footer.text` is one line of inline Markdown at the foot of every page, such as a copyright or licence notice; the reader theme shows it in place of the site name unless `reader.footer.text` is set. `footer.links` take the same form as `navbar.links`: a network's icon, or a text link with its `label`. The footer sets text links first and the networks' icons together after them. Keep it to places the header and sidebar do not already lead: the site's own pages are in the sidebar, and its repository is usually in the header. "Edit this page" is the page's own: it ends each page, above previous and next.
+`footer.text` is one line of inline Markdown at the foot of every page, such as a copyright or licence notice; the reader theme shows it in place of the site name unless `reader.footer.text` is set. `footer.links` take the same form as `navbar.links`: a network's icon, or a text link with its `label`. The footer sets text links first and the networks' icons together after them. Keep it to places the header and sidebar do not already lead: the site's own pages are in the sidebar, and its repository is usually in the header. "Edit this page" is the page's own: it ends each page, above previous and next. A page edited somewhere other than the site's repository names its own address in frontmatter, `editUrl: https://github.com/example/agent/edit/main/docs/guide.md`, and `editUrl: false` leaves the link off.
 
 ## Typography
 
