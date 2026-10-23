@@ -115,6 +115,17 @@ describe("withActivePage", () => {
     expect(withActivePage(nav, "api", "list").adjacentPages).toEqual({ previous: expect.objectContaining({ label: "Introduction", href: "/api/" }), next: expect.objectContaining({ label: "Get a cheese" }) });
   });
 
+  it("leads the pages beside a page listed again to that listing, the page's own previous and next those of its first", () => {
+    const tab = { label: "Docs", slug: "", href: "/", kind: "docs" as const, groups: [
+      { label: "Console", items: [{ label: "Metrics", href: "/metrics/", id: "metrics" }, { label: "Blocklists", href: "/blocklists/", id: "blocklists" }, { label: "Allowlists", href: "/allowlists/", id: "allowlists" }] },
+      { label: "Blocklists", items: [{ label: "Introduction", href: "/blocklists/", id: "blocklists" }, { label: "Getting started", href: "/blocklists/start/", id: "start" }] },
+    ] };
+    const nav = { tabs: [tab], activeTabSlug: "", activePageSlug: "" };
+    expect(withActivePage(nav, "", "start").adjacentPages).toEqual({ previous: expect.objectContaining({ label: "Introduction", href: "/blocklists/" }), next: undefined });
+    expect(withActivePage(nav, "", "allowlists").adjacentPages).toEqual({ previous: expect.objectContaining({ label: "Blocklists" }), next: expect.objectContaining({ label: "Introduction" }) });
+    expect(withActivePage(nav, "", "blocklists").adjacentPages).toEqual({ previous: expect.objectContaining({ label: "Metrics" }), next: expect.objectContaining({ label: "Allowlists" }) });
+  });
+
   it("names a page by its section where the tab repeats the label it opens that section with", () => {
     const module = (name: string) => ({ label: `${name} module`, items: [{ label: "Overview", href: `api/${name}.html`, id: name }, { label: `${name}::Stream`, href: `api/${name}-Stream.html`, id: `${name}-Stream` }] });
     const tab = { label: "API", slug: "api", href: "api/index.html", kind: "docs" as const, groups: [

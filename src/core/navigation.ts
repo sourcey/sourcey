@@ -309,12 +309,17 @@ function navigationIndex(tab: SiteTab): NavigationIndex {
   }
   visit(tab.groups);
   // Previous and next lead to other pages, a section's own page before the pages it holds: a link
-  // to a section of a page already listed is not one.
+  // to a section of a page already listed is not one. A page listed again in another section stays
+  // in the order there, so the pages beside that listing lead to it.
   const seen = new Set<string>(), pages = new Set<string>();
+  let last: string | undefined;
   const ordered = [...readingPages(tab.groups)].filter(item => {
-    const page = item.href.split("#")[0] || item.id;
-    if (seen.has(item.id) || pages.has(page)) return false;
-    seen.add(item.id); pages.add(page); return true;
+    const [href, place] = item.href.split("#");
+    const page = href || item.id;
+    const listed = seen.has(item.id) || pages.has(page);
+    seen.add(item.id); pages.add(page);
+    if (listed && (place !== undefined || page === last)) return false;
+    last = page; return true;
   });
   index.pages = pages.size;
   // A section with a page of its own, such as a reference section's, lists places on that page:
@@ -335,11 +340,13 @@ function navigationIndex(tab: SiteTab): NavigationIndex {
     const section = sections.get(item.id);
     return section?.label && section.items[0] === item && repeats.get(item.label)! > 1 ? { ...item, label: section.label } : item;
   };
+  // A page's own previous and next are those beside its first listing.
   for (const [position, item] of ordered.entries()) {
+    if (index.adjacent.has(item.id)) continue;
     const adjacent = { previous: neighbour(ordered[position - 1]), next: neighbour(ordered[position + 1]) };
     index.adjacent.set(item.id, adjacent);
     const own = ownPage(item);
-    if (own) index.adjacent.set(own.page, adjacent);
+    if (own && !index.adjacent.has(own.page)) index.adjacent.set(own.page, adjacent);
   }
   navigationIndexes.set(tab, index); return index;
 }
