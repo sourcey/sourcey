@@ -46,6 +46,12 @@ export interface SourceDialect extends Dialect {
   statics?: { base: string; directories: readonly string[] };
 }
 
+/** A document's text as its framework reads it, and the line of the source each of its lines was. */
+export interface Rewrite {
+  text: string;
+  line(line: number): number;
+}
+
 /** What a converter produces: native plans and the host dependencies they change. */
 export interface FrameworkMigration {
   plans: NativePlan[];
@@ -63,7 +69,7 @@ export interface PlannedDocument {
   locale?: string;
   dialect: SourceDialect;
   /** Source rewrites around the shared MDX conversion: before it parses the document, and after it. */
-  before?: (source: string) => string;
+  before?: (source: string) => Rewrite;
   after?: (text: string) => Promise<string>;
   /** Native frontmatter changes. */
   frontmatter: { set: Record<string, string | boolean | number>; remove: string[] };
@@ -142,10 +148,13 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
   const { project, diagnostics } = context;
   for (const document of documents) {
     const original = await project.readText(document.file);
-    const source = document.before?.(original) ?? original;
+    const rewrite = document.before?.(original);
+    const source = rewrite?.text ?? original;
+    // Findings in what the conversion reads name the lines of the file as written.
+    const reported = rewrite ? diagnostics.withLines(document.file, rewrite.line) : diagnostics;
     const frontmatter = readFrontmatter(source);
     if (frontmatter.invalid) {
-      diagnostics.error({
+      reported.error({
         file: document.file,
         line: lineAt(source, frontmatter.yaml?.start),
         code: "frontmatter",
@@ -159,12 +168,12 @@ export async function convertDocuments(documents: readonly PlannedDocument[], co
       tree = await parseDocument(document.file, source, frontmatter.bodyStart, document.dialect);
     } catch (error) {
       if (!(error instanceof SourceSyntaxError)) throw error;
-      diagnostics.error({ file: document.file, line: error.line, column: error.column, code: "syntax", message: error.message });
+      reported.error({ file: document.file, line: error.line, column: error.column, code: "syntax", message: error.message });
       continue;
     }
     let text = source;
     if (document.dialect.mdx ?? document.file.endsWith(".mdx")) {
-      const converted = await convertMdxDocument(document, source, tree, context);
+      const converted = await convertMdxDocument(document, source, tree, { ...context, diagnostics: reported });
       if (converted.failed) continue;
       text = converted.text;
     }

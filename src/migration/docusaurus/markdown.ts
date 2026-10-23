@@ -4,7 +4,8 @@
  * admonition keywords as the native callouts they render as.
  */
 import { parseMarkdown, walk } from "../mdx.js";
-import { applyEdits, type TextEdit } from "../text-edits.js";
+import type { Rewrite } from "../plan.js";
+import { applyEdits, lineAt, type TextEdit } from "../text-edits.js";
 
 /** Docusaurus's default admonition keywords; `admonitions.keywords` extends them. */
 export const DEFAULT_ADMONITIONS = ["secondary", "info", "success", "danger", "note", "tip", "warning", "important", "caution"];
@@ -29,15 +30,26 @@ export function nativeCallout(keyword: string): { type: string; title?: string }
   return CALLOUTS[keyword] ?? { type: "info" };
 }
 
-/** ` ```mdx-code-block ` fences hold live MDX, which Docusaurus unwraps before parsing. */
-function unwrapMdxCodeBlocks(content: string): string {
-  const replacer = (...args: unknown[]) => {
-    const groups = args.at(-1) as Record<string, string>;
-    return `${groups.begin}${groups.children}${groups.end}`;
+/**
+ * ` ```mdx-code-block ` fences hold live MDX, which Docusaurus unwraps before
+ * parsing by dropping the fence lines; `line` gives a line of the text it then
+ * reads as the line of the content it was.
+ */
+function unwrapMdxCodeBlocks(content: string): Rewrite {
+  const unwrap = (text: string, pattern: RegExp) => {
+    // The source lines each fence took, in order.
+    const dropped: number[] = [];
+    const unwrapped = text.replaceAll(pattern, (...args: unknown[]) => {
+      const groups = args.at(-1) as Record<string, string>;
+      const opening = lineAt(text, (args.at(-3) as number) + groups.begin.length)!;
+      dropped.push(opening, opening + groups.children.split("\n").length + 1);
+      return `${groups.begin}${groups.children}${groups.end}`;
+    });
+    return { text: unwrapped, line: (line: number) => dropped.reduce((at, fence) => (fence <= at ? at + 1 : at), line) };
   };
-  return content
-    .replaceAll(/(?<begin>^|\r?\n)(?<indentStart>\x20*)```(?<spaces>\x20*)mdx-code-block\r?\n(?<children>.*?)\r?\n(?<indentEnd>\x20*)```(?<end>\r?\n|$)/gs, replacer)
-    .replaceAll(/(?<begin>^|\r?\n)(?<indentStart>\x20*)````(?<spaces>\x20*)mdx-code-block\r?\n(?<children>.*?)\r?\n(?<indentEnd>\x20*)````(?<end>\r?\n|$)/gs, replacer);
+  const three = unwrap(content, /(?<begin>^|\r?\n)(?<indentStart>\x20*)```(?<spaces>\x20*)mdx-code-block\r?\n(?<children>.*?)\r?\n(?<indentEnd>\x20*)```(?<end>\r?\n|$)/gs);
+  const four = unwrap(three.text, /(?<begin>^|\r?\n)(?<indentStart>\x20*)````(?<spaces>\x20*)mdx-code-block\r?\n(?<children>.*?)\r?\n(?<indentEnd>\x20*)````(?<end>\r?\n|$)/gs);
+  return { text: four.text, line: (line) => three.line(four.line(line)) };
 }
 
 /** The legacy `:::note Title` form as a directive label, `:::note[Title]`, everywhere Docusaurus rewrites it (code included). */
@@ -55,7 +67,7 @@ function admonitionLabels(content: string, keywords: readonly string[]): string 
  * (`headingIds`), which reads them where they are written.
  */
 export function docusaurusPreprocess(keywords: readonly string[], compat: Mdx1Compat): (source: string) => string {
-  return (source) => (compat.admonitions ? admonitionLabels(unwrapMdxCodeBlocks(source), keywords) : unwrapMdxCodeBlocks(source));
+  return (source) => (compat.admonitions ? admonitionLabels(unwrapMdxCodeBlocks(source).text, keywords) : unwrapMdxCodeBlocks(source).text);
 }
 
 /** The MDX 1 syntax Docusaurus 3 reads before parsing, as `markdown.mdx1Compat` turns it on. */
@@ -65,7 +77,7 @@ export interface Mdx1Compat {
 }
 
 /** The conversion's rewrites around parsing a document: before, the code blocks Docusaurus unwraps; after, admonitions as native callouts. */
-export function docusaurusConversion(keywords: readonly string[], compat: Mdx1Compat): { before(source: string): string; after(text: string): Promise<string> } {
+export function docusaurusConversion(keywords: readonly string[], compat: Mdx1Compat): { before(source: string): Rewrite; after(text: string): Promise<string> } {
   return { before: unwrapMdxCodeBlocks, after: (text) => nativeAdmonitions(text, keywords, compat) };
 }
 

@@ -30,6 +30,16 @@ export class Diagnostics {
 
   private readonly keys = new Set<string>();
 
+  /** These findings, reading `file`'s lines through `line`: for a document read after a rewrite that moves its lines. */
+  withLines(file: string, line: (line: number) => number): Diagnostics {
+    const view = Object.create(this) as Diagnostics;
+    const mapped = (diagnostic: Omit<MigrationDiagnostic, "severity">) =>
+      diagnostic.file === file && diagnostic.line !== undefined ? { ...diagnostic, line: line(diagnostic.line) } : diagnostic;
+    view.error = (diagnostic) => this.error(mapped(diagnostic));
+    view.review = (diagnostic) => this.review(mapped(diagnostic));
+    return view;
+  }
+
   get errors(): MigrationDiagnostic[] {
     return this.items.filter((item) => item.severity === "error");
   }

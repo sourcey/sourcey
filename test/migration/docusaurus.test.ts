@@ -413,6 +413,36 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("names the line a finding is on as the file is written, past the mdx-code-block fences Docusaurus unwraps", async () => {
+    const page = [
+      "import Tabs from '@theme/Tabs';",
+      "import TabItem from '@theme/TabItem';",
+      "",
+      "# Installation",
+      "",
+      "```mdx-code-block",
+      "<Tabs>",
+      "<TabItem value=\"npm\">\n\n`npm i example`\n\n</TabItem>",
+      "</Tabs>",
+      "```",
+      "",
+      "````mdx-code-block",
+      "<Tabs>",
+      "<TabItem value=\"yarn\">\n\n`yarn add example`\n\n</TabItem>",
+      "</Tabs>",
+      "````",
+      "",
+      "<Widget />",
+      "",
+    ].join("\n");
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(MigrationError);
+      const errors = (failure as MigrationError).diagnostics.filter((item) => item.severity === "error");
+      expect(errors.map((item) => [item.line, item.message])).toEqual([[page.split("\n").indexOf("<Widget />") + 1, "<Widget> is not imported in this file"]]);
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
