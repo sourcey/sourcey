@@ -22,6 +22,7 @@
 
 ### Fixed
 
+- A migration draws a link to a project's Discourse forum, on its `discourse.` subdomain, with Discourse's icon, as it draws GitHub's and Discord's.
 - `sourcey migrate docusaurus` titles a page by the level-one heading it shows under a component, such as a product's header component, as Docusaurus does: the heading is the native title and leaves the body, and the frontmatter title names the page in navigation. Native had shown the frontmatter title above the page and the heading again below the component. A migration's check of each page counts its title as prose a reader sees.
 - Two tabs that share a label, each with its own slug, stay two tabs. The header had shown the first tab twice, and the second tab's pages had no sidebar.
 - A migration from MDX takes off indentation MDX reads past and native would count, as MDX has no indented code: a list or a fenced block four columns in at the top of a page converts as the block MDX read, where native had read it as code, and a closing fence four columns past its opening, which MDX takes as the fence's end, closes the block there in native too.

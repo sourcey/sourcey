@@ -918,10 +918,10 @@ describe("sourcey migrate docusaurus", () => {
   });
 
   it("keeps a navbar link to a page of the site, as it keeps one to another site, named by its title where it has no label", async () => {
-    const linked = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("{ href: 'https://github.com/example/docs', label: 'GitHub' }", "{ to: '/about', label: 'About', position: 'left' }, { href: 'https://github.com/example/docs', label: 'GitHub' }, { href: 'https://roadmap.example.com', title: 'Features Roadmap', className: 'header-roadmap-link' }") };
+    const linked = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("{ href: 'https://github.com/example/docs', label: 'GitHub' }", "{ to: '/about', label: 'About', position: 'left' }, { href: 'https://github.com/example/docs', label: 'GitHub' }, { href: 'https://roadmap.example.com', title: 'Features Roadmap', className: 'header-roadmap-link' }, { href: 'https://discourse.example.com', title: 'Discourse' }") };
     await withProject(linked, async (root) => {
       await migrateProject({ framework: "docusaurus", root });
-      expect(await read(root, "sourcey.config.ts")).toContain('links: [\n      { type: "link", href: "/about", label: "About" },\n      { type: "github", href: "https://github.com/example/docs" },\n      {\n        type: "link",\n        href: "https://roadmap.example.com",\n        label: "Features Roadmap",\n      },\n    ],');
+      expect(await read(root, "sourcey.config.ts")).toContain('links: [\n      { type: "link", href: "/about", label: "About" },\n      { type: "github", href: "https://github.com/example/docs" },\n      {\n        type: "link",\n        href: "https://roadmap.example.com",\n        label: "Features Roadmap",\n      },\n      { type: "discourse", href: "https://discourse.example.com" },\n    ],');
     });
   });
 

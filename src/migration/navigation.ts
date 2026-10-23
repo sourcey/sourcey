@@ -23,10 +23,10 @@ const HOSTS: Record<string, NavbarLink["type"]> = {
   "youtube.com": "youtube", "slack.com": "slack", "bsky.app": "bluesky", "reddit.com": "reddit", "npmjs.com": "npm",
 };
 
-/** The network a URL belongs to, as an icon name `navbarLink` reads. */
+/** The network a URL belongs to, as an icon name `navbarLink` reads. A Discourse forum is hosted by its project, on a `discourse.` subdomain. */
 export function networkOf(href: string): string {
   const host = URL.canParse(href) ? new URL(href).hostname.replace(/^www\./, "") : "";
-  return HOSTS[host] ?? HOSTS[host.split(".").slice(-2).join(".")] ?? "link";
+  return HOSTS[host] ?? HOSTS[host.split(".").slice(-2).join(".")] ?? (host.startsWith("discourse.") ? "discourse" : "link");
 }
 
 /**
