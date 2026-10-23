@@ -448,6 +448,17 @@ describe("sourcey migrate mkdocs", () => {
     });
   });
 
+  it("does not repeat the header's repository link among the footer's", async () => {
+    const social = ["extra:", "  social:", "    - icon: fontawesome/brands/github", "      link: https://github.com/example/json/", "    - icon: fontawesome/brands/mastodon", "      link: https://fosstodon.org/@json"].join("\n");
+    await withProject({ ...site, "mkdocs.yml": `${site["mkdocs.yml"]}\n${social}\n` }, async (root) => {
+      const report = await migrateProject({ framework: "mkdocs", root, dryRun: true });
+      const config = report.changes.find((change) => change.path === "sourcey.config.ts")!.bytes!.toString();
+      const footer = config.slice(config.indexOf("  footer: {"));
+      expect(footer).toContain('{ type: "mastodon", href: "https://fosstodon.org/@json" }');
+      expect(footer).not.toContain("github.com");
+    });
+  });
+
   it("turns Material's navigation tabs into native tabs, each publishing its section's folder", async () => {
     await withProject(tabbed, async (root) => {
       const report = await migrateProject({ framework: "mkdocs", root });

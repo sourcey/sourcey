@@ -29,6 +29,19 @@ export function networkOf(href: string): string {
   return HOSTS[host] ?? HOSTS[host.split(".").slice(-2).join(".")] ?? "link";
 }
 
+/**
+ * The footer links worth their place: those leading somewhere the header and
+ * the sidebar do not. A source's footer often repeats its navbar's repository
+ * link and lists the docs' own pages, which the native sidebar already shows.
+ */
+export function footerLinks(links: NavbarLink[], header: readonly NavbarLink[], isPage: (href: string) => boolean): { kept: NavbarLink[]; repeated: NavbarLink[] } {
+  const bare = (href: string) => href.replace(/\/+$/, "") || "/";
+  const shown = new Set(header.map((link) => bare(link.href)));
+  const kept: NavbarLink[] = [], repeated: NavbarLink[] = [];
+  for (const link of links) (shown.has(bare(link.href)) || isPage(link.href) ? repeated : kept).push(link);
+  return { kept, repeated };
+}
+
 /** The `navbar` option for a list of links, or nothing when there are none. */
 export function navbarOption(links: NavbarLink[]): ConfigValue {
   return links.length ? { links: links as unknown as ConfigValue } : undefined;

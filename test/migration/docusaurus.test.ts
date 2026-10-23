@@ -318,6 +318,20 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("leaves out footer links to the docs' own pages and the header's links, and says so", async () => {
+    const footer = "footer: { links: [{ title: 'Docs', items: [{ label: 'Introduction', to: '/intro' }, { label: 'Configure', to: '/start/setup/' }] }, { title: 'Community', items: [{ label: 'Discord', href: 'https://discord.gg/example' }, { label: 'GitHub', href: 'https://github.com/example/docs' }] }, { title: 'More', items: [{ label: 'Blog', href: 'https://example.com/blog' }] }] },";
+    const linked = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: {", `${footer} navbar: {`) };
+    await withProject(linked, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root, dryRun: true });
+      const config = report.changes.find((change) => change.path === "sourcey.config.ts")!.bytes!.toString();
+      const written = config.slice(config.indexOf("footer:"));
+      expect(written).toContain('{ type: "discord", href: "https://discord.gg/example" }');
+      expect(written).toContain('{ type: "link", href: "https://example.com/blog", label: "Blog" }');
+      expect(written).not.toMatch(/\/intro|\/start\/setup|github\.com/);
+      expect(report.diagnostics.map((item) => item.message)).toContain("Footer links the header or sidebar already show are left out: Introduction, Configure, GitHub");
+    });
+  });
+
   it("keeps a navbar link to a page of the site, as it keeps one to another site", async () => {
     const linked = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("{ href: 'https://github.com/example/docs', label: 'GitHub' }", "{ to: '/about', label: 'About', position: 'left' }, { href: 'https://github.com/example/docs', label: 'GitHub' }") };
     await withProject(linked, async (root) => {

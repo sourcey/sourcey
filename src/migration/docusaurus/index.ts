@@ -14,7 +14,7 @@ import type { Diagnostics } from "../diagnostics.js";
 import { evaluate, identifierName, parseModule } from "../javascript.js";
 import type { ResolvedMapping } from "../mapping.js";
 import type { EstreeNode } from "../mdx.js";
-import { groupsOf, navbarLink, navbarOption, networkOf } from "../navigation.js";
+import { footerLinks, groupsOf, navbarLink, navbarOption, networkOf } from "../navigation.js";
 import { markdownSource, type FrameworkMigration, type NativePlan, type PlannedDocument, type SourceDialect } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
 import { editLinkOptions } from "../repository.js";
@@ -91,6 +91,10 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
   const navbar = (theme.navbar ?? {}) as Record<string, unknown>;
   const statics = await existing(project, site.staticDirectories);
   const publicDir = await mergeStatics(project, statics, files, fail, review);
+  const header = navbarLinks(navbar.items, review);
+  // The site's pages by the paths links name them: `to` is read below the site's base.
+  const pages = new Set(documents.flatMap((document) => [document.route, document.route.slice(base.length) || "/"]).map((route) => route.replace(/\/+$/, "") || "/"));
+  if (site.url) for (const route of [...pages]) pages.add(`${new URL(site.url).origin}${base}${route === "/" ? "" : route}`);
   const config: Record<string, ConfigValue> = {
     name: typeof site.config.title === "string" ? site.config.title : "",
     ...(site.url ? { siteUrl: new URL(site.url).origin } : {}),
@@ -101,8 +105,8 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
     prettyUrls: pretty,
     ...(publicDir ? { publicDir } : {}),
     ...(markdownPages.length ? { pages: `./${site.pages}` } : {}),
-    navbar: navbarOption(navbarLinks(navbar.items, review)),
-    ...footerOptions(theme.footer, review),
+    navbar: navbarOption(header),
+    ...footerOptions(theme.footer, header, (href) => pages.has(href.replace(/\/+$/, "") || "/"), review),
     ...i18nOptions(site, collected.messages),
     navigation: { tabs },
     ...(await redirectOptions(site, documents)),
@@ -462,11 +466,18 @@ function navbarLinks(items: unknown, review: (message: string) => void): NavbarL
   return links;
 }
 
-/** Footer columns flatten into native footer links; the copyright line is the footer's text. */
-function footerOptions(footer: unknown, review: (message: string) => void): Record<string, ConfigValue> {
+/**
+ * Footer columns flatten into native footer links, less those the header or
+ * sidebar already show; the copyright line is the footer's text.
+ */
+function footerOptions(footer: unknown, header: readonly NavbarLink[], isPage: (href: string) => boolean, review: (message: string) => void): Record<string, ConfigValue> {
   const value = (footer ?? {}) as { links?: { title?: string; items?: Record<string, unknown>[] }[]; copyright?: string };
-  const links = (value.links ?? []).flatMap((column) => column.items ?? []).filter((item) => typeof (item.href ?? item.to) === "string").map((item) => navbarLink(networkOf(String(item.href ?? item.to)), String(item.href ?? item.to), typeof item.label === "string" ? item.label : undefined));
+  const items = (value.links ?? []).flatMap((column) => column.items ?? []).filter((item) => typeof (item.href ?? item.to) === "string");
+  const label = (item: Record<string, unknown>) => typeof item.label === "string" ? item.label : undefined;
+  const listed = items.map((item) => navbarLink(networkOf(String(item.href ?? item.to)), String(item.href ?? item.to), label(item)));
+  const { kept: links, repeated } = footerLinks(listed, header, isPage);
   if (value.links?.some((column) => column.title)) review("Footer column titles are not carried over; their links become one row");
+  if (repeated.length) review(`Footer links the header or sidebar already show are left out: ${repeated.map((link) => label(items[listed.indexOf(link)]) ?? link.href).join(", ")}`);
   // The configuration ran to read it, so a year it computed is now written down.
   if (value.copyright?.includes(String(new Date().getFullYear()))) review(`The footer copyright line keeps the year ${new Date().getFullYear()} as written; compute it in sourcey.config.ts to keep it current`);
   if (!value.copyright && !links.length) return {};

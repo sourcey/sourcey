@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- `sourcey migrate docusaurus` leaves out footer links to the docs' own pages, which the sidebar lists, and links the navbar has, such as its repository, and names them. `sourcey migrate mkdocs` no longer repeats the header's repository link among Material's social links.
+
 ### Fixed
 
 - A schema no longer opens a type inside itself, or draws a very large type out to the depth limit. A field of the type it sits in reads "Same fields as" and links up to where that type is drawn. A schema that would draw more than 500 field rows, as large Kubernetes custom resources do, draws each named type once, at its shallowest place, and links its other fields there: one such operation was 21 MB of HTML that stopped 1,026 times at "Max depth reached", and is now 1 MB with every field reachable. Generated examples leave out a property that would repeat its own type, rather than printing `"[circular]"`, and an example longer than 400 lines shows each named object type once. Schemas below that size draw as before.

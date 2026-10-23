@@ -8,7 +8,7 @@ import { CORE_SCHEMA, defineMappingTag, defineScalarTag, defineSequenceTag, load
 import type { GroupConfig, NavigationItem } from "../../config.js";
 import { Environment, type ConfigValue } from "../config-writer.js";
 import { counted, type Diagnostics } from "../diagnostics.js";
-import { groupId, navbarLink, navbarOption, networkOf, placeUnlisted, topLevelGroups } from "../navigation.js";
+import { footerLinks, groupId, navbarLink, navbarOption, networkOf, placeUnlisted, topLevelGroups } from "../navigation.js";
 import { markdownSource, type FrameworkMigration, type NativePlan, type PlannedDocument, type SourcePath } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
 import { editLinkOptions } from "../repository.js";
@@ -503,10 +503,12 @@ function linkOptions(config: MkDocsConfig): Record<string, ConfigValue> {
     const link = navbarLink(icon, href, name);
     return link.type === "link" && !link.label && URL.canParse(href) ? { ...link, label: new URL(href).host } : link;
   };
-  const social = (config.extra?.social ?? []).filter((item) => item.link).map((item) => titled(item.link!, item.icon ?? "", item.name));
+  const header = config.repo_url ? [titled(config.repo_url, networkOf(config.repo_url))] : [];
+  // The header's repository link is not repeated among the footer's.
+  const social = footerLinks((config.extra?.social ?? []).filter((item) => item.link).map((item) => titled(item.link!, item.icon ?? "", item.name)), header, () => false).kept;
   const copyright = config.copyright?.trim();
   return {
-    navbar: navbarOption(config.repo_url ? [titled(config.repo_url, networkOf(config.repo_url))] : []),
+    navbar: navbarOption(header),
     ...(copyright || social.length ? { footer: { ...(copyright ? { text: copyright } : {}), ...(social.length ? { links: social as unknown as ConfigValue } : {}) } } : {}),
   };
 }
