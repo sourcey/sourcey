@@ -199,8 +199,14 @@ export function evaluate(node: EstreeNode, scope: ModuleScope, seen = new Set<Es
 
 export type JsonResult = { ok: true; value: JsonValue } | { ok: false; node: EstreeNode; reason: string };
 
-/** A fully static value as JSON, or the first part that is not static. */
-export function toJson(value: Value): JsonResult {
+/** A call the evaluator found, which a framework can know the value of. */
+export type CallValue = Extract<Value, { kind: "call" }>;
+
+/**
+ * A fully static value as JSON, or the first part that is not static. `call`
+ * gives the value of a call whose result the framework fixes, if it knows one.
+ */
+export function toJson(value: Value, call?: (value: CallValue) => JsonResult | undefined): JsonResult {
   switch (value.kind) {
     case "literal":
       return { ok: true, value: value.value };
@@ -208,13 +214,13 @@ export function toJson(value: Value): JsonResult {
       const items: JsonValue[] = [];
       for (const item of value.items) {
         if (item.kind === "spread") {
-          const spread = toJson(item.value);
+          const spread = toJson(item.value, call);
           if (!spread.ok) return spread;
           if (!Array.isArray(spread.value)) return { ok: false, node: item.node, reason: "a spread of a non-array" };
           items.push(...spread.value);
           continue;
         }
-        const result = toJson(item);
+        const result = toJson(item, call);
         if (!result.ok) return result;
         items.push(result.value);
       }
@@ -223,7 +229,7 @@ export function toJson(value: Value): JsonResult {
     case "object": {
       const object: Record<string, JsonValue> = {};
       for (const [key, entry] of value.entries) {
-        const result = toJson(entry);
+        const result = toJson(entry, call);
         if (!result.ok) return result;
         object[key] = result.value;
       }
@@ -232,7 +238,7 @@ export function toJson(value: Value): JsonResult {
     case "reference":
       return { ok: false, node: value.node, reason: `the imported binding "${value.binding.local}" from ${value.binding.module}` };
     case "call":
-      return { ok: false, node: value.node, reason: `a call to ${value.calleeName}()` };
+      return call?.(value) ?? { ok: false, node: value.node, reason: `a call to ${value.calleeName}()` };
     case "spread":
       return { ok: false, node: value.node, reason: "a spread outside an array" };
     case "dynamic":

@@ -12,7 +12,9 @@ import { prepareAstroSourcey } from "../astro/index.js";
 import { outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
 import { toPublicPath } from "../site-url.js";
 import { buildSourceySite, sourceyArtifacts, type SourceySiteArtifacts } from "../site.js";
+import { identityKey } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
+import { documentScope, elementBinding } from "./document.js";
 import { parseDocument, parseMarkdown, textContent, walk, type SyntaxNode } from "./mdx.js";
 import { configFile, type NativePlan, type PlannedDocument } from "./plan.js";
 import type { ProjectFiles } from "./project-files.js";
@@ -235,7 +237,7 @@ async function verifyDocument(
   }
 
 
-  const source = await contentBlocks(tree, { alerts: document.dialect.compareConverted });
+  const source = await contentBlocks(tree, { alerts: document.dialect.compareConverted, code: await codeElement(project, document, original, tree) });
   // Native writes callouts as GitHub alerts in its readable Markdown.
   const native = await contentBlocks(await parseMarkdown(page.markdown.markdown, 0), { alerts: true });
   const prose = normalise(native.prose.join(" "));
@@ -268,6 +270,19 @@ async function sourceHeadings(tree: SyntaxNode, rule: FragmentRule): Promise<{ t
 }
 
 const normalise = (text: string) => text.replace(/\s+/g, " ").trim();
+const codeText = (text: string) => text.replace(/\r\n?/g, "\n").replace(/\s+$/, "");
+
+/** Whether an element is one the source framework shows as a code block of its children. */
+async function codeElement(project: ProjectFiles, document: PlannedDocument, source: string, tree: SyntaxNode): Promise<((node: SyntaxNode) => boolean) | undefined> {
+  const elements = document.dialect.codeElements;
+  if (!elements?.size) return undefined;
+  const scope = await documentScope(project, document.file, source, tree);
+  return (node) => {
+    if ((node.type !== "mdxJsxFlowElement" && node.type !== "mdxJsxTextElement") || !node.name) return false;
+    const binding = elementBinding(node.name, scope, document.dialect.globals);
+    return !!binding && elements.has(identityKey(binding.module, binding.export));
+  };
+}
 
 /** Component attributes whose values a reader sees as text. */
 const TEXT_ATTRIBUTES = new Set(["title", "description", "label", "alt", "caption"]);
@@ -280,23 +295,26 @@ const ALERT_MARKER = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n|$)/;
  * text inside raw HTML count as prose, so a component converted to native
  * syntax is compared by what a reader sees; attribute text reads as the inline
  * Markdown both sides render it as. With `alerts`, a GitHub alert
- * reads as native and GitHub show it: titled by its type.
+ * reads as native and GitHub show it: titled by its type. A `code` element's
+ * children are its code: its text, or its paragraphs one after another.
  */
-async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean } = {}): Promise<{ prose: string[]; code: string[] }> {
+async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean; code?: (node: SyntaxNode) => boolean } = {}): Promise<{ prose: string[]; code: string[] }> {
   const prose: string[] = [];
   const code: string[] = [];
+  const isCode = options.code ?? (() => false);
   for (const { node, parents } of walk(tree)) {
+    if (parents.some(isCode)) continue;
     const text = node.type === "paragraph" ? textContent(node) : "";
     const alert = options.alerts && parents.at(-1)?.type === "blockquote" && parents.at(-1)!.children![0] === node ? text.match(ALERT_MARKER) : null;
     if (alert) prose.push(alert[1].charAt(0) + alert[1].slice(1).toLowerCase(), normalise(text.slice(alert[0].length)));
-    else if (node.type === "code") code.push((node.value ?? "").replace(/\r\n?/g, "\n").replace(/\s+$/, ""));
+    else if (node.type === "code") code.push(codeText(node.value ?? ""));
     else if (node.type === "paragraph" && node.children?.some((child) => child.type === "mdxJsxTextElement")) {
       // MDX reads a line opening with an element as a paragraph; each element is its own piece to a reader (two one-line cards).
       let run = "";
       for (const child of node.children)
         if (child.type !== "mdxJsxTextElement") run += textContent(child);
         else {
-          prose.push(normalise(run), normalise(textContent(child)));
+          prose.push(normalise(run), isCode(child) ? "" : normalise(textContent(child)));
           run = "";
         }
       prose.push(normalise(run));
@@ -310,9 +328,12 @@ async function contentBlocks(tree: SyntaxNode, options: { alerts?: boolean } = {
         for (const [, name, double, single] of tag.matchAll(/\s([a-z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi))
           if (TEXT_ATTRIBUTES.has(name.toLowerCase())) prose.push(normalise(decodeHTML(double ?? single)));
     }
-    else if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement")
+    else if (node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement") {
+      const shown = isCode(node) && codeText(node.type === "mdxJsxFlowElement" ? (node.children ?? []).map(textContent).join("\n\n") : textContent(node));
+      if (shown) code.push(shown);
       for (const attribute of node.attributes ?? [])
         if (attribute.name && TEXT_ATTRIBUTES.has(attribute.name) && typeof attribute.value === "string") prose.push(normalise(textContent(await parseMarkdown(attribute.value, 0))));
+    }
   }
   return { prose: prose.filter(Boolean), code };
 }

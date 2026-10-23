@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- `sourcey migrate docusaurus` converts `@theme/CodeBlock` to a fenced code block. Its language comes from `language` or its `language-` class, its title from `title` or the metastring, and its code is what Docusaurus shows: the string it is given, or the lines written inside it without their indentation. A code block written inline as its paragraph's only content converts too. Verification reads the block's text as code, so a conversion that changes it stops. `showLineNumbers` is named in the report, since native code blocks do not number their lines.
+- `sourcey migrate docusaurus` converts `@theme/ThemedImage` to a native figure with its light and dark pictures, read from the site's static directories.
+- `sourcey migrate docusaurus` evaluates `useBaseUrl()` with static arguments as Docusaurus's `addBaseUrl` does, so an attribute or image source written with it keeps its address.
+
 ### Fixed
 
 - Text read from Markdown, for search, descriptions, changelog entries and exports, holds the characters a reader sees. 3.9.0 wrote quotes and ampersands in a changelog's text as `&#39;`, `&quot;` and `&amp;`, and indexed a page without a description by the first 200 characters of its HTML, cut mid-word, with entities and the copy button's label among its search words. Text is read from the tokens its Markdown was rendered from, in the same lexing, and a page's search content is its description.
@@ -12,6 +18,7 @@
 - A migration numbers sibling navigation groups whose labels make the same ID, such as "C++" and "C#", where the native build had stopped at the duplicate.
 - A migration's check of each page's prose reads an image's alternative text and a title in HTML, as it reads them on a component: an `<img alt>` kept as written had read as lost.
 - `sourcey migrate docusaurus` keeps a navbar logo or favicon given as a web address.
+- `sourcey migrate docusaurus` writes the client redirects plugin's paths below the site's base URL, where Docusaurus publishes them. On a site with a base URL other than `/`, the native build had stopped at a redirect outside it.
 
 ## 3.9.0 - 2026-10-23
 

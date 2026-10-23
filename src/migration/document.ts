@@ -8,7 +8,7 @@ import { indentColumns } from "../utils/indentation.js";
 import type { JsonValue } from "../core/markdown-components.js";
 import { identityKey, type ComponentConverter, type ConverterTable, type ElementInput, type ElementReplacement } from "./components.js";
 import type { Diagnostics } from "./diagnostics.js";
-import { evaluate, exportedConstant, scopeFromProgram, toJson, type ModuleScope } from "./javascript.js";
+import { evaluate, exportedConstant, scopeFromProgram, toJson, type CallValue, type ImportBinding, type JsonResult, type ModuleScope } from "./javascript.js";
 import { closingTagStart, openingTagEnd, span, walk, type EstreeNode, type JsxAttribute, type SyntaxNode } from "./mdx.js";
 import type { ProjectFiles } from "./project-files.js";
 import { applyEdits, lineAt, lineEnd, markdownText, type TextEdit } from "./text-edits.js";
@@ -36,12 +36,36 @@ export interface ConvertedDocument {
 
 const HTML_ATTRIBUTE_NAMES: Record<string, string> = { className: "class", htmlFor: "for" };
 
-/** The document being converted: its file, where the native document will live when it moves, its public path, and its framework's global components. */
+/**
+ * The document being converted: its file, where the native document will live
+ * when it moves, its public path, and what its framework provides: global
+ * components, calls whose value the site fixes, and the directories it serves
+ * at its base path.
+ */
 export interface DocumentPlace {
   file: string;
   target?: string;
   route: string;
-  dialect: { globals?: ReadonlyMap<string, string>; mdx1?: boolean };
+  dialect: {
+    globals?: ReadonlyMap<string, string>;
+    mdx1?: boolean;
+    calls?: ReadonlyMap<string, (args: readonly JsonValue[]) => JsonValue | undefined>;
+    statics?: { base: string; directories: readonly string[] };
+  };
+}
+
+/** The module scope of an MDX document: its imports and constants. */
+export async function documentScope(project: ProjectFiles, file: string, source: string, tree: SyntaxNode): Promise<ModuleScope> {
+  const program: EstreeNode & { body: EstreeNode[] } = { type: "Program", body: [] };
+  for (const node of tree.children ?? []) if (node.type === "mdxjsEsm") program.body.push(...(node.data?.estree?.body ?? []));
+  return scopeFromProgram(project, file, source, program);
+}
+
+/** The import a component element names: the document's own, else the framework's global component of that name. */
+export function elementBinding(name: string, scope: ModuleScope, globals?: ReadonlyMap<string, string>): ImportBinding | undefined {
+  if (name.includes(".")) return undefined;
+  const global = globals?.get(name);
+  return scope.imports.get(name) ?? (global ? { module: global.split("#")[0], export: global.split("#")[1], local: name } : undefined);
 }
 
 export async function convertMdxDocument(document: DocumentPlace, source: string, tree: SyntaxNode, context: DocumentContext): Promise<ConvertedDocument> {
@@ -53,10 +77,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
     diagnostics.error({ file, line: lineAt(source, offset), code: "mdx", message, suggestion });
   };
 
-  // One module scope for the document's imports and constants.
-  const program: EstreeNode & { body: EstreeNode[] } = { type: "Program", body: [] };
-  for (const node of tree.children ?? []) if (node.type === "mdxjsEsm") program.body.push(...(node.data?.estree?.body ?? []));
-  const scope = await scopeFromProgram(project, file, source, program);
+  const scope = await documentScope(project, file, source, tree);
 
   const edits: TextEdit[] = [];
   const replaced: { start: number; end: number }[] = [];
@@ -82,12 +103,13 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
 
   // `inHtml`: inside a plain HTML element, whose one raw HTML block holds its children.
   // `parent`: the nearest component around the node, as its converter read it.
-  const visit = async (node: SyntaxNode, inTable = false, inHtml = false, parent?: ElementInput["parent"]): Promise<void> => {
+  // `alone`: an element that is its paragraph's only content, standing on its own lines as a block does.
+  const visit = async (node: SyntaxNode, inTable = false, inHtml = false, parent?: ElementInput["parent"], alone = false): Promise<void> => {
     if (node.position && inside(node.position.start.offset)) return;
     const jsx = node.type === "mdxJsxFlowElement" || node.type === "mdxJsxTextElement";
     let within = parent;
     if (jsx) {
-      const handled = await element(node, inTable, inHtml, parent);
+      const handled = await element(node, inTable, inHtml, parent, alone);
       if (handled === "whole") return;
       if (handled !== "tags") within = handled;
     } else if (node.type === "mdxFlowExpression" || node.type === "mdxTextExpression") {
@@ -95,14 +117,16 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       return;
     }
     const html = inHtml || (jsx && !!node.name && /^[a-z]/.test(node.name) && !node.name.includes("."));
-    for (const child of node.children ?? []) await visit(child, inTable || node.type === "table", html, within);
+    const content = node.type === "paragraph" ? (node.children ?? []).filter((child) => !(child.type === "text" && !child.value?.trim())) : [];
+    const sole = content.length === 1 && content[0].type === "mdxJsxTextElement" ? content[0] : undefined;
+    for (const child of node.children ?? []) await visit(child, inTable || node.type === "table", html, within, child === sole);
   };
 
   /**
    * Returns "whole" when the element and its descendants were replaced
    * together, and a component whose children stay to be converted as their parent.
    */
-  async function element(node: SyntaxNode, inTable: boolean, inHtml: boolean, parent: ElementInput["parent"]): Promise<"whole" | "tags" | NonNullable<ElementInput["parent"]>> {
+  async function element(node: SyntaxNode, inTable: boolean, inHtml: boolean, parent: ElementInput["parent"], alone: boolean): Promise<"whole" | "tags" | NonNullable<ElementInput["parent"]>> {
     const { start, end } = span(node);
     const name = node.name;
     if (!name) {
@@ -112,8 +136,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       return "tags";
     }
     if (/^[a-z]/.test(name) && !name.includes(".")) return htmlElement(node, inTable, inHtml);
-    const global = document.dialect.globals?.get(name);
-    const binding = name.includes(".") ? undefined : (scope.imports.get(name) ?? (global && { module: global.split("#")[0], export: global.split("#")[1], local: name }));
+    const binding = elementBinding(name, scope, document.dialect.globals);
     if (!binding) {
       fail(`<${name}> is not imported in this file`, start, "Import it explicitly, or map it in the --mapping file.");
       return "whole";
@@ -150,6 +173,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       dynamic,
       bindings,
       children: close === undefined ? "" : source.slice(opening, close),
+      childValue: await childValue(node),
       ...(parent && { parent }),
       route,
       section: (path) => context.sections?.get(path.replace(/\/?$/, "/")),
@@ -158,6 +182,21 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
         exists: (path) => project.exists(path),
         readText: (path) => project.readText(path),
         imageSize: (path) => project.imageSize(path),
+        staticFile: async (url) => {
+          const statics = document.dialect.statics;
+          if (!statics || !url.startsWith(statics.base)) return undefined;
+          let path: string;
+          try {
+            path = decodeURIComponent(url.slice(statics.base.length).replace(/[?#].*$/, ""));
+          } catch {
+            return undefined;
+          }
+          for (const directory of statics.directories) {
+            const file = posix.join(directory, path);
+            if (!/^\.\.(\/|$)/.test(posix.relative(directory, file)) && (await project.exists(file))) return file;
+          }
+          return undefined;
+        },
         relative: (path) => {
           const relative = posix.relative(posix.dirname(nativeFile), path);
           return relative.startsWith(".") ? relative : `./${relative}`;
@@ -189,7 +228,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       fail(`<${name}> has children that its native replacement would discard`, start);
       return "whole";
     }
-    const replacement = replace(node, result, start, end, opening, close);
+    const replacement = replace(node, result, start, end, opening, close, alone);
     return replacement === "tags" ? self : replacement;
   }
 
@@ -200,6 +239,7 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
     end: number,
     opening: number,
     close: number | undefined,
+    alone: boolean,
   ): "whole" | "tags" {
     if ("markdown" in result) {
       edits.push({ start, end, text: result.markdown });
@@ -207,13 +247,15 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
       return "whole";
     }
     if ("fence" in result) {
-      if (node.type !== "mdxJsxFlowElement") {
+      if (node.type !== "mdxJsxFlowElement" && !alone) {
         fail(`<${node.name}> becomes a fenced block, so it must stand on its own lines`, start);
         return "whole";
       }
-      const indent = source.slice(source.lastIndexOf("\n", start - 1) + 1, start);
+      // Lines after the first continue the container the element stands in: a list item's indent, a quote's marker.
+      const indent = source.slice(source.lastIndexOf("\n", start - 1) + 1, start).replace(/[^\s>]/g, " ");
       const fence = "`".repeat(Math.max(3, longestRun(result.fence.code, "`") + 1));
-      const body = [`${fence}${result.fence.language}`, ...result.fence.code.split("\n"), fence].join(`\n${indent}`);
+      const info = [result.fence.language, result.fence.meta].filter(Boolean).join(" ");
+      const body = [`${fence}${info}`, ...result.fence.code.split("\n"), fence].join(`\n${indent}`);
       edits.push({ start, end, text: body });
       replaced.push({ start, end });
       return "whole";
@@ -301,11 +343,35 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
     edits.push({ start, end, text: markdownText(value) });
   }
 
-  /** A static value, following imported constants to their authoritative module. */
+  /** A static value, following imported constants to their authoritative module and evaluating the framework's fixed calls. */
   async function staticValue(node: EstreeNode): Promise<JsonValue | undefined> {
     const value = evaluate(node, scope);
-    const json = value.kind === "reference" ? await exportedConstant(project, value.binding) : toJson(value);
+    const json = value.kind === "reference" ? await exportedConstant(project, value.binding) : toJson(value, frameworkCall);
     return json?.ok ? json.value : undefined;
+  }
+
+  /** A call to a framework function whose value the site fixes, with static arguments: `useBaseUrl("/img/a.png")`. */
+  function frameworkCall(call: CallValue): JsonResult | undefined {
+    const evaluated = call.callee && document.dialect.calls?.get(identityKey(call.callee.module, call.callee.export));
+    if (!evaluated) return undefined;
+    const args: JsonValue[] = [];
+    for (const argument of call.args) {
+      const json = toJson(argument, frameworkCall);
+      if (!json.ok) return json;
+      args.push(json.value);
+    }
+    const value = evaluated(args);
+    return value === undefined ? undefined : { ok: true, value };
+  }
+
+  /** The static value of children that are one expression, such as a code block's template literal. */
+  async function childValue(node: SyntaxNode): Promise<JsonValue | undefined> {
+    const children = (node.children ?? []).filter((child) => !(child.type === "text" && !child.value?.trim()));
+    const only = children.length === 1 ? children[0] : undefined;
+    const inner = only?.type === "paragraph" && only.children?.length === 1 ? only.children[0] : only;
+    if (inner?.type !== "mdxFlowExpression" && inner?.type !== "mdxTextExpression") return undefined;
+    const body = inner.data?.estree?.body ?? [];
+    return body.length === 1 && body[0].type === "ExpressionStatement" ? staticValue(body[0].expression as EstreeNode) : undefined;
   }
 
   async function staticText(node: EstreeNode): Promise<string | undefined> {

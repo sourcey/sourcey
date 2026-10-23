@@ -17,6 +17,8 @@ export interface ElementInput {
   bindings: Record<string, string>;
   /** Source text of the children, exactly as written. */
   children: string;
+  /** The static value of children that are one expression, such as a code block's `{`npm i`}`. */
+  childValue?: JsonValue;
   /** The nearest component around this one, as its converter read it: Docusaurus's tabs label their items. */
   parent?: { module: string; export: string; props: Record<string, JsonValue> };
   /** Public path the document is published at. */
@@ -30,6 +32,8 @@ export interface ElementInput {
     exists(path: string): Promise<boolean>;
     readText(path: string): Promise<string>;
     imageSize(path: string): Promise<{ width: number; height: number }>;
+    /** The project file the site serves at a root-relative address, from the framework's static directories. */
+    staticFile(url: string): Promise<string | undefined>;
     /** A project path as the native document refers to it (relative to where the document will live). */
     relative(path: string): string;
   };
@@ -44,8 +48,8 @@ export type ElementReplacement =
   | { component: string; props?: Record<string, JsonValue>; children?: string; review?: string }
   /** Replace the whole element with Markdown. */
   | { markdown: string; review?: string }
-  /** A fenced block, such as a Mermaid diagram. */
-  | { fence: { language: string; code: string }; review?: string }
+  /** A fenced block, such as a Mermaid diagram; `meta` is the info string after the language (`title="..."`). */
+  | { fence: { language: string; code: string; meta?: string }; review?: string }
   /** Keep the children and drop the wrapper. */
   | { unwrap: true; review?: string }
   /** Remove the element, giving the reason; only for content-free elements whose meaning native output already carries. */

@@ -6,6 +6,7 @@
  */
 import { posix } from "node:path";
 import type { NavbarLink } from "../../config.js";
+import type { JsonValue } from "../../core/markdown-components.js";
 import { firstHeadingText, headingInfo, lexMarkdown } from "../../utils/markdown.js";
 import { isAbsoluteHttpUrl } from "../../site-url.js";
 import type { Tokens } from "marked";
@@ -259,6 +260,7 @@ async function mdxComponents(project: ProjectFiles): Promise<Map<string, string>
 /** How the docs plugin reads one of this instance's documents, and how verification reads it back. */
 function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonitions"], globals: ReadonlyMap<string, string>): (file: string) => SourceDialect {
   const preprocess = docusaurusPreprocess(admonitions, site.mdx1Compat);
+  const calls = siteCalls(site);
   return (file) => ({
     fragments: "github",
     mdx: site.markdownFormat === "mdx" || (site.markdownFormat === "detect" && file.endsWith(".mdx")),
@@ -268,7 +270,32 @@ function docsDialect(site: DocusaurusSite, admonitions: DocsInstance["admonition
     headingIds: site.mdx1Compat.headingIds,
     globals,
     preprocess,
+    calls,
+    codeElements: CODE_ELEMENTS,
+    statics: { base: site.baseUrl, directories: site.staticDirectories },
   });
+}
+
+/** The theme's code block, whose children Docusaurus shows as code: a string, or lines of text. */
+const CODE_ELEMENTS: ReadonlySet<string> = new Set([identityKey("@theme/CodeBlock", "default")]);
+
+/**
+ * Docusaurus's functions whose value the site fixes: `useBaseUrl(url, options)`
+ * is the address `addBaseUrl` in @docusaurus/core makes from the site's base URL.
+ */
+function siteCalls(site: DocusaurusSite): SourceDialect["calls"] {
+  const { baseUrl } = site;
+  const router = (site.config.future as Record<string, unknown> | undefined)?.experimental_router;
+  const useBaseUrl = ([url, options]: readonly JsonValue[]): JsonValue | undefined => {
+    if (typeof url !== "string" || (options !== undefined && (!options || typeof options !== "object" || Array.isArray(options)))) return undefined;
+    if (!url || url.startsWith("#") || /^(?:\w*:|\/\/)/.test(url)) return url;
+    if (router === "hash") return url.startsWith("/") ? `.${url}` : `./${url}`;
+    if (options?.forcePrependBaseUrl === true) return baseUrl + url.replace(/^\//, "");
+    if (url === baseUrl.replace(/\/$/, "")) return baseUrl;
+    const path = url.startsWith(baseUrl) ? url : baseUrl + url.replace(/^\//, "");
+    return options?.absolute === true ? (site.url ?? "") + path : path;
+  };
+  return new Map([[identityKey("@docusaurus/useBaseUrl", "default"), useBaseUrl]]);
 }
 
 /** The label of the navbar item that opens this instance's sidebar, else "Documentation". */
@@ -492,11 +519,15 @@ function footerOptions(footer: unknown, header: readonly NavbarLink[], isPage: (
 async function redirectOptions(site: DocusaurusSite, documents: readonly PlannedDocument[]): Promise<Record<string, ConfigValue>> {
   const plugin = site.plugins.find((entry) => /plugin-client-redirects/.test(entry.name));
   if (!plugin) return {};
+  // Docusaurus reads a redirect's paths below the site's base, and gives `createRedirects` each route there.
+  const base = site.baseUrl.replace(/\/+$/, "");
+  const below = (path: string) => (path.startsWith("/") ? `${base}${path}` : path);
   const redirects: Record<string, string> = {};
   for (const entry of (plugin.options.redirects ?? []) as { from: string | string[]; to: string }[])
-    for (const from of [entry.from].flat()) redirects[from] = entry.to;
+    for (const from of [entry.from].flat()) redirects[below(from)] = below(entry.to);
   const create = plugin.options.createRedirects as ((path: string) => string | string[] | undefined) | undefined;
   if (typeof create === "function")
-    for (const document of documents) for (const from of [create(document.route.replace(/(.)\/$/, "$1")) ?? []].flat()) redirects[from] = document.route;
+    for (const document of documents)
+      for (const from of [create(document.route.slice(base.length).replace(/(.)\/$/, "$1") || "/") ?? []].flat()) redirects[below(from)] = document.route;
   return Object.keys(redirects).length ? { redirects } : {};
 }

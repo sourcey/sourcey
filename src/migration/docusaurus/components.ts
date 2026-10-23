@@ -1,5 +1,7 @@
 /** Docusaurus theme components as native components, by module and export identity. */
 import type { JsonValue } from "../../core/markdown-components.js";
+import { inlineText, lexMarkdown } from "../../utils/markdown.js";
+import type { Tokens } from "marked";
 import { attributeText, identityKey, rejectDynamic, tabSelectionReview, unsupportedAttributes, type ConverterTable } from "../components.js";
 import { markdownText } from "../text-edits.js";
 import { nativeCallout } from "./markdown.js";
@@ -71,7 +73,62 @@ export function docusaurusConverters(): ConverterTable {
     return { markdown: `[${element.children.trim() || markdownText(href)}](${href})` };
   });
 
+  // Docusaurus highlights a code block whose children are a string; children written as lines are a paragraph it shows
+  // in the block with its line breaks. Either is the fenced block's code, read as Docusaurus reads it.
+  table.set(identityKey("@theme/CodeBlock", "default"), (element) => {
+    const failure = rejectDynamic(element);
+    if (failure) return failure;
+    const extra = unsupportedAttributes(element, ["language", "className", "title", "metastring", "showLineNumbers"]);
+    if (extra.length) return { error: `<${element.name}> attribute ${extra.join(", ")} has no native equivalent` };
+    const classes = attributeText(element.props.className)?.split(" ").filter(Boolean) ?? [];
+    const styled = classes.filter((name) => !name.startsWith("language-"));
+    if (styled.length) return { error: `<${element.name}> class ${styled.join(" ")} has no native equivalent` };
+    const code = typeof element.childValue === "string" ? element.childValue.replace(/\r?\n$/, "") : paragraphLines(element.children);
+    if (code === undefined) return { error: `<${element.name}> children must be one string or lines of text` };
+    // As Docusaurus decides them: the language attribute, else the class, else plain text; a title in the metastring wins.
+    const language = (attributeText(element.props.language) ?? classes.find((name) => name.startsWith("language-"))?.slice(9) ?? "text").toLowerCase();
+    const metastring = attributeText(element.props.metastring);
+    const title = /title=(["'])(.*?)\1/.test(metastring ?? "") ? undefined : attributeText(element.props.title);
+    const numbered = element.props.showLineNumbers !== undefined && element.props.showLineNumbers !== false;
+    return {
+      fence: { language, code, meta: [title === undefined ? "" : `title=${JSON.stringify(title)}`, metastring ?? ""].filter(Boolean).join(" ") },
+      ...(numbered ? { review: `<${element.name}> converts without showLineNumbers: native code blocks do not number their lines` } : {}),
+    };
+  });
+
+  // Docusaurus shows the picture for the reader's colour scheme; a native figure has both.
+  table.set(identityKey("@theme/ThemedImage", "default"), async (element) => {
+    const failure = rejectDynamic(element);
+    if (failure) return failure;
+    const extra = unsupportedAttributes(element, ["sources", "alt"]);
+    if (extra.length) return { error: `<${element.name}> attribute ${extra.join(", ")} has no native equivalent` };
+    const sources = element.props.sources;
+    if (!sources || typeof sources !== "object" || Array.isArray(sources) || typeof sources.light !== "string" || typeof sources.dark !== "string")
+      return { error: `<${element.name}> sources must give a light and a dark picture` };
+    const [light, dark] = await Promise.all([sources.light, sources.dark].map((url) => element.project.staticFile(url)));
+    if (!light || !dark)
+      return { error: `<${element.name}> picture ${!light ? sources.light : sources.dark} is not a file in the site's static directories` };
+    return { component: "Figure", props: { src: element.project.relative(light), darkSrc: element.project.relative(dark), alt: attributeText(element.props.alt) ?? "" } };
+  });
+
   return table;
+}
+
+/**
+ * Children written as lines of text, as MDX reads them: paragraphs whose lines
+ * lose their indentation and whose Markdown is read as text. Undefined when
+ * they hold anything but paragraphs, such as elements, expressions or a list.
+ */
+function paragraphLines(children: string): string | undefined {
+  if (/[{}]|<[A-Za-z/!]/.test(children)) return undefined;
+  const paragraphs = children.split(/\r?\n/).map((line) => line.trim()).join("\n").split(/\n{2,}/).filter(Boolean);
+  const text: string[] = [];
+  for (const paragraph of paragraphs) {
+    const blocks = lexMarkdown(paragraph).filter((token) => token.type !== "space");
+    if (blocks.length !== 1 || blocks[0].type !== "paragraph") return undefined;
+    text.push(inlineText((blocks[0] as Tokens.Paragraph).tokens));
+  }
+  return text.length ? text.join("\n\n") : undefined;
 }
 
 /** A tabs element's `values`, `[{ value, label }]`, as each value's label (a value without one shows itself); undefined in any other shape. */

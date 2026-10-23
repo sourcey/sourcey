@@ -11,6 +11,7 @@ import type { HostDependency } from "./types.js";
 import { convertMdxDocument, type DocumentContext } from "./document.js";
 import { normaliseFences } from "./code-fences.js";
 import { parseDocument, SourceSyntaxError, type Dialect, type SyntaxNode } from "./mdx.js";
+import type { JsonValue } from "../core/markdown-components.js";
 import type { FragmentRule } from "./slugs.js";
 import { applyEdits, frontmatterEdits, lineAt, readFrontmatter } from "./text-edits.js";
 
@@ -30,6 +31,19 @@ export interface SourceDialect extends Dialect {
   preprocess?: (source: string) => string;
   /** A fence's bare words after its language are its title, as Mintlify writes ```bash Install```. */
   fenceTitles?: boolean;
+  /**
+   * The framework's functions whose value is fixed by the site, by
+   * `module#export`, evaluated where content calls them with static arguments:
+   * Docusaurus's `useBaseUrl`.
+   */
+  calls?: ReadonlyMap<string, (args: readonly JsonValue[]) => JsonValue | undefined>;
+  /**
+   * Components the framework shows as a code block of their children, by
+   * `module#export`: Docusaurus's CodeBlock. Verification reads their text as code.
+   */
+  codeElements?: ReadonlySet<string>;
+  /** The project directories the framework publishes at its base path (`/` or `/docs/`), as `useBaseUrl` addresses them. */
+  statics?: { base: string; directories: readonly string[] };
 }
 
 /** What a converter produces: native plans and the host dependencies they change. */

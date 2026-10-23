@@ -1,3 +1,5 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { numberPrefix } from "../../src/migration/docusaurus/docs.js";
 import { migrateProject, MigrationError } from "../../src/migration/index.js";
@@ -332,6 +334,66 @@ describe("sourcey migrate docusaurus", () => {
       const config = await read(root, "sourcey.config.ts");
       expect(config).toContain('group: "C++",\n              id: "c",');
       expect(config).toContain('group: "C#",\n              id: "c-2",');
+    });
+  });
+
+  it("writes code blocks as fenced code, themed images as figures, and useBaseUrl and redirects below the site's base", async () => {
+    const based = {
+      ...site,
+      "docusaurus.config.js": (site["docusaurus.config.js"] as string)
+        .replace("baseUrl: '/'", "baseUrl: '/docs/'")
+        .replace("to: '/start/' }] }", "to: '/start/' }], createRedirects: (path) => (path === '/start' ? '/begin' : undefined) }"),
+      "docs/start/02-install.mdx": [
+        "import CodeBlock from '@theme/CodeBlock';",
+        "import ThemedImage from '@theme/ThemedImage';",
+        "import useBaseUrl from '@docusaurus/useBaseUrl';",
+        "",
+        "# Installation",
+        "",
+        "<CodeBlock language=\"bash\" title=\"Install\">{`npm i example\n`}</CodeBlock>",
+        "",
+        "<CodeBlock className=\"language-ini\">",
+        "  [example]",
+        "  name=example\\_repo",
+        "  url=https://example.com/repo",
+        "</CodeBlock>",
+        "",
+        "<CodeBlock language=\"js\" showLineNumbers>{`run()`}</CodeBlock>",
+        "",
+        "- Check the port:",
+        "",
+        "  <CodeBlock className=\"language-bash\">sudo ss -tlpn | grep 7422 &amp;&amp; echo up</CodeBlock>",
+        "",
+        "<ThemedImage alt=\"The example logo\" sources={{ light: useBaseUrl('/img/logo.svg'), dark: useBaseUrl('img/logo-dark.svg') }} />",
+        "",
+        "<img src={useBaseUrl('/img/favicon.png')} alt=\"Icon\" />",
+        "",
+      ].join("\n"),
+      "static/img/logo.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"/>\n',
+      "static/img/logo-dark.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"/>\n',
+    };
+    await withProject(based, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root });
+      const page = await read(root, "docs/start/02-install.mdx");
+      expect(page).toContain('```bash title="Install"\nnpm i example\n```');
+      expect(page).toContain("```ini\n[example]\nname=example_repo\nurl=https://example.com/repo\n```");
+      expect(page).toContain("```js\nrun()\n```");
+      expect(page).toContain("- Check the port:\n\n  ```bash\n  sudo ss -tlpn | grep 7422 && echo up\n  ```\n");
+      expect(page).toContain('<Figure src="../../static/img/logo.svg" darkSrc="../../static/img/logo-dark.svg" alt="The example logo" />');
+      expect(page).toContain('<img src="/docs/img/favicon.png" alt="Icon" />');
+      expect(report.diagnostics.map((item) => item.message)).toContain("<CodeBlock> converts without showLineNumbers: native code blocks do not number their lines");
+      expect(await read(root, "sourcey.config.ts")).toContain('redirects: { "/docs/old-start": "/docs/start/", "/docs/begin": "/docs/start/" },');
+    });
+  });
+
+  it("reads a code block's text as code, so a conversion that changes it stops", async () => {
+    const coded = { ...site, "docs/start/02-install.mdx": "import CodeBlock from '@theme/CodeBlock';\n\n# Installation\n\n<CodeBlock className=\"language-bash\">npm i example</CodeBlock>\n" };
+    await withProject(coded, async (root) => {
+      const mapping = join(root, "migration-mapping.ts");
+      await writeFile(mapping, 'export default { components: { "@theme/CodeBlock": { default: () => ({ fence: { language: "bash", code: "npm i other" } }) } } };\n');
+      const failure = await migrateProject({ framework: "docusaurus", root, mapping, dryRun: true }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(MigrationError);
+      expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => item.message)).toEqual(['Code is not preserved: "npm i example"']);
     });
   });
 
