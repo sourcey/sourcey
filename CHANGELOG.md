@@ -4,82 +4,68 @@
 
 ### Added
 
-- A reference publishes in the shape its size calls for unless `reference.split` names one: one page while it holds at most 50 operations and 1,000 field rows, a page per section where it has several sections each within that, else a page per operation. The build says which it chose. `reference.split: false` keeps one page, and the new `"sections"` publishes a page for each section, an OpenAPI tag or an MCP group, holding its operations in full, beside an overview that lists the sections, with a page for each model. Each operation's own address (`reference.operations`) leads to it wherever its shape puts it, and previous and next lead from section to section. A reference split by section with one section stays one page, and the build says so. A reference without `reference.split` and with more than 50 operations, or 1,000 field rows, now publishes split; its links still land, its operations' anchors on its overview included.
-- `mcp({ spec, groups })` sections an MCP reference as the server's authors divide it: each group names its tools, resources and prompts, in the order the reference lists them, and the snapshot stays as captured. A name the server lacks, or one listed twice, fails the build; anything no group names is listed by kind after the groups, and the build names it. The undocumented `x-sourcey-group` field a snapshot could carry on an entry, which renamed its tag but left it listed under its kind, is no longer read.
-- The build warns when a reference held on one page (`reference.split: false`) holds more than 100 operations, which are slow to open and to search, and names the splits that serve it better.
-- The Sourcey skill (`skills/sourcey`) ships in the npm package and as the `sourcey-docs` plugin for Claude Code, Gemini CLI, Cursor, Grok Build and ChatGPT/Codex: it teaches an agent the CLI, the migrations, how to shape a reference, and how to review a site as a reader before it ships.
+- A reference publishes in the shape its size calls for unless `reference.split` names one: one page while it holds at most 50 operations and 1,000 field rows, a page per section where every section fits within that, and otherwise a page per operation. The build says which it chose. `split: false` keeps one page, and the new `"sections"` publishes a page for each OpenAPI tag or MCP group beside an overview that lists them. Each operation's address (`reference.operations`) and anchor still lands, whatever the shape.
+- `mcp({ spec, groups })` sections an MCP reference as the server's authors divide it. Each group names its tools, resources and prompts in order; a name the server lacks, or one listed twice, fails the build, and entries no group names are listed by kind after the groups.
+- The build warns when a reference kept on one page (`reference.split: false`) holds more than 100 operations, and names the splits that serve it better.
+- The Sourcey skill (`skills/sourcey`) ships in the npm package and as the `sourcey-docs` plugin for Claude Code, Gemini CLI, Cursor, Grok Build and ChatGPT/Codex. It teaches an agent the CLI, the migrations, how to shape a reference and how to review a site before it ships.
 
 ### Changed
 
-- An MCP entry's kind (TOOL, RESOURCE or PROMPT) shows only beside entries of another kind, in a reference's lists, its sidebar and the line under an entry's title: a section named "Tools" already says what its entries are. That line shows a tool's or prompt's name only where its title is not already the name, and a resource's address; with neither to show, there is no line. HTTP methods show as before.
-- The sidebar shows the section around the page whole, rather than the 25 entries nearest the page in a section of more than 40, which read as the whole section. A reference of one section is shown whole on every page, its overview's included, rather than folded there to one link. A documentation tab of more than 20 top-level sections lists every one, each a link where the page is not in it, as Docusaurus does, rather than the 13 around the page beneath an "All sections" link to a generated page listing them; that page is no longer generated. Where a large tab folds the sections away from the page, a section with pages of its own and a subsection leads to its pages, beside the subsection: it had folded to the subsection alone, its own pages reachable only through it. A page that held such a window is 1 to 3 KB larger compressed.
-- One sidebar entry reads as current. Where the sidebar lists a page and places on it, the page's entry gives way to the place being read as the page scrolls, and takes it back at the top: clicking "Tools" on an MCP reference's overview had left "Introduction" lit as well. A link to a place on another page is no longer lit by a place of the same name on this one.
-- A split reference's overview lists its introduction's headings under "On this page", rather than its sections, authentication and models again beside the sidebar that lists them.
-- "On this page" is drawn only where it lists two places or more, in every theme: a list of one says nothing the page does not. In the default theme a page without it keeps its column empty, so its text sits where every other page's does: a page without headings had run its lines across that column too, 1,040 px long at 1440 px wide.
-- The footer sets the site's words before the networks' marks, which keep together, rather than in the order configured, where words and icons alternated. "Edit this page" ends the page, above previous and next, as Docusaurus and Material place it, rather than among the site's footer links; a site's own pages, such as its home, no longer show it.
-- `sourcey migrate docusaurus` leaves out footer links to the docs' own pages, which the sidebar lists, and links the navbar has, such as its repository, and names them. `sourcey migrate mkdocs` no longer repeats the header's repository link among Material's social links.
-- An operation's method is drawn the same wherever the site names it, in the sidebar, a reference's lists, at the head of an operation and in search: as the sidebar draws it, a tint of the method's hue. A reference's lists had set it as plain text in the site's colour, search as a solid fill with PATCH in purple rather than orange, and the api-first theme an MCP entry's kind as coloured text. A theme styles it once, as `.method-badge`. In a list that mixes MCP kinds, the names beside them align, as wide as the widest kind sets them.
+- A reference without `reference.split` that holds more than 50 operations or 1,000 field rows now publishes split, by the rule above. Its links still land, its operations' anchors on the overview included.
+- An MCP entry's kind (TOOL, RESOURCE or PROMPT) shows only where kinds mix: a section named "Tools" already says what its entries are. The line under an entry's title shows a name only where the title differs from it, and a resource's address.
+- An operation's method is drawn the same wherever it appears, in the sidebar, a reference's lists, an operation's heading and search, as a tint of the method's hue. A theme styles it once, as `.method-badge`.
+- The sidebar shows the section around the page whole, rather than the 25 entries nearest it, and a one-section reference whole on every page. A tab of more than 20 top-level sections lists every one, rather than 13 beneath an "All sections" link.
+- One sidebar entry reads as current: as the page scrolls, the page's own entry gives way to the place being read.
+- "On this page" appears only where it lists two places or more. In the default theme a page without it keeps the column empty, so its text lines up with every other page's.
+- A split reference's overview lists its introduction's headings under "On this page", rather than the sections the sidebar already lists.
+- The footer sets the site's words before its social icons. "Edit this page" ends the page, above previous and next, and a site's own pages, such as its home, no longer show it.
+- `sourcey migrate docusaurus` leaves out footer links the sidebar or navbar already show, and names them. `sourcey migrate mkdocs` no longer repeats the repository link among the social links.
 
 ### Performance
 
-- Sites build in a sixth of the time and under a third of the memory. A site of 874 pages, with a page for each operation of a 106-operation Kubernetes API, an MCP reference and a social image for every page, builds cold in 6 s where 3.8.3 took 37 s, peaks at 0.9 GB across its processes where 3.8.3 reached 3.2 GB, and publishes 321 MB where 3.8.3 published 531 MB. A first search reads 10 KB where it read 190 KB, and importing Sourcey takes 61 MB where it took 110. Each change is below.
-- Social images are drawn off the main thread, as many at once as the build's image budget allows, rather than one or two at a time on it, and each takes a third of the time: the card's background glow is drawn as one gradient rather than the masked pattern satori made of it, which took resvg three times as long as the rest of the card. One worker lays the cards out and native threads rasterise and encode them, and the worker ends with the last card, as the diagram renderer now ends once the pages are loaded, rather than each holding its memory until the build exits. Images look as before, at two thirds of the bytes. A cold build of an 838-page site went from 32 s to 14 s, and its peak memory from 2.5 GB to 1.5 GB.
-- `sourcey build` writes the site as it renders it: each page, and the social image drawn just before it, goes to disk and is let go, rather than the whole site's HTML and images being held until the last page renders. The output directory still changes all at once, when every file is ready, and is rolled back on a failure as before. `SourceySiteArtifacts` no longer carries `ogImages`: the images are among the files `writeSourceySite` writes and the in-memory artifacts a host renders.
-- Diagrams and social images are drawn in processes of their own, which end when their work does and give all their memory back. A worker thread's ending gave back almost none: one Mermaid diagram left the build holding 330 MB, for its DOM and the Mermaid library, until it finished.
-- `sourcey build` collects its garbage sooner: a build renders each page once and keeps little, so it no longer lets the script heap grow well past what it holds before collecting. On an 838-page site its peak went from 1.24 GB to 0.84 GB, for 7% more time.
-- Search reads only what a query needs. The build scores each word in each result once, as MiniSearch scored an exact match of it, and publishes the words in sorted chunks, each result's title and address in small fragments, and the vocabulary in blocks; a query reads the chunks its words fall in and the fragments of the results it shows, ten at a time as the list scrolls. A first search on an 838-page site reads 10 KB where it read 190 KB before any result showed, and the search worker is 5 KB rather than 25 KB. Results rank as MiniSearch ranked them, with one difference: a typo is an edit after a word's first two letters, as Elasticsearch's `prefix_length` 2 reads one, so `rule` no longer matches `mule`; a query that finds nothing as written is read again with typos anywhere. Building the index no longer builds MiniSearch's in memory: a 493-page site's build holds 170 MB less at its peak. `sourcey/documents` searches with the same engine, and MiniSearch is no longer a dependency.
-- An operation or schema is searched by its own words and its fields' names, titles, descriptions and values, each named type's once, as the reference draws it, rather than by a dump of the whole normalized document. The dump repeated a type nested many times over at every level and listed the document's own keys, so "type", "format" and "properties" matched every operation; on a Kubernetes API one operation's search text was 5.9 MB and `documents.json` was 61 MB. It is now 6.5 MB, and builds take less time and memory.
-- Code is highlighted by Oniguruma, the regex engine its grammars are written for, rather than by Shiki's JavaScript translation of them, which read some patterns differently: SQL's `SUM(` and other functions written against an opening bracket are coloured as functions now. Highlighting takes half the time and a fifth of the memory it did.
-- Code is highlighted in both code themes from one tokenizing, rather than tokenized again for each theme as Shiki's two-theme rendering does, and written without its intermediate syntax tree: highlighting takes half the time. A run of characters in one colour is one span, and text in each theme's own colour is left as text, so a code block's HTML is about 30% smaller. Every character shows the colours it did.
-- The highlighter reads a language's grammar the first time a block in that language is drawn, rather than all 23 grammars and those they embed whenever Sourcey is imported. A compiled grammar holds megabytes, so a site holds only the grammars of the languages it shows: importing Sourcey takes 25 MB less memory, and code is highlighted exactly as before, in every language and whatever order the languages are met in.
-- A page written in Markdown is drawn once, after the site's routes and navigation are compiled, with its links resolved as it is drawn, rather than drawn before the routes existed, drawn again where a page list changed, and kept twice over, as drawn and as linked. Routes read a page's headings and anchors from its content. The build holds one copy of each page, and a site's rebuild keeps one cache of drawn pages rather than two. `resolveInternalLinks`, an internal step that took the build's own page records, is no longer exported.
-- A page's Markdown is sanitized only where its author wrote HTML. The build's own HTML, its headings, highlighted code and built-in components, joins the page as itself, rather than being written into the page's Markdown, read again as Markdown and sanitized: every page went through the sanitizer whole, highlighted code and all. A component a site defines is still sanitized, as are images and frames from anywhere but the web or the site. An 838-page site builds in 7.5 s, from 9.2 s.
-- A page's Markdown is read once for the local files and HTML it names. Markdown that names neither, as most does, is kept as written, rather than read twice more to rewrite nothing, and a link's label is rewritten from what was read with the link rather than read again.
-- A page's Markdown is lexed once where it used to be lexed twice, and only as far as it must be: its headings are read from the same lexing that finds its local files, and the title and summary its frontmatter leaves out from its blocks, lexing the inline text only of the paragraphs it reads until one has prose rather than all of the page's prose. Titles and descriptions are as before.
-- A page's Markdown export is written once the site's routes are known, from its content, rather than written as the page was drawn and lexed whole again to rewrite its links. Loading a page marks the blocks and headings that hold a link the site resolves, 1 to 3% of a site's blocks, and only those are read again, with the page's reference definitions, so a `[text][name]` link resolves wherever its definition is. Exports are as before.
-- A page's sidebar draws once each section that holds neither the page nor a link to it, and reuses it on every other page, rather than drawing the whole navigation again for every page: a section looks the same on each page but around the current one. Pages are drawn as before, and a 458-page site builds with 5% less CPU time.
-- A build finds the links its broken-fragment check follows by reading each page's anchors from the HTML it wrote, rather than parsing every page again: on a 493-page site that check took a tenth of a second.
-- A diagram is read and laid out once and drawn in the light and dark themes from that layout, rather than read and laid out again for each theme. Diagrams are drawn as before.
-- An API reference normalizes each schema once for every place it is used the same way, and shares the result, rather than copying a component into every operation that returns it. A 1,781-operation API held a third of the schema memory it did. References render as before.
-- A schema nested along many paths, as a Kubernetes type is, normalizes once wherever it cannot meet itself again, rather than once for every path to it, and a component that nothing references is named by itself, as a referenced one is: its Markdown reads `Type: Order` rather than `Type: unknown`.
-- A Swagger 2.0 document converts to OpenAPI 3 before its references are resolved, as the converter is written to, so a type it uses in many places stays one type rather than a copy at every use: a 0.2 MB Kubernetes API had grown to 25 MB on the way, and its build now takes a second and 150 MB less. A reference to a type inside itself now links to that type where it read `any`. As Swagger 2.0 specifies, keywords written beside a `$ref` are ignored.
-- A Swagger 2.0 document converts without being written out as YAML first. The converter kept that text only for validators' messages, and writing a large dereferenced document took over a second.
-- The API console's data for an operation holds what the console reads, how to call it, rather than the whole operation with its responses and prose, and writes a type it uses in many places once. A 106-operation Kubernetes API's console data went from 20.9 MB to 0.9 MB, and its largest operation's, which a reader downloads on opening the console, from 4.4 MB to 96 KB; a 1,781-operation API's from 54 MB to 4 MB. The console draws as before.
-- `sourcey build` copies files it publishes unchanged, such as images, stylesheets' assets and a public directory's files, from their source as it writes the site, hashing each as a stream, rather than holding every one in memory from the start of the build. A site whose public directory held 143 MB of reports no longer held them all. A file that changes while the site builds fails the build rather than being published unlike its hash. The dev server and Astro, which serve the site from memory, read files as before.
-- `sourcey build` clones a file it publishes unchanged into the output where the file system can, as APFS, Btrfs and XFS can, and copies it in one call elsewhere, rather than streaming its bytes through the build and hashing them a second time: a public directory of 143 MB is published without being read again or taking its size again on disk. A file that changes after it was hashed still fails the build, now found by its inode, size and change time, which every write moves; a file written while it is being hashed fails too.
-- Sourcey's own scripts and styles ship built in the package, and a site's build reads them rather than bundling them with Vite and Tailwind whenever its cache is empty: a cold build of a 493-page site takes 0.7 s less CPU time and 30 MB less memory.
-- `sourcey build` loads a library only for a site that uses it: the HTML sanitizer with the first HTML an author wrote, JSONPath with the first overlay, the Doxygen converter with a Doxygen tab and the reference resolver with the first API document. The highlighter loads Shiki's core and its Oniguruma engine, rather than the bundle that lists every language and theme.
-- Vite loads only to read a config file, or to bundle a site's own components, rather than whenever Sourcey is imported: a host that passes Sourcey a resolved config, such as Astro's integration, never loads it, and importing Sourcey takes 61 MB where it took 110.
-- A site's `llms.txt` and `llms-full.txt` are generated once, rather than once for the file and again for the build's result, and machine exports are held as the UTF-8 bytes they are written as, rather than as text the script heap held at two bytes a character once one curly quote appeared.
-- The build cache identifies the packages that draw diagrams, images and assets by each package's manifest and its files' sizes and modification times, rather than by reading every byte of every file they depend on: Mermaid's dependencies alone cost each build a quarter of a second and 150 MB of memory to hash. A patched or relinked package still counts as changed.
-- The build cache reads the packages a diagram or social image is drawn with all at once, rather than one directory and one file at a time, so a build with a diagram waits a tenth of a second less before drawing it, cached or not. What it checks is unchanged.
+- Sites build in a sixth of the time and under a third of the memory. A site of 874 pages, with a page for each operation of a 106-operation Kubernetes API, an MCP reference and a social image for every page, builds cold in 6 s where 3.8.3 took 37 s, peaks at 0.9 GB across its processes where 3.8.3 reached 3.2 GB, and publishes 321 MB where 3.8.3 published 531 MB.
+- Social images are drawn off the main thread, several at once, each in a third of the time: the background glow is one gradient rather than a masked pattern. They look as before at two thirds of the bytes.
+- Diagrams and social images are drawn in helper processes that end with their work and give their memory back. One Mermaid diagram had left the build holding 330 MB until it finished.
+- `sourcey build` writes each page and its social image as it renders them, rather than holding the whole site until the last page, and collects garbage sooner: an 838-page site's peak went from 1.24 GB to 0.84 GB, for 7% more time. The output directory still changes all at once and rolls back on a failure.
+- Search reads only what a query needs: the build publishes scored words in sorted chunks, results in small fragments and the vocabulary in blocks, and a query loads the ones it touches, ten results at a time. A first search on an 838-page site reads 10 KB where it read 190 KB, and the search worker is 5 KB rather than 25 KB. Results rank as before, except that a typo counts only after a word's first two letters, so `rule` no longer matches `mule`; a query that finds nothing is retried with typos anywhere.
+- A reference is searched by its operations' and fields' own words rather than a dump of the whole document, which made "type" and "properties" match everything. A Kubernetes API's `documents.json` went from 61 MB to 6.5 MB.
+- Code is highlighted by Oniguruma, the regex engine its grammars are written for, in half the time and a fifth of the memory of Shiki's JavaScript translation, and from one tokenizing for both code themes, which halves it again and makes a code block's HTML about 30% smaller. SQL functions written against a bracket are now coloured as functions. A language's grammar loads the first time a block in it is drawn.
+- Markdown is drawn once, after the site's routes are known, with its links resolved as it is drawn. A page is lexed once and only as far as its title and summary need, sanitized only where its author wrote HTML, and its export rewrites only the blocks that hold links.
+- The sidebar draws each section that holds neither the page nor a link to it once, and reuses it on every page: 5% less CPU time on a 458-page site.
+- An API schema is normalized once for each way it is used and shared, rather than copied into every operation: a 1,781-operation API holds a third of the schema memory. Swagger 2.0 converts to OpenAPI 3 before its references are resolved, and without being written out as YAML, so a type used in many places stays one type: a 0.2 MB Kubernetes API had grown to 25 MB on the way, and now builds in a second less and 150 MB less memory.
+- The API console's data for an operation holds only what the console reads, with each shared type once. A 106-operation Kubernetes API's went from 20.9 MB to 0.9 MB, and its largest operation's, downloaded on opening the console, from 4.4 MB to 96 KB; a 1,781-operation API's went from 54 MB to 4 MB.
+- Files published unchanged, such as images and a public directory, are cloned or copied from their source as the site is written, rather than held in memory and hashed twice: a public directory of 143 MB is no longer read again or, where the file system can clone, stored twice. A file that changes during the build fails it.
+- Vite, the HTML sanitizer, JSONPath, the Doxygen converter and the reference resolver load only when a site uses them, and Sourcey's own scripts and styles ship prebuilt. Importing Sourcey takes 61 MB where it took 110, and a cold build of a 493-page site 0.7 s less CPU time.
+- The build cache identifies the packages that draw diagrams and images by their manifests and file stats, read concurrently, rather than hashing every byte: Mermaid's dependencies had cost each build a quarter of a second and 150 MB. A diagram is laid out once for both themes, `llms.txt` and `llms-full.txt` are generated once, and the broken-fragment check reads anchors from the HTML the build wrote.
+
+### Removed
+
+- `resolveInternalLinks`, an internal step that took the build's own page records, is no longer exported.
+- `SourceySiteArtifacts` no longer carries `ogImages`: social images are among the files `writeSourceySite` writes.
+- MiniSearch is no longer a dependency; `sourcey/documents` searches with the site's own engine.
+- The undocumented `x-sourcey-group` field on an MCP snapshot entry is no longer read; `mcp({ groups })` replaces it.
+- The generated "All sections" page is no longer written.
 
 ### Fixed
 
-- A page names its canonical URL and its language alternates only by absolute URLs, so a site without `siteUrl` names neither and has no sitemap, rather than relative ones that search engines and Lighthouse reject; the build's warning says so. A page in one language names no alternate, where it had named itself.
-- A site without a `favicon` shows its logo where that is a mark, or else a square of its primary colour, as its social images draw beside the name. Without an icon, every page's browser asked for `/favicon.ico` and logged the missing file.
-- A site's published scripts no longer name the machine that built them. Rolldown had headed each module's code with its path, so a site's `sourcey-search.js` carried the builder's home or temporary directory. Sourcey's own scripts now ship built in the package, and a site's own components are bundled without those paths.
-- The header's rows run the window's width, so a site that colours its top bar, as a Material site's app bar is coloured, colours it edge to edge: past 1,472 px it had stopped at the page's frame. Its contents keep to the frame as before.
-- A page title that opens with the site's name is no longer followed by the name again: "Acme Core" rather than "Acme Core - Acme". Names compare as words and without ® or ™, so "Acme® Cloud" is no longer followed by "Acme Cloud™".
-- A field's name, an API parameter's, a schema property's or an authentication scheme's, breaks after an underscore, and inside a word only where nothing else fits, rather than widening the page on a phone: `use_external_album_art_when_processing_media` had run 18 px past a 390 px screen.
-- A schema no longer opens a type inside itself, or draws a very large type out to the depth limit. A field of the type it sits in reads "Same fields as" and links up to where that type is drawn. A schema that would draw more than 500 field rows, as large Kubernetes custom resources do, draws each named type once, at its shallowest place, and links its other fields there: one such operation was 21 MB of HTML that stopped 1,026 times at "Max depth reached", and is now 1 MB with every field reachable. Generated examples leave out a property that would repeat its own type, rather than printing `"[circular]"`, and an example longer than 400 lines shows each named object type once. Schemas below that size draw as before.
-- A reference's version is prefixed with "v" only where it is a number, so a version named `latest` no longer reads "vlatest".
-- Pages fit a phone's screen where they name long identifiers. A type, a model's name, a page title, a link in prose, a description in a reference's list, or the name in a previous or next link that has a word too long for its column wraps inside that word, rather than widening the page; a model's type moves below its name where the two cannot share a line. Pages whose words fit draw as before.
-- A snake_case name, such as an MCP tool's, breaks after an underscore in the navigation, a reference's lists and its page heading, rather than inside a word.
-- A site name longer than the header has room for, as on a phone, stays on one line and ends in an ellipsis, rather than wrapping to three lines that crowd the header's controls.
-- The footer's links wrap onto a second line where there are more than a phone's width holds, and an enum value, default or range in a deeply nested field, or a reference's tag heading, wraps inside its word where it is wider than its column, rather than widening the page.
-- `sourcey migrate mkdocs` says that Material's analytics (`extra.analytics`) are not carried over, as the Docusaurus converter says of its analytics plugins, rather than leaving them out without a word.
-- A Mermaid flowchart draws its subgraphs as Mermaid does: each a titled container around its members, nested ones inside the one around them, coloured as Mermaid's own light and dark themes colour them, where they were laid out flat and left out. A subgraph no link crosses is laid out on its own, in the direction it declares (`direction LR`), or else across the chart's, so a top-to-bottom chart lists each layer's members down its side rather than spreading them across the page, wider than its column; one a link crosses keeps the chart's direction, and members no link joins keep the order they are written in. A diagram's labels read as Mermaid shows them: a `<br>` in a node's label is a line break, drawn in the middle of the node rather than at the top of the diagram, and in a message, note, edge or title, which the renderer draws on one line, a space; an entity such as `&lt;` is the character it names, an `&` reads `&` rather than `&amp;`, and other markup, such as `<b>`, is left out rather than shown as written.
-- `sourcey migrate docusaurus` titles a page that opens with its own heading by that heading, as Docusaurus shows it, keeping its frontmatter title as its navigation label, rather than showing both titles.
-- `sourcey migrate docusaurus` keeps a navbar link to a page of the site (`to`), as it keeps one to another site (`href`), rather than dropping it without a word.
-- Markdown keeps what it draws through sanitizing: an ordered list's starting number, a task list's checkboxes and `~~strikethrough~~`. The sanitizer had removed them on every page, so a list numbered from 3 read from 1 and a checklist lost its boxes.
-- Every site's stylesheet leaves out seven utility classes no page used (`filter`, `grid`, `italic` and others), which Tailwind had read from the engine's own code rather than its markup. Tailwind now reads the components and client scripts, which write its utilities; the engine's other markup is styled by the theme's classes, as before.
-- A Go, Doxygen or Rust tab's navigation leads to the pages the site writes, in every `prettyUrls` mode and wherever a tab's `routes` move a page. Go and Doxygen named their pages by one file layout of their own: by default, without pretty URLs, the Overview linked `go-api/index.html` where the site wrote `go-api.html`, and with `prettyUrls: "slash"` every package or class linked a `.html` file the site writes as a directory (#298). Each tab's navigation now names its pages and the site gives each its address, as it does for authored navigation, and navigation that names a page the site does not publish fails the build rather than linking nowhere. Without pretty URLs, the tab, and the logo where it is the first tab, now lead to the overview rather than to the page after it, and in every mode search opens on these tabs' pages before anything is typed, which it had passed over.
-- A site that defines a component named `Include` has its own drawn where a page writes `<Include>`, as a site's component named after any other built-in is, rather than Sourcey reading the file the tag names and passing over the site's component. A directive that opens no component fails the build naming the directive, whatever it is called: `:::constructor` had failed naming an internal function instead.
-- An MCP tab whose spec is a web address builds. The spec is read once, through the build's reader, as an OpenAPI spec is, rather than read a second time by the MCP parser, which took the address for a file name and failed. A file the build reads and cannot find fails naming it, as `File not found: <path>`.
-- A logo, favicon or social image whose path starts with `http`, such as `httpdocs/card.png`, is read from the config's folder, as any other path is, rather than taken for a web address and looked for in the working directory. A site's own social image is read as its logo and favicon are, through the build's reader, and `sourcey build` copies it from its source rather than holding it in memory.
-- A component a site defines is given the language and version its page is read in, as `context.context`, and its type says so: it no longer types that context as possibly missing, which it never was in a build.
-- A page declares the language its content is in by that language's tag, as its `hreflang` links name it: where a site sets `lang: "pt-BR"` for `pt`, a Portuguese page is `<html lang="pt-BR">`, where it was `lang="pt"`, and a page that falls back to the default language's content declares the default language's tag. A site that sets no `lang` draws as before.
+- Canonical URLs, language alternates and the sitemap use absolute URLs only. A site without `siteUrl` publishes none of them, rather than relative ones search engines and Lighthouse reject, and the build's warning says so. A page in one language no longer names itself as its alternate.
+- A site without a `favicon` shows its logo where that is a mark, or else a square of its primary colour, rather than every page requesting a missing `/favicon.ico`.
+- A site's published scripts no longer carry the path of the machine that built them, which Rolldown had written above each module.
+- The header's rows run the window's full width, so a coloured top bar, as a Material site has, reaches both edges past 1,472 px. Its contents keep to the page's frame.
+- A page title that opens with the site's name is no longer followed by the name again: "Acme Core" rather than "Acme Core - Acme". Names compare as words, ignoring ® and ™.
+- A schema no longer opens a type inside itself or draws a very large type out to the depth limit. A field of its own type reads "Same fields as" and links to it, and a schema of more than 500 field rows draws each named type once and links its other uses: one Kubernetes custom resource's operation went from 21 MB of HTML that stopped 1,026 times at "Max depth reached" to 1 MB with every field reachable. Generated examples no longer print `"[circular]"`.
+- A long name wraps rather than widening a phone's page: a field, parameter or property name breaks after an underscore, a snake_case name in the navigation and headings likewise, and a type, model name, title, link, enum value or footer link too long for its column breaks inside the word. A site name too long for the header ends in an ellipsis on one line.
+- A Go, Doxygen or Rust tab's navigation leads to the pages the site writes, in every `prettyUrls` mode and wherever `routes` move a page (#298): it had linked `go-api/index.html` where the site wrote `go-api.html`, and `.html` files where `prettyUrls: "slash"` writes directories. The tab, and the logo where it is the first tab, lead to its overview; navigation naming a page the site does not publish fails the build; and search lists these pages before anything is typed.
+- A Mermaid flowchart draws its subgraphs as Mermaid does, as titled, nested containers laid out in their declared direction, where they had been laid out flat and left out. Labels read as Mermaid shows them: `<br>` breaks a node's line, an entity such as `&lt;` is its character, and other markup is left out rather than shown.
+- Markdown keeps an ordered list's starting number, a task list's checkboxes and `~~strikethrough~~`, which sanitizing had removed on every page.
+- An MCP tab whose spec is a web address builds, and a file the build cannot find fails as `File not found: <path>`.
+- A logo, favicon or social image whose path starts with `http`, such as `httpdocs/card.png`, is read from the config's folder rather than taken for a web address.
+- A site's own component named `Include` is drawn where a page writes `<Include>`, as any built-in can be replaced, and a directive that opens no component fails naming the directive.
+- A page's `<html lang>` is its language's tag, as its `hreflang` links name it: a site that sets `lang: "pt-BR"` for `pt` now writes `lang="pt-BR"` where it wrote `lang="pt"`.
+- A component a site defines receives its page's language and version as `context.context`, typed as always present.
+- A reference's version is prefixed with "v" only where it is a number, so `latest` no longer reads "vlatest".
+- Every site's stylesheet leaves out seven utility classes no page used (`filter`, `grid`, `italic` and others), which Tailwind had read from the engine's own code.
+- `sourcey migrate docusaurus` titles a page that opens with its own heading by that heading, keeping its frontmatter title as the navigation label, and keeps navbar links to the site's own pages (`to`). `sourcey migrate mkdocs` says that Material's analytics are not carried over.
 
 ## 3.8.3 - 2026-10-21
 
@@ -269,7 +255,7 @@ All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepa
 - Scope Rust documentation headings to their item and preserve the page's heading hierarchy.
 - Run the CLI image on Node.js 24, matching Sourcey's supported Node.js range.
 
-## 3.6.13 - 2026-10-12
+## 3.6.13 - 2026-10-11
 
 ### Fixed
 
@@ -304,7 +290,7 @@ All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepa
 
 - Restore inline code and fenced blocks exactly when they contain a dollar sign, so code such as `` `$` `` no longer repeats the preceding page content.
 
-## 3.6.9 - 2026-09-25
+## 3.6.9 - 2026-09-24
 
 ### Fixed
 
@@ -354,7 +340,7 @@ All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepa
 - OpenAPI tag headings render at the operation title size instead of a step below it, so a tag's section heading is no longer smaller than the operations nested under it.
 - C++ reference output picks up moxygen 2.1.12: `@retval`, `@throws`, and `@tparam` documentation renders as tables, and headings nest relative to the page they are embedded in rather than at a fixed level.
 
-## 3.6.4 - 2026-06-24
+## 3.6.4 - 2026-06-23
 
 ### Fixed
 
@@ -403,519 +389,835 @@ All notable changes to Sourcey. Format based on [Keep a Changelog](https://keepa
 
 ### Changed
 
-- Bumped `mcp-parser` to `^0.4.0`, bringing the current `mcp-schema` dependency and markdown-first standalone generation docs into Sourcey's MCP tooling stack.
+- `mcp-parser` is at `^0.4.0`, with the current `mcp-schema`.
 
 ### Fixed
 
-- Desktop sidebar scroll position now survives sidebar-initiated page navigation, so long generated docs sidebars no longer jump back to the top after selecting deep items in Doxygen/moxygen, OpenAPI, MCP, godoc, Markdown, or changelog tabs.
-- Direct, search-result, and external deep links now reveal the active sidebar item without reusing stale sidebar state.
+- The desktop sidebar keeps its scroll position when a sidebar link opens another page, so a long generated sidebar no longer jumps back to the top after a deep entry is chosen.
+- A direct, search or external link to a deep page reveals its entry in the sidebar, rather than reusing stale sidebar state.
 
-## 3.5.9 - 2026-05-06
-
-### Added
-
-- Native Go documentation as a fifth tab source (`godoc`). Sourcey extracts package docs directly from Go source via the toolchain (`go list` + `go/parser` + `go/doc`); no Doxygen pipeline. Supports live mode (runs Go at build time) and snapshot mode (reads a committed `godoc.json`); `mode: "auto"` (default) picks live when Go is available and snapshot otherwise. Renders consts, vars, functions, types (struct, interface, alias, defined), fields with tags, methods, and examples from `*_test.go`.
-- `sourcey godoc --module . --packages './...' --out godoc.json` CLI command to snapshot a Go module's documentation into a portable JSON artifact for JS-only docs hosts.
-- Standalone `sourcey-godoc` Go module and CLI at `github.com/sourcey/sourcey/go/sourcey-godoc/cmd/sourcey-godoc`, with `generate` for static Go docs sites, `snapshot` for portable JSON, and cross-platform GitHub release binaries on `go/sourcey-godoc/v*` tags.
-- `goEnv` option (`GOOS`/`GOARCH`/`tags`) for pinning the live-mode Go build environment so docs reproduce across hosts.
-- `includeTests`, `includeUnexported`, `hideUndocumented`, and `exclude` options on `godoc` tabs.
-- godoc package and symbol entries flow through the existing search index, `llms.txt`, `llms-full.txt`, and `sitemap.xml` pipelines.
+## 3.5.9 - 2026-05-05
 
 ### Changed
 
-- Changelog page descriptions now render inline markdown so links and inline code resolve, with a constrained reading width and primary-tinted underlined links.
-- Unreleased version cards drop the dashed border for a primary-tinted left accent and soft tint, with a "Next release" pill in place of the empty meta row.
+- A changelog page's descriptions render inline Markdown, so links and inline code resolve, at a constrained reading width.
+- An unreleased version's card has a tinted accent and a "Next release" label, in place of a dashed border and an empty date row.
 
 ### Fixed
 
-- Changelog parser no longer leaks bullet/paragraph tokens from non-SemVer headings into the page description, so trailing historical sections stop polluting the lead paragraph.
+- The changelog no longer carries text from a heading that is not a version into the page's description.
 
-## 3.5.8 - 2026-05-06
+## 3.5.8 - 2026-05-05
 
 ### Added
 
-- `sourcey dev --host <address>` flag (and `HOST` env var fallback) to control the Vite dev-server bind address. Defaults to `127.0.0.1`. Use `--host 0.0.0.0` (or `-e HOST=0.0.0.0` in Docker) to expose the dev server outside the host so the official `sourcey/sourcey` image's `dev` command works end-to-end.
+- `sourcey dev --host <address>`, or `HOST`, sets the dev server's bind address, `127.0.0.1` by default. `--host 0.0.0.0` serves it outside a container, so the Docker image's `dev` command works.
+
+### Fixed
+
+- With `prettyUrls: "strip"` and a base path, the site's root links as the base path without a trailing slash.
+
+## 3.5.7 - 2026-05-05
+
+### Fixed
+
+- A cross-reference Doxygen leaves unresolved, which reached the page as an empty link around Markdown, shows as code.
 
 ## 3.5.6 - 2026-05-05
 
 ### Fixed
 
-- Output-relative `.html` links between generated pages now resolve through the active `prettyUrls` mode, cleaning Doxygen body links such as `icy.html#anchor` when `prettyUrls: "strip"` is enabled.
+- A link between generated pages written as a relative `.html` path follows the `prettyUrls` mode, so a Doxygen link such as `icy.html#anchor` is clean under `prettyUrls: "strip"`.
 
 ## 3.5.5 - 2026-05-05
 
 ### Fixed
 
-- Generated Doxygen page descriptions now render as plain text, preventing stale `.html` cross-reference links from appearing in page headers and metadata when `prettyUrls: "strip"` is enabled.
+- A Doxygen page's description renders as plain text, so stale `.html` cross-reference links no longer appear in its header and metadata under `prettyUrls: "strip"`.
 
 ## 3.5.4 - 2026-05-05
 
 ### Fixed
 
-- Generated Godoc and Doxygen tab navigation now normalizes through the active `prettyUrls` mode, so `prettyUrls: "strip"` builds do not emit stale `.html` or `index.html` navigation links.
+- Go and Doxygen tab navigation follows the `prettyUrls` mode, so `prettyUrls: "strip"` no longer links `.html` or `index.html` pages.
 
 ## 3.5.3 - 2026-05-05
 
 ### Fixed
 
-- `prettyUrls: "strip"` now emits `foo.html` files and public `/foo` links, without generated `_redirects`, so extensionless hosts do not loop between slashless and trailing-slash paths.
-- Internal markdown links that still point at `.html` pages are rewritten to the active pretty URL form when they resolve to a generated page.
+- `prettyUrls: "strip"` writes `foo.html` files and links them as `/foo`, without a `_redirects` file, so hosts that serve extensionless paths no longer loop between `/foo` and `/foo/`.
+- A Markdown link to a `.html` page the site generates is rewritten to the page's pretty URL.
+
+## 3.5.2 - 2026-05-05
+
+### Added
+
+- Go documentation as a tab source (`godoc`), read from Go source by the Go toolchain rather than through Doxygen. It documents constants, variables, functions, types, struct fields with their tags, methods, and examples from `*_test.go`, each linked to its source. `mode: "live"` runs Go at build time, `"snapshot"` reads a committed `godoc.json`, and `"auto"`, the default, uses Go where it is installed.
+- `sourcey godoc --module . --packages './...' --out godoc.json` snapshots a module's documentation for hosts without Go.
+- The standalone `sourcey-godoc` Go module and CLI (`github.com/sourcey/sourcey/go/sourcey-godoc/cmd/sourcey-godoc`) generates a static Go documentation site (`generate`) or a snapshot (`snapshot`), with release binaries for each platform.
+- `goEnv` (`GOOS`, `GOARCH`, `tags`) pins the build a live `godoc` tab reads, and `includeTests`, `includeUnexported`, `hideUndocumented` and `exclude` choose what it documents.
+- Go packages and symbols are searchable, and listed in `llms.txt`, `llms-full.txt` and the sitemap.
+
+### Fixed
+
+- A Go reference page's edit link uses its own base path, apart from the site's Markdown pages.
 
 ## 3.5.1 - 2026-05-04
 
 ### Fixed
 
-- Sidebar nav and OpenAPI tab anchor base now honour `prettyUrls` ("slash" / "strip"). Previously hrefs were hard-coded to `slug.html` / `tab/index.html`, which 404 on hosts that don't auto-rewrite (e.g. GitHub Pages). Production `sourcey.com` masked the issue with its `/foo.html → /foo/` 308 redirect.
+- Sidebar links and an OpenAPI tab's anchors follow `prettyUrls` ("slash" or "strip"). They had linked `slug.html` and `tab/index.html`, which return 404 on hosts that do not rewrite them, such as GitHub Pages.
 
 ## 3.5.0 - 2026-04-24
 
 ### Added
 
-- OpenAPI 3.2 parsing and rendering for `QUERY` operations, response summaries, `deviceAuthorization` OAuth flows, hierarchical tags, `querystring` parameters, and media-type encoding metadata
-- `$self`-aware reference resolution for canonical multi-document OpenAPI descriptions
-- `prettyUrls` config option for clean URLs (`"slash"` emits `foo/index.html` and links as `/foo/`; `"strip"` links as `/foo` and emits a `_redirects` file for static hosts that support redirect rules)
+- OpenAPI 3.2: `QUERY` operations, response summaries, the `deviceAuthorization` OAuth flow, hierarchical tags, `querystring` parameters and media-type encoding.
+- `$self`-aware reference resolution for OpenAPI descriptions split across documents.
+- Every page gets its own social image, drawn at build time with Satori and resvg; `ogImage` names a static image instead.
+- A changelog tab publishes a project's `CHANGELOG.md` as release pages.
+- `siteUrl` names the public origin for feeds, social metadata and canonical URLs, and `baseUrl` the path a site is served under.
+- `prettyUrls` writes clean URLs: `"slash"` writes `foo/index.html` and links `/foo/`, and `"strip"` links `/foo` and writes a `_redirects` file for hosts that support redirect rules.
 
 ### Changed
 
-- OG image template redesigned for legibility at Slack/Discord preview sizes: larger bold wordmark, vertical accent bar in theme primary, tighter type, single-grey description, no duplicate site-name footer
+- The social image reads at Slack and Discord preview sizes: a larger wordmark, an accent bar in the theme's primary colour and tighter type.
 
 ### Fixed
 
-- Lint configuration for browser-side client scripts and generated MCP test artifacts
+- Vite is updated past the advisories reported against it.
 
-## 3.4.12 - 2026-04-16
+## 3.4.11 - 2026-04-08
+
+### Fixed
+
+- Code inside a directive nested in another keeps its fenced blocks and inline code.
+- The contents list's nested entries align with its track.
+
+## 3.4.10 - 2026-04-08
+
+### Fixed
+
+- A nested schema's description is no longer repeated beneath the field that already shows it.
+
+## 3.4.9 - 2026-04-08
 
 ### Added
 
-- Automatic per-page OG image generation at build time using Satori and resvg
-- `ogImage` config option for overriding with a static image URL
-- Heroicons in navigation and UI components
+- An OpenAPI tab's spec can be a web address.
+
+## 3.4.8 - 2026-04-08
+
+### Fixed
+
+- Parameter descriptions in the API reference are spaced evenly.
+
+## 3.4.7 - 2026-04-08
 
 ### Changed
 
-- Inter loaded as the default sans-serif; layout rhythm refined for tighter vertical spacing
+- Inter is the default sans-serif font, and the layout's spacing is tightened: narrower page gutters, more room between sidebar groups, and the contents list's top entries in medium weight.
 
 ### Fixed
 
-- Tab path deduplication when multiple tabs share a slug
-- Inline code styling inside TOC items
-- TOC nested-item border alignment
+- Inline code inside a component's content stays code.
 
-## 3.4.5 — 2026-04-07
+## 3.4.6 - 2026-04-08
 
 ### Added
 
-- Nested directives (e.g. tabs inside `:::code-group`)
-- Doxygen link rewriting for cross-referenced symbols in prose
+- Directives nest, such as tabs inside a `:::code-group`.
+- Doxygen cross-references in prose link to the pages of the symbols they name.
+- Every Heroicons outline icon, 324 of them, can be named for cards, navigation and other components.
 
 ### Fixed
 
-- Inline code protection during markdown directive preprocessing
+- Inline code is protected while directives are read, so directive syntax written as code shows as code.
+- A Doxygen include path is shown from the project's `include` or `src` folder, rather than as the generating machine's absolute path.
+- A page whose path already starts with its tab's slug is no longer given the slug twice.
+- Inline code outside prose, such as in the contents list, is styled as it is in prose.
+- The output directory is emptied before a build writes it, so a page removed from the site no longer lingers.
+- Previous and next links resolve under the site's asset base.
 
-## 3.4.4 — 2026-04-06
+## 3.4.4 - 2026-04-05
 
 ### Fixed
 
-- OAuth security section rendering
-- Footer logo restored after layout refactor
-- Fenced markdown examples preserved through directive preprocessing
+- An OAuth security scheme's section renders.
+- The footer shows the logo again.
+- A fenced example of Markdown is kept as written while directives are read.
 
-## 3.4.3 — 2026-04-05
+## 3.4.3 - 2026-04-04
 
 ### Added
 
-- `::iframe` directive for embedding arbitrary https URLs in markdown
+- `::iframe` embeds an `https` page in Markdown.
 
 ### Fixed
 
-- Doxygen page summaries now reuse resolved cross-links in page headers instead of exposing raw `{#ref ... #}` placeholders
-- Rich Doxygen index cards strip inline markdown link syntax from summaries
-- `sourcey init` now scaffolds projects against the latest published version again
-- Minimal-theme callout borders and responsive page description sizing
-- TOC sub-item margin alignment
-- Search featured pages, inline dialog, display font, and sidebar dot markers
-- Lighthouse baseline polish for generated docs
+- A Doxygen page's summary resolves its cross-links, rather than showing raw `{#ref ... #}` placeholders in the page header, and a Doxygen index card's summary drops Markdown link syntax.
+- `sourcey init` scaffolds a project against the latest published version.
+- The minimal theme's callout borders, the page description's size on small screens, the contents list's nested margins, and the issues Lighthouse found on generated pages.
 
-## 3.4.0 — 2026-04-02
+## 3.4.1 - 2026-04-02
 
 ### Added
 
-- MCP server documentation as a first-class input format alongside OpenAPI, Markdown, and Doxygen
-- `mcp` tab config option for rendering tools, resources, and prompts from an `mcp.json` snapshot
-- Auto-generated code samples in JSON-RPC, TypeScript SDK, and Python SDK for all MCP operations
-- Connection config card showing how to add the server to Claude, Cursor, or any MCP client
-- Annotation badges for tool hints (read-only, destructive, idempotent, open-world)
-- Colour-coded sidebar method pills (purple TOOL, green RES, blue PRMT)
-- Hot-reload for mcp.json files in the dev server
-- `::video` directive for embedding YouTube, Vimeo, or raw video files in markdown
-- Sitemap generation
-- OpenGraph and Twitter Card meta tags
-- Dockerfile for Docker Hub
-- Nix flake support
+- `llms.txt` and `llms-full.txt` are generated with the site, for language models to read.
+- `search.featured` names the pages search offers before anything is typed.
 
 ### Changed
 
-- Sidebar active state uses pill-style background instead of left border
-- Table of contents uses a continuous grey track with primary colour active marker
-- Clicking the first sidebar item scrolls to the top of the page
+- The search dialog opens over the search button, in place.
+- A page's description is set in a display font.
+- MCP tools, resources and prompts are marked in the sidebar by coloured dots; HTTP methods keep their labels.
 
-### Fixed
+## 3.4.0 - 2026-04-02
 
-- Dev server `fs.allow` now includes the sourcey root for npm link compatibility
-- Double-wrapped accordion groups from `<AccordionGroup>` component syntax
+### Added
 
-## 3.3.10 — 2026-03-30
+- MCP server documentation, from an `mcp.json` snapshot, as an input beside OpenAPI, Markdown and Doxygen: tools, resources and prompts, with code samples in JSON-RPC and the TypeScript and Python SDKs.
+- A connection card showing how to add the server to Claude, Cursor or any MCP client, and badges for a tool's hints (read-only, destructive, idempotent, open-world).
+- Colour-coded sidebar labels for MCP entries: purple TOOL, green RES and blue PRMT.
+- The dev server reloads when `mcp.json` changes.
+- `::video` embeds YouTube, Vimeo or a video file in Markdown.
+- A sitemap, OpenGraph and Twitter Card tags.
+- A Docker image and a Nix flake.
 
 ### Changed
 
-- Package metadata moved to sourcey.com and sourcey/sourcey org
+- The sidebar marks the current page with a pill rather than a left border, and the contents list with a marker on a continuous track.
+- Clicking the first sidebar entry scrolls to the top of the page.
 
 ### Fixed
 
-- Node 24 JSON import compatibility
+- The dev server serves Sourcey's own files when Sourcey is linked with `npm link`.
+- `<AccordionGroup>` no longer wraps its accordions twice.
 
-## 3.3.9 — 2026-03-28
-
-### Fixed
-
-- Page slugs preserve directory structure to avoid nav collisions
-
-## 3.3.8 — 2026-03-28
+## 3.3.10 - 2026-03-30
 
 ### Fixed
 
-- `slugFromPath` preserves directory structure
+- A Doxygen index page's links lead to its symbols' pages.
+- Sourcey's JSON files load under Node 24.
 
-## 3.3.7 — 2026-03-27
+## 3.3.9 - 2026-03-30
+
+### Fixed
+
+- Navigation identifies a page by its path with its folders, so pages with the same file name in different folders each keep their own sidebar entry.
+
+## 3.3.8 - 2026-03-30
+
+### Fixed
+
+- A page's slug keeps its folders, so `guides/setup.md` and `api/setup.md` no longer share one.
+
+## 3.3.7 - 2026-03-29
 
 ### Added
 
-- Relative source links in markdown rewrite to repo URLs at build time
+- A relative link from Markdown to a file in the repository is rewritten to the file's address on the repository host.
 
-## 3.3.6 — 2026-03-27
+## 3.3.6 - 2026-03-26
 
 ### Added
 
-- Doxygen index page generation
+- A Doxygen tab generates an index page of its groups and classes.
+
+## 3.3.5 - 2026-03-26
 
 ### Fixed
 
-- Doxygen index content links
+- `sourcey --help` reports the installed version, and `sourcey init` scaffolds a project against the latest published version.
 
-## 3.3.5 — 2026-03-26
-
-### Fixed
-
-- CLI help output reports the actual package version
-- `sourcey init` scaffolds new projects with the latest published version
-
-## 3.3.4 — 2026-03-26
+## 3.3.4 - 2026-03-26
 
 ### Changed
 
-- First page renders directly instead of meta-refresh redirect
+- The site's first page is written at its address, rather than as a page that redirects to it.
 
-## 3.3.2 — 2026-03-25
+## 3.3.2 - 2026-03-25
 
 ### Added
 
-- `sourcey init` auto-detects project type and offers directory selection
-- Init reads Doxygen `XML_OUTPUT` for proper path resolution
+- `sourcey init` detects a project's type and offers a choice of docs folder, and reads Doxygen's `XML_OUTPUT` to find its XML.
 
-## 3.3.1 — 2026-03-25
+## 3.3.1 - 2026-03-25
 
 ### Fixed
 
-- Use jiti for TypeScript config loading
-- Resolve moxygen from npm registry
+- A TypeScript config file loads through jiti, and Moxygen resolves from the npm registry.
 
-## 3.3.0 — 2026-03-25
+## 3.3.0 - 2026-03-25
 
 ### Added
 
-- `sourcey init` command for scaffolding new projects
-- Scroll tracker `?target` query parameter for deep linking
-- Node 24 in CI test matrix
+- `sourcey init` scaffolds a new project.
+- A `?target=` query parameter scrolls a page to that section on load.
+- Sourcey is tested on Node 24.
 
-## 3.2.1 — 2026-03-24
+## 3.2.1 - 2026-03-24
+
+### Added
+
+- Links between Markdown pages resolve to the pages' addresses.
+- `editBasePath` points edit links into a docs folder inside the repository.
+- Previous and next links end each Markdown page.
+- Brand icons for GitHub, npm and other networks in the header and footer.
 
 ### Fixed
 
-- Dev server asset path resolution for npm installs
+- The dev server finds its assets when Sourcey is installed from npm.
 
-## 3.2.0 — 2026-03-23
-
-### Added
-
-- Internal link resolution between markdown pages
-- `editBasePath` config option for repos with docs in a subdirectory
-- Previous/next page navigation at the bottom of markdown pages
-- Brand icons (GitHub, npm, etc.) in navbar and footer
-
-## 3.1.0 — 2026-03-22
+## 3.1.0 - 2026-03-23
 
 ### Added
 
-- Mobile navigation drawer with breadcrumbs
-- Configurable tab slugs
-- Collapsible schemas in API reference
-- "Edit this page" links on markdown pages
-- Auto Google Fonts loading from theme config
+- A navigation drawer with breadcrumbs on phones.
+- Configurable tab slugs.
 
 ### Changed
 
-- Stone-palette code surfaces
-- TOC nesting improvements
+- Code blocks sit on stone-coloured surfaces, and the contents list nests subheadings under their headings.
 
 ### Fixed
 
-- Responsive layout at small breakpoints
-- Code indent rendering
-- Dev server error recovery
-- Sidebar active state on prose pages
-- Duplicate h1 headings
-- Logo paths resolve relative to config directory
+- The layout at small widths, the indentation of code, and a logo's path, which is read from the config's folder.
 
-## 3.0.2 — 2026-03-21
+## 3.0.2 - 2026-03-23
 
 ### Added
 
-- Geist Mono as default monospace font
+- Geist Mono is the default monospace font, and fonts the theme names load from Google Fonts.
+- A schema's nested properties collapse and expand.
+- "Edit this page" links on Markdown pages, to the branch `editBranch` names.
 
 ### Changed
 
-- Config changes hot-reload in dev server
+- The dev server reloads when the config changes, and recovers from a page that fails to render rather than stopping.
 
 ### Fixed
 
-- Scroll offset calculation
+- The sidebar marks the current Markdown page, a page's first heading is no longer shown twice where it repeats the title, consecutive accordions group together, and headings scroll clear of the header.
 
-## 3.0.1 — 2026-03-21
-
-### Added
-
-- Doxygen C++ documentation via Moxygen integration
-- Command palette search (Cmd+K)
-- Google Fonts loading and font stack configuration
+## 3.0.1 - 2026-03-20
 
 ### Fixed
 
-- Moxygen resolved from npm registry
-- TOC scroll tracking
-- Heading scroll offset
+- Moxygen installs from the npm registry: 3.0.0 named a local path for it, so it did not install.
 
-## 3.0.0 — 2026-03-20
+## 3.0.0 - 2026-03-20
 
 ### Added
 
-- Redesigned theme with new layout, typography, and colour system
-- Theme presets (default, minimal, api-first) with custom colours, fonts, and layout
-- EndpointBar component with colour-coded method badges
-- CopyButton and SocialIcon UI components
-- Demo site with markdown guides
-- Unified Vite plugin for dev server
+- A redesigned theme, with presets (`default`, `minimal`, `api-first`) and the site's own colours, fonts and layout.
+- C++ documentation from Doxygen XML, through Moxygen.
+- Markdown pages chosen by glob patterns, and titled from their first heading.
+- Search in a command palette (Cmd+K), and a contents list that follows the heading being read.
+- An endpoint bar with colour-coded method badges, and copy buttons on code.
 
 ### Changed
 
-- Renamed from `spectacle-docs` to `sourcey`
-- License changed from MIT to AGPL-3.0-only
-- Complete redesign of Header, Sidebar, Page, TableOfContents, CodeSamples, Responses, and Security components
+- The header, sidebar, page, contents, code sample, response and security components are redesigned.
+
+## 2.1.0 - 2026-03-19
+
+### Changed
+
+- Licensed under AGPL-3.0, where it had been MIT.
+
+## 2.0.2 - 2026-03-19
+
+A rewrite in TypeScript, rendering static HTML with Preact.
+
+### Added
+
+- `sourcey.config.ts`, typed through `defineConfig()`.
+- Sites of many pages: tabs, sidebar groups, Markdown pages with components (Steps, Cards, Accordions), a header with links and a call to action, a footer with social links, a contents list that follows the reader, and links between pages.
+- OpenAPI 3.x, with Swagger 2.0 converted to it.
+- Highlighting by Shiki, code samples in 10 languages, and code blocks with a language menu, response tabs and a copy button.
+- Search with keyboard navigation (Cmd+K).
+- A dark mode that remembers the reader's choice, a primary colour the theme derives its shades from, and a logo for light and dark.
+- Enum values shown as pills, an array's items included.
+- A dev server on Vite that renders again on every change.
+- Static HTML output with no framework runtime.
 
 ### Removed
 
-- Legacy Handlebars/Foundation/SCSS theme
-- TabBar and old CodeBlock components
+- The Handlebars templates, the Grunt build and highlight.js.
 
-## 2.1.0 — 2026-03-19
+## 1.1.0 - 2020-03-10
 
 ### Added
 
-- Multi-page sites with tabbed navigation and sidebar groups
-- Markdown pages with rich components (Steps, Cards, Accordions)
-- Vite dev server with SSR hot reload
-- Header with navbar links and CTA button
-- Table of contents with scroll tracking
-- Footer with social links
-- Cross-page navigation link resolution
+- Circular `$ref` references (#141).
+
+### Fixed
+
+- Reference resolution no longer caches files, which change while docs are developed.
+- Response examples render.
+- Dependencies with security advisories are updated: handlebars, js-yaml, lodash, lodash.mergewith, marked and fstream.
+
+## 1.0.7 - 2019-01-30
+
+### Added
+
+- YAML examples.
+
+### Fixed
+
+- Links to anchors with dots or colons in them; a colon becomes a hyphen.
+- Code blocks no longer overflow their column.
+- The generator finds its app folder wherever it is installed (#165).
+- Sass's deprecated `$header-sizes` warning.
+
+## 1.0.6 - 2018-09-19
 
 ### Changed
 
-- Dark example panel hidden on prose-only pages
+- The code adapted from bootprint-openapi and bootprint-json-schema carries their copyright and MIT licence notices, in each file and in the licence.
 
-## 2.0.2 — 2026-03-19
-
-### Added
-
-- Vite dev server with header, TOC, and layout system
-
-## 2.0.0 — 2026-03-10
-
-Complete rewrite from Handlebars/Grunt to TypeScript/Preact SSG.
-
-### Added
-
-- TypeScript codebase with Preact SSR
-- `sourcey.config.ts` with `defineConfig()` and full type safety
-- OpenAPI 3.x support (auto-converts Swagger 2.0)
-- Shiki syntax highlighting
-- Dark mode with localStorage persistence
-- Client-side search with keyboard navigation (Cmd+K)
-- Auto-generated code samples in 10 languages
-- Custom colour theming with hex-to-RGB token system
-- Stone-palette code blocks with language dropdown and response tabs
-- Copy button on code blocks
-- Scroll-tracked sidebar navigation
-- Enum pills and array item type display
-- Logo support with light/dark variants
-- Static HTML output with no framework runtime
-- GitHub Actions CI
-
-### Removed
-
-- Handlebars template engine
-- Grunt build system
-- highlight.js
-
-## 1.1.0 — 2020-03-10
-
-### Fixed
-
-- Example rendering
-- Dependency vulnerabilities (handlebars, js-yaml, lodash, marked, fstream)
-
-## 1.0.7 — 2019-01-30
-
-### Added
-
-- YAML example support
-
-### Fixed
-
-- Href with colon characters
-- Href with multiple dots
-- Code block overflow
-
-## 1.0.6 — 2018-09-20
+## 1.0.5 - 2018-07-02
 
 ### Changed
 
-- Licence update
+- The Grunt build tools are updated.
 
-## 1.0.5 — 2018-07-02
+## 1.0.4 - 2018-07-01
+
+### Added
+
+- A topic can carry examples.
 
 ### Changed
 
-- Updated Grunt dependencies
-
-## 1.0.4 — 2018-07-01
+- A request parameter's type follows its name on one line (`name: type`), rather than below it.
 
 ### Fixed
 
-- grunt-sass 3.0 compatibility
-- grunt-sass dependency resolution
+- Builds with grunt-sass 3 (#156), and the Docker image builds on its new base image.
 
-## 1.0.3 — 2018-04-15
+## 1.0.3 - 2018-04-15
 
 ### Added
 
-- Nested objects and arrays in definitions
-- Resource embedding support
-- Enum definition descriptions
-- `$ref` support in parameters and responses
-- Development mode with live reload
-- Schema syntax error reporting in dev mode
-- `x-nullable` support
+- `-1, --one-file` embeds the CSS and JavaScript in the HTML file.
+- `-D, --development-mode-live` serves the docs with live reload, on the port `-P` names; `-d` serves them with the file watcher alone. Development mode reports syntax errors in the spec.
+- `x-nullable`, `$ref` in parameters and responses, descriptions on enum definitions, and nested objects and arrays in definitions.
 
-## 1.0.2 — 2018-03-22
+## 1.0.2 - 2018-03-22
+
+### Fixed
+
+- A spec file outside the current folder builds on Windows.
+- The security section renders as intended.
+
+## 1.0.1 - 2018-03-21
+
+### Fixed
+
+- Markdown rendering (#122, #126), and schema descriptions render and link to their definitions.
+
+## 1.0.0 - 2018-03-20
+
+### Added
+
+- `-q, --quiet` silences the generator's output.
 
 ### Changed
 
-- Security partial rendering
+- Node.js 8 or later is required.
 
-## 1.0.1 — 2018-03-21
+## 0.9.15 - 2018-03-20
 
 ### Fixed
 
-- Markdown rendering (#122, #126)
-- Schema description rendering and linking
+- References to remote files render.
 
-## 1.0.0 — 2018-03-20
-
-First stable release. Requires Node.js >= 8.
+## 0.9.14 - 2018-03-20
 
 ### Added
 
-- Quiet output option
+- Topics: articles written in the spec under a vendor extension appear in the navigation and the content.
+- A vendor extension hides the security definitions section.
+- Enum values in responses (#69), and fuller parameters, collection formats included.
+
+### Changed
+
+- Tables are easier to read, and log messages clearer.
 
 ### Fixed
 
-- Remote file reference rendering
+- The generator runs on Windows, and builds without being installed globally.
 
-## 0.9.12 — 2017-11-13
+## 0.9.13 - 2017-12-04
+
+### Fixed
+
+- A default value prints even when it is 0 or empty (#103).
+
+## 0.9.12 - 2017-11-13
 
 ### Added
 
-- Response header display
+- Response headers are shown again.
 
 ### Fixed
 
-- Null node error in reference resolution
+- Reference resolution passes over a `null` value rather than failing.
 
-## 0.9.11 — 2017-10-13
-
-### Fixed
-
-- Null check in reference replacement
-
-## 0.9.10 — 2017-09-27
+## 0.9.11 - 2017-10-13
 
 ### Fixed
 
-- Remote reference tests
+- Reference replacement checks for null values.
 
-## 0.9.9 — 2017-09-27
+## 0.9.10 - 2017-09-27
+
+### Fixed
+
+- Remote reference resolution.
+
+## 0.9.9 - 2017-09-27
 
 ### Added
 
-- Min/max range display for parameters
-- maxLength and minLength display for strings
-- Better rendering of arrays of objects
+- Ranges read "min ≤ x ≤ max", `maxLength` is shown (#53), equal minimum and maximum lengths read as one, and arrays of objects render in full (#77).
 
-## 0.9.8 — 2017-09-01
+## 0.9.8 - 2017-09-01
 
 ### Fixed
 
-- Rendering on large screens with indents
+- Pages no longer render indented on large screens (#86).
 
-## 0.7.0 — 2017-02-01
+## 0.9.7 - 2017-08-08
 
-### Added
+### Changed
 
-- Programmatic API with promise return
+- Remote references are fetched with sync-request, in place of request-sync (#84).
 
-## 0.6.9 — 2017-01-16
+## 0.9.6 - 2017-08-05
 
-### Added
+### Changed
 
-- Remote schema support
-- Temporary directory per build run
+- The bundled Foundation is updated.
 
-## 0.6.8 — 2017-01-13
+## 0.9.5 - 2017-08-04
+
+### Changed
+
+- Styles are refreshed and Foundation updated.
 
 ### Fixed
 
-- Code highlighting
-- HTTPS for jQuery reference
+- Recursive references no longer throw (#51).
 
-## 0.5.0 — 2016-12-31
+## 0.9.4 - 2017-08-01
 
 ### Added
 
-- OpenAPI 2.0 (Swagger) rendering
-- Foundation 6 responsive layout with drawer navigation
-- Custom logo support
-- Docker support
-- Recursive example parsing
-- Definition rendering with JSON examples
-- Custom CSS scoping
-- Handlebars template engine
+- An operation shows its own `produces` and `consumes` where it defines them (#64).
+
+## 0.9.3 - 2017-08-01
+
+### Fixed
+
+- Code blocks in descriptions are highlighted (#76), and `allOf` definitions without a `type` parse (#65).
+
+## 0.9.2 - 2017-08-01
+
+### Added
+
+- References resolve across files and URLs, local references inside remote files included, with errors that name the reference (#68). Paths can be loaded from external files.
+- A Dockerfile (#50).
+
+### Fixed
+
+- Request examples leave out `readOnly` properties, and examples keep falsy values.
+- Tags are listed in the spec's order, and code is highlighted again.
+
+## 0.8.2 - 2017-04-02
+
+### Fixed
+
+- An example given beside a `$ref` is used in place of the referenced schema's, and a response without a schema renders.
+
+## 0.8.1 - 2017-04-02
+
+### Fixed
+
+- Recursive examples tolerate errors in the spec.
+
+## 0.8.0 - 2017-04-01
+
+### Added
+
+- Examples render recursively, from definitions' example fields (#40, #47).
+
+### Changed
+
+- Paths are listed in the spec's order (#17).
+
+## 0.7.5 - 2017-03-15
+
+### Changed
+
+- A definition is inserted once and referenced, rather than copied for each reference.
+
+### Fixed
+
+- A `schema.$ref` in a response block parses (#46).
+
+## 0.7.4 - 2017-03-10
+
+### Added
+
+- Security definitions' descriptions render as Markdown.
+- Examples are printed from definitions' example fields.
+
+### Fixed
+
+- Local references that point to other references resolve.
+
+## 0.7.2 - 2017-03-01
+
+### Fixed
+
+- An example whose `schema` has a `type` is shown (#37).
+
+## 0.7.1 - 2017-03-01
+
+### Added
+
+- An MIT licence file (#36).
+
+### Fixed
+
+- Request examples use the schema's examples, POST bodies no longer render as `undefined` (#38), and request, response and definition descriptions are laid out more clearly.
+
+## 0.7.0 - 2017-02-01
+
+### Added
+
+- The generator can be called from JavaScript, and returns a promise that settles when the docs are written.
+
+## 0.6.9 - 2017-01-16
+
+### Fixed
+
+- Builds use the temporary directory's path; 0.6.8 had passed the directory itself.
+
+## 0.6.8 - 2017-01-13
+
+### Changed
+
+- Each build runs in its own temporary directory, removed on exit, rather than a shared cache.
+
+### Fixed
+
+- Code samples are highlighted.
+
+## 0.6.7 - 2017-01-09
+
+### Fixed
+
+- jQuery loads over HTTPS.
+
+## 0.6.6 - 2017-01-06
+
+### Changed
+
+- Text is slightly larger on large screens.
+
+## 0.6.5 - 2017-01-06
+
+### Fixed
+
+- A definition's custom JSON example is shown (#25).
+
+## 0.6.2 - 2016-12-19
+
+### Changed
+
+- The README documents usage in full.
+
+## 0.6.1 - 2016-12-13
+
+### Changed
+
+- The generated HTML is formatted for reading.
+
+### Fixed
+
+- Parameter descriptions are parsed (#22).
+- Stylesheets, images and the logo are linked relatively, so docs work under any path.
+- Security definitions show their scopes.
+
+## 0.6.0 - 2016-12-12
+
+### Fixed
+
+- Sidebar links to anchors with dots in them work (#15).
+- An operation's summary renders inline beside its name.
+
+## 0.5.9 - 2016-12-11
+
+### Fixed
+
+- Development mode reads the spec again and regenerates the page when the spec file changes (#16).
+
+## 0.5.8 - 2016-12-03
+
+### Changed
+
+- The layout uses the window's full width.
+
+### Fixed
+
+- Foundation's CSS is minified.
+
+## 0.5.7 - 2016-11-24
+
+### Fixed
+
+- Response examples parse schema types (#12).
+
+## 0.5.5 - 2016-11-24
+
+No changes from 0.5.4.
+
+## 0.5.4 - 2016-11-24
+
+No changes from 0.5.3.
+
+## 0.5.3 - 2016-11-24
+
+No changes from 0.5.2.
+
+## 0.5.2 - 2016-11-24
+
+### Fixed
+
+- The stylesheet is no longer empty (#13): Foundation is bundled at the version the styles are written for.
+
+## 0.5.1 - 2016-11-24
+
+### Added
+
+- An `index.js` entry point, so the generator can be required as a module.
+
+### Fixed
+
+- Relative spec paths resolve (#10).
+
+## 0.5.0 - 2016-11-20
+
+### Added
+
+- JSON Schema references in enums.
+
+### Changed
+
+- Styles compile with libsass rather than Compass (#3, #9), and Foundation is updated to 6.2.4 (#1).
+
+### Fixed
+
+- Definitions parse (#4, #8), a schema's nested objects are handled recursively, and rendering no longer modifies the spec's own objects.
+
+## 0.4.2 - 2016-06-04
+
+### Fixed
+
+- Docs generated without the layout, for embedding in another page, include the navigation drawer.
+
+## 0.4.1 - 2016-06-04
+
+### Fixed
+
+- A spec file loads relative to the working directory, and a build without a logo no longer fails.
+
+## 0.4.0 - 2016-02-07
+
+### Changed
+
+- The generator works installed globally: the output goes to `public` in the working directory, and copied files replace those already there.
+
+## 0.3.4 - 2016-02-07
+
+### Changed
+
+- Dependencies are pinned to versions.
+
+## 0.3.3 - 2016-02-07
+
+### Fixed
+
+- Tags are indexed with lodash 4, which an unpinned install had brought in.
+
+## 0.3.2 - 2016-02-07
+
+### Added
+
+- `-l, --logo-file` adds a custom logo, copied into the docs.
+
+## 0.3.1 - 2016-01-18
+
+### Changed
+
+- The README is updated.
+
+## 0.3.0 - 2016-01-18
+
+### Added
+
+- A responsive layout whose navigation becomes a drawer on small screens, with Foundation's CSS in its own file.
+- The Cheese Store sample API.
+
+### Fixed
+
+- A request body section appears only for operations that take a body, and other rendering fixes.
+
+## 0.2.5 - 2016-01-17
+
+### Added
+
+- A `config.js` can override the build's configuration.
+- `-C, --disable-css` and `-J, --disable-js` leave out the CSS or JavaScript, in place of `--skip-assets`.
+
+### Changed
+
+- Styles are scoped under one root element, so docs embedded in another page leave its styles alone, and every SCSS variable can be overridden.
+
+## 0.2.4 - 2016-01-15
+
+### Added
+
+- `-f, --target-file` names the HTML file to write, and `-c, --cache-dir` the build's working folder.
+
+### Fixed
+
+- A spec without a `host`, or a tag without a description, builds.
+
+## 0.2.3 - 2016-01-13
+
+### Fixed
+
+- The CLI shows its help only when no spec is given.
+
+## 0.2.2 - 2016-01-12
+
+### Fixed
+
+- The CLI shows its help when run without arguments, and installing the package installs everything a build needs.
+
+## 0.2.0 - 2016-01-12
+
+The first release.
+
+### Added
+
+- Static HTML documentation generated from an OpenAPI (Swagger) 2.0 spec.
+- A responsive layout, built from Handlebars templates and SCSS styles that can be extended.
+- `-d, --development-mode` serves the docs and regenerates them as the spec changes, with live reload; `-s, --start-server` serves them alone.
+- `-e, --embeddable` generates the documentation content without the page around it, for embedding in another site, and `-A, --skip-assets` leaves out the CSS and JavaScript.
