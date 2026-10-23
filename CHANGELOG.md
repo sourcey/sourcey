@@ -18,6 +18,7 @@
 - "On this page" is drawn only where it lists two places or more, in every theme: a list of one says nothing the page does not. In the default theme a page without it keeps its column empty, so its text sits where every other page's does: a page without headings had run its lines across that column too, 1,040 px long at 1440 px wide.
 - The footer sets the site's words before the networks' marks, which keep together, rather than in the order configured, where words and icons alternated. "Edit this page" ends the page, above previous and next, as Docusaurus and Material place it, rather than among the site's footer links; a site's own pages, such as its home, no longer show it.
 - `sourcey migrate docusaurus` leaves out footer links to the docs' own pages, which the sidebar lists, and links the navbar has, such as its repository, and names them. `sourcey migrate mkdocs` no longer repeats the header's repository link among Material's social links.
+- An operation's method is drawn the same wherever the site names it, in the sidebar, a reference's lists, at the head of an operation and in search: as the sidebar draws it, a tint of the method's hue. A reference's lists had set it as plain text in the site's colour, search as a solid fill with PATCH in purple rather than orange, and the api-first theme an MCP entry's kind as coloured text. A theme styles it once, as `.method-badge`. In a list that mixes MCP kinds, the names beside them align, as wide as the widest kind sets them.
 
 ### Fixed
 

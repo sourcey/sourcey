@@ -11,10 +11,11 @@ import { joinHref } from "../../site-url.js";
 import { kindTells } from "../../core/reference-identity.js";
 import { linkTarget } from "../../utils/html.js";
 import { ContextNotice } from "./ContextControls.js";
+import { MethodBadge } from "../ui/Badge.js";
 
 /**
  * Colored method indicator for API sidebar items.
- * HTTP methods render as text pills. MCP methods render as coloured dots.
+ * HTTP methods render as their badges. MCP methods render as coloured dots.
  */
 function MethodPill({ method }: { method: string }) {
   const m = method.toUpperCase();
@@ -33,22 +34,9 @@ function MethodPill({ method }: { method: string }) {
     );
   }
 
-  const label = m === "DELETE" ? "DEL" : m;
-
-  const colors: Record<string, string> = {
-    GET: "bg-green-100 dark:bg-green-400/20 text-green-800 dark:text-green-300",
-    POST: "bg-blue-100 dark:bg-blue-400/20 text-blue-800 dark:text-blue-300",
-    PUT: "bg-amber-100 dark:bg-yellow-400/20 text-amber-900 dark:text-yellow-300",
-    DELETE: "bg-red-100 dark:bg-red-400/20 text-red-800 dark:text-red-300",
-    DEL: "bg-red-100 dark:bg-red-400/20 text-red-800 dark:text-red-300",
-    PATCH: "bg-orange-100 dark:bg-orange-400/20 text-orange-900 dark:text-orange-300",
-  };
-
   return (
     <span class="flex items-center w-8 h-[1lh] shrink-0">
-      <span class={`px-1 py-0.5 rounded-md text-[0.55rem] leading-tight font-bold ${colors[m] ?? "bg-gray-400/20 text-gray-700"}`}>
-        {label}
-      </span>
+      <MethodBadge method={method} short />
     </span>
   );
 }

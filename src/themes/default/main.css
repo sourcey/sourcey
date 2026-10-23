@@ -81,7 +81,7 @@
 
 /* The theme stylesheets are plain CSS that Tailwind does not read, so it would leave out the
    palette colours they use; reading them here has it emit each one. */
-:root { --sourcey-theme-palette: var(--color-amber-50) var(--color-amber-100) var(--color-amber-200) var(--color-amber-300) var(--color-amber-400) var(--color-amber-700) var(--color-amber-800) var(--color-amber-900) var(--color-blue-400) var(--color-blue-700) var(--color-emerald-50) var(--color-emerald-200) var(--color-emerald-400) var(--color-emerald-500) var(--color-emerald-900) var(--color-green-400) var(--color-green-700) var(--color-indigo-300) var(--color-indigo-600) var(--color-purple-400) var(--color-purple-700) var(--color-red-100) var(--color-red-300) var(--color-red-400) var(--color-red-700) var(--color-rose-50) var(--color-rose-100) var(--color-rose-200) var(--color-rose-300) var(--color-rose-700) var(--color-rose-800) var(--color-rose-900); }
+:root { --sourcey-theme-palette: var(--color-amber-50) var(--color-amber-100) var(--color-amber-200) var(--color-amber-300) var(--color-amber-400) var(--color-amber-700) var(--color-amber-800) var(--color-amber-900) var(--color-blue-100) var(--color-blue-300) var(--color-blue-400) var(--color-blue-700) var(--color-blue-800) var(--color-emerald-50) var(--color-emerald-200) var(--color-emerald-400) var(--color-emerald-500) var(--color-emerald-900) var(--color-green-100) var(--color-green-300) var(--color-green-400) var(--color-green-700) var(--color-green-800) var(--color-indigo-300) var(--color-indigo-600) var(--color-orange-100) var(--color-orange-300) var(--color-orange-400) var(--color-orange-900) var(--color-purple-100) var(--color-purple-300) var(--color-purple-400) var(--color-purple-700) var(--color-purple-800) var(--color-red-100) var(--color-red-300) var(--color-red-400) var(--color-red-700) var(--color-red-800) var(--color-rose-50) var(--color-rose-100) var(--color-rose-200) var(--color-rose-300) var(--color-rose-700) var(--color-rose-800) var(--color-rose-900) var(--color-yellow-300) var(--color-yellow-400); }
 
 .sourcey-header-top-inner { border-bottom:1px solid rgb(var(--color-gray-500)/.1); }
 .dark .sourcey-header-top-inner { border-bottom-color:rgb(var(--color-gray-300)/.1); }
@@ -161,7 +161,7 @@ html:not(.sourcey-tabs-ready) [data-sourcey-tabs] .directive-tab-panel { display
 .dark .reference-operation-links a:hover { background:rgb(var(--color-gray-900)); }
 .dark .reference-operation-label strong { color:rgb(var(--color-gray-200)); }
 .dark .reference-operation-summary { color:rgb(var(--color-gray-400)); }
-.reference-method { font-family:var(--font-mono); font-size:.65rem; min-width:3rem; color:rgb(var(--color-primary-ink)); }
-.dark .reference-method { color:rgb(var(--color-primary-light)); }
-.reference-method.method-tool { color:var(--color-purple-700); }
-.dark .reference-method.method-tool { color:var(--color-purple-400); }
+/* A list's methods stand in a column of their own, as wide as its widest, so the names beside them align. */
+.reference-method { min-width:3rem; }
+.reference-operation-links:has(.reference-method) { display:grid; grid-template-columns:auto minmax(0,1fr) auto; column-gap:.75rem; }
+.reference-operation-links:has(.reference-method) :is(li,a) { display:grid; grid-column:1 / -1; grid-template-columns:subgrid; }

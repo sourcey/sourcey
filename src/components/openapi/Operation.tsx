@@ -7,7 +7,7 @@ import { SECTION_LABELS } from "./outline.js";
 import { PageContext, SiteContext, SpecContext, isOperationPage } from "../../renderer/context.js";
 import { AnchorAliases } from "../ui/AnchorAliases.js";
 import { Markdown } from "../ui/Markdown.js";
-import { DeprecatedBadge } from "../ui/Badge.js";
+import { DeprecatedBadge, MethodBadge } from "../ui/Badge.js";
 import { SectionLabel } from "../ui/SectionLabel.js";
 import { Parameters } from "./Parameters.js";
 import { RequestBody, RequestBodyExample } from "./RequestBody.js";
@@ -143,7 +143,7 @@ function SplitOperationIdentity({ operation: op }: OperationProps) {
         </div>
         {mcp && (kind || named) && (
           <div class="operation-line" data-method={op.method.toLowerCase()}>
-            {kind && <span class="operation-line-method">{op.method.toUpperCase()}</span>}
+            {kind && <MethodBadge method={op.method} />}
             {named && <span class="operation-line-path">{op.path}</span>}
           </div>
         )}

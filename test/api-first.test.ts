@@ -116,7 +116,7 @@ describe("api-first theme", () => {
     // A tool under "Tools" whose title is its name says neither again beneath it; a
     // resource's address is more than its name.
     expect(mcp).not.toMatch(/<div class="operation-line" data-method="tool">/);
-    expect(mcp).not.toContain('class="operation-line-method"');
+    expect(mcp).not.toContain('class="method-badge"');
     expect(mcp).toMatch(/<div class="operation-line" data-method="resource"><span class="operation-line-path">[a-z]+:\/\//);
   });
 

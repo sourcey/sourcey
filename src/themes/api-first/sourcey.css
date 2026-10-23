@@ -377,56 +377,6 @@
   line-height: 1.25rem;
   overflow-wrap: anywhere;
 }
-#sourcey [data-sourcey-theme="api-first"] .operation-line-method {
-  font-weight: 600;
-  color: rgb(var(--color-gray-600));
-}
-#sourcey [data-sourcey-theme="api-first"] .operation-line[data-method="get"] .operation-line-method,
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="resource"]
-  .operation-line-method {
-  color: var(--color-green-700);
-}
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="post"]
-  .operation-line-method,
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="prompt"]
-  .operation-line-method {
-  color: var(--color-blue-700);
-}
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="put"]
-  .operation-line-method {
-  color: var(--color-amber-700);
-}
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="delete"]
-  .operation-line-method {
-  color: var(--color-red-700);
-}
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="patch"]
-  .operation-line-method,
-#sourcey
-  [data-sourcey-theme="api-first"]
-  .operation-line[data-method="tool"]
-  .operation-line-method {
-  color: var(--color-purple-700);
-}
-/* Method names are text on the page, so they take the text shades of their hues. */
-.dark #sourcey [data-sourcey-theme="api-first"] .operation-line-method { color: rgb(var(--color-gray-400)); }
-.dark #sourcey [data-sourcey-theme="api-first"] .operation-line:is([data-method="get"], [data-method="resource"]) .operation-line-method { color: var(--color-green-400); }
-.dark #sourcey [data-sourcey-theme="api-first"] .operation-line:is([data-method="post"], [data-method="prompt"]) .operation-line-method { color: var(--color-blue-400); }
-.dark #sourcey [data-sourcey-theme="api-first"] .operation-line[data-method="put"] .operation-line-method { color: var(--color-amber-400); }
-.dark #sourcey [data-sourcey-theme="api-first"] .operation-line[data-method="delete"] .operation-line-method { color: var(--color-red-400); }
-.dark #sourcey [data-sourcey-theme="api-first"] .operation-line:is([data-method="patch"], [data-method="tool"]) .operation-line-method { color: var(--color-purple-400); }
 #sourcey [data-sourcey-theme="api-first"] .operation-line-path {
   color: rgb(var(--color-gray-600));
 }

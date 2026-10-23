@@ -15,6 +15,16 @@ export function Badge({ children, class: className, style }: BadgeProps) {
   );
 }
 
+/**
+ * An operation's method, as the sidebar, a list of operations, the operation's
+ * own head and search name it. The theme draws it once, by method, so it reads
+ * alike in each; a narrow column shortens DELETE.
+ */
+export function MethodBadge({ method, short = false }: { method: string; short?: boolean }) {
+  const name = method.toUpperCase();
+  return <span class="method-badge" data-method={method.toLowerCase()}>{short && name === "DELETE" ? "DEL" : name}</span>;
+}
+
 export function RequiredBadge() {
   return (
     <span class="required-badge">

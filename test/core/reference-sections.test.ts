@@ -123,4 +123,24 @@ describe("reference sections", () => {
       for (const name of ["tool0", "tool60", "tool119"]) expect(nav).toContain(`>${name}<`);
     }
   }));
+
+  it("names a method with one badge in the sidebar, a list and at the operation's head", () => fixture(async (root) => {
+    const ok = { responses: { "200": { description: "OK" } } };
+    await writeFile(join(root, "api.json"), JSON.stringify({ openapi: "3.1.0", info: { title: "API", version: "1" }, paths: {
+      "/items/{id}": { get: { tags: ["Items"], summary: "Get an item", ...ok }, delete: { tags: ["Items"], summary: "Delete an item", ...ok } },
+    } }));
+    const { html } = await build(root, [
+      { tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "operations" } },
+      { tab: "MCP", slug: "mcp", source: mcp({ spec: snapshot, groups: { Guides: ["guide", "build-email"] } }), reference: { split: "operations" } },
+    ]);
+    const page = html("api/operations/operation-items-id-delete/index.html");
+    // The sidebar's narrow column shortens DELETE; elsewhere it is written out.
+    expect(sidebar(page)).toContain('<span class="method-badge" data-method="delete">DEL</span>');
+    expect(page).toMatch(/<div class="sourcey-endpoint[^"]*"><span class="method-badge" data-method="delete">DELETE<\/span>/);
+    expect(html("api/index.html")).toContain('<span class="reference-method"><span class="method-badge" data-method="delete">DELETE</span></span>');
+    // An MCP entry's kind, where its section mixes kinds, is the same badge.
+    const resource = html("mcp/operations/operation-nitro-guide-resource/index.html");
+    expect(resource).toMatch(/<div class="sourcey-endpoint[^"]*"><span class="method-badge" data-method="resource">RESOURCE<\/span>/);
+    expect(html("mcp/index.html")).toContain('<span class="reference-method"><span class="method-badge" data-method="prompt">PROMPT</span></span>');
+  }));
 });

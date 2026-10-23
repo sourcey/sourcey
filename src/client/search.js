@@ -197,10 +197,10 @@
 
         var cls = "search-result" + (i === activeIndex ? " active" : "");
         var label = e.method
-          ? '<span class="search-result-method method-' +
+          ? '<span class="method-badge" data-method="' +
             e.method.toLowerCase() +
             '">' +
-            e.method +
+            e.method.toUpperCase() +
             "</span> " +
             '<span class="search-result-path">' +
             escapeHtml(e.path) +
