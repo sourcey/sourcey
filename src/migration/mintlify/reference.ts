@@ -250,9 +250,8 @@ async function operationNotes(project: ProjectFiles, page: OperationPage, contex
         stop(node, `<${node.name ?? ""}> in an API page's notes has no Markdown form for a spec description`);
         continue;
       }
-      const { start, end } = span(node);
-      const close = closingTagStart(source, start, end);
-      const body = close === undefined ? "" : dedent(source.slice(openingTagEnd(source, start), close));
+      const close = closingTagStart(source, node);
+      const body = close === undefined ? "" : dedent(source.slice(openingTagEnd(source, node), close));
       const title = node.attributes?.find((attribute) => attribute.name === "title")?.value;
       const lines = [...(typeof title === "string" ? [`**${title}**`, ""] : []), ...body.split("\n")];
       blocks.push([`> [!${alert}]`, ...lines.map((line) => (line ? `> ${line}` : ">"))].join("\n"));

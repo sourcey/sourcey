@@ -227,31 +227,32 @@ export function span(node: { position?: { start: Point; end: Point } }): { start
   return { start: node.position.start.offset, end: node.position.end.offset };
 }
 
+/**
+ * Where an element's opening tag ends, and whether it closes itself. The
+ * parser places each attribute, so only the tag's last characters are read:
+ * an attribute's value can hold any text, such as an apostrophe in JSX.
+ */
+function openingTag(source: string, node: SyntaxNode): { end: number; selfClosing: boolean } {
+  const { start } = span(node);
+  const last = node.attributes?.at(-1);
+  const from = last?.position ? span(last).end : start + 1;
+  const end = source.indexOf(">", from);
+  if (end === -1) throw new Error(`Unterminated tag at offset ${start}`);
+  return { end: end + 1, selfClosing: source.slice(from, end).trimEnd().endsWith("/") };
+}
+
 /** Offset just past the `>` of an element's opening tag. */
-export function openingTagEnd(source: string, start: number): number {
-  let depth = 0;
-  let quote = "";
-  for (let index = start + 1; index < source.length; index += 1) {
-    const character = source[index];
-    if (quote) {
-      if (character === quote) quote = "";
-      continue;
-    }
-    if (character === '"' || character === "'") quote = character;
-    else if (character === "`" && depth > 0) quote = "`";
-    else if (character === "{") depth += 1;
-    else if (character === "}") depth -= 1;
-    else if (character === ">" && depth === 0) return index + 1;
-  }
-  throw new Error(`Unterminated tag at offset ${start}`);
+export function openingTagEnd(source: string, node: SyntaxNode): number {
+  return openingTag(source, node).end;
 }
 
 /** Offset of the `<` of an element's closing tag, or undefined for a self-closing element. */
-export function closingTagStart(source: string, start: number, end: number): number | undefined {
-  const opening = openingTagEnd(source, start);
-  if (/\/\s*>$/.test(source.slice(start, opening))) return undefined;
+export function closingTagStart(source: string, node: SyntaxNode): number | undefined {
+  const opening = openingTag(source, node);
+  if (opening.selfClosing) return undefined;
+  const { start, end } = span(node);
   const index = source.lastIndexOf("</", end - 1);
-  if (index < opening) throw new Error(`Missing closing tag for element at offset ${start}`);
+  if (index < opening.end) throw new Error(`Missing closing tag for element at offset ${start}`);
   return index;
 }
 

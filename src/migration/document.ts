@@ -134,8 +134,8 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
     const name = node.name;
     if (!name) {
       // A fragment only groups its children.
-      const close = closingTagStart(source, start, end)!;
-      edits.push({ start, end: openingTagEnd(source, start), text: "" }, { start: close, end, text: "" });
+      const close = closingTagStart(source, node)!;
+      edits.push({ start, end: openingTagEnd(source, node), text: "" }, { start: close, end, text: "" });
       return "tags";
     }
     if (/^[a-z]/.test(name) && !name.includes(".")) return htmlElement(node, inTable, inHtml);
@@ -166,8 +166,8 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
         if (binding) bindings[attribute.name] = binding;
       }
     }
-    const opening = openingTagEnd(source, start);
-    const close = closingTagStart(source, start, end);
+    const opening = openingTagEnd(source, node);
+    const close = closingTagStart(source, node);
     const input: ElementInput = {
       name,
       module: binding.module,
@@ -288,9 +288,9 @@ export async function convertMdxDocument(document: DocumentPlace, source: string
     // `<p>` means a paragraph, so it becomes one (a table cell keeps its line).
     if (node.name === "p" && !node.attributes?.length && !inTable) {
       const element = span(node);
-      const close = closingTagStart(source, element.start, element.end);
+      const close = closingTagStart(source, node);
       if (close !== undefined) {
-        edits.push(...unwrapParagraph(source, element, openingTagEnd(source, element.start), close));
+        edits.push(...unwrapParagraph(source, element, openingTagEnd(source, node), close));
         return "tags";
       }
     }
@@ -434,17 +434,17 @@ function paragraphIndents(tree: SyntaxNode, source: string): TextEdit[] {
     const start = node.position.start.offset;
     const line = source.lastIndexOf("\n", start - 1) + 1;
     const prefix = source.slice(line, start);
-    const base = parent.type === "root" ? 0 : bodyIndent(source, span(parent));
+    const base = parent.type === "root" ? 0 : bodyIndent(source, parent);
     if (/^[ \t]*$/.test(prefix) && indentColumns(prefix) >= base + 4) edits.push({ start: line, end: start, text: " ".repeat(base) });
   }
   return edits;
 }
 
 /** The indentation a component's body lines share, in columns. */
-function bodyIndent(source: string, element: { start: number; end: number }): number {
-  const close = closingTagStart(source, element.start, element.end);
+function bodyIndent(source: string, element: SyntaxNode): number {
+  const close = closingTagStart(source, element);
   if (close === undefined) return 0;
-  const body = source.slice(openingTagEnd(source, element.start), close).split("\n").slice(1).filter((text) => text.trim());
+  const body = source.slice(openingTagEnd(source, element), close).split("\n").slice(1).filter((text) => text.trim());
   return body.length ? Math.min(...body.map((text) => indentColumns(text.match(/^[ \t]*/)![0]))) : 0;
 }
 

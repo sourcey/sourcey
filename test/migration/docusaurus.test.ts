@@ -458,6 +458,15 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("reads an element's tag past an apostrophe in JSX inside an attribute", async () => {
+    const page = "import Admonition from '@theme/Admonition';\n\n# Installation\n\n<Admonition type=\"tip\" title={<span>It's quick</span>}>\n\nRun it once.\n\n</Admonition>\n";
+    await withProject({ ...site, "docs/start/02-install.mdx": page }, async (root) => {
+      const failure = await migrateProject({ framework: "docusaurus", root, dryRun: true }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(MigrationError);
+      expect((failure as MigrationError).diagnostics.filter((item) => item.severity === "error").map((item) => item.message)).toEqual(['<Admonition> attribute "title" is an executable expression']);
+    });
+  });
+
   it("keeps a navbar logo on the web as its address, for light and dark", async () => {
     const remote = { ...site, "docusaurus.config.js": (site["docusaurus.config.js"] as string).replace("navbar: { logo: { src: '/img/logo.svg' }", "navbar: { logo: { src: 'https://cdn.example.com/logo.png', srcDark: 'https://cdn.example.com/logo-dark.png' }") };
     await withProject(remote, async (root) => {
