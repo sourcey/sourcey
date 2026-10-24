@@ -152,6 +152,19 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("writes a category whose label opens with an emoji under its plain name, keeping the address Docusaurus gave it", async () => {
+    const category = '{ "label": "⚙️ Reference", "link": { "type": "generated-index", "description": "Every option." } }\n';
+    await withProject({ ...site, "docs/guides/reference/_category_.json": category }, async (root) => {
+      // Docusaurus drops the emoji and keeps its variation selector, at /category/️-reference/; the
+      // migration stops unless the native build publishes that address.
+      await migrateProject({ framework: "docusaurus", root });
+      expect(await read(root, "docs/category/reference.md")).toBe('---\ntitle: "⚙️ Reference"\ndescription: "Every option."\nslug: "category/\\uFE0F-reference"\n---\n\n<PageCards section="reference" />\n');
+      const config = await read(root, "sourcey.config.ts");
+      expect(config).toContain('href: "/category/\\uFE0F-reference/",');
+      expect(config).toContain('{ page: "category/reference", hidden: true },');
+    });
+  });
+
   it("converts versioned docs into native versions, keeping each version's routes", async () => {
     await withProject(
       {

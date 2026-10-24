@@ -65,12 +65,24 @@ export function printConfig(source: ConfigSource): string {
   return lines.join("\n");
 }
 
+/**
+ * A string as a double-quoted literal, which TypeScript, JSON and YAML read alike. A character that
+ * shows nothing where it stands is written as its escape: a variation selector or another
+ * default-ignorable character at the start or after plain text, such as the selector Docusaurus
+ * leaves in a slug when it drops the emoji it belonged to. One that joins an emoji stays as written.
+ */
+export function quote(value: string): string {
+  return JSON.stringify(value).replace(/(?<=\p{ASCII})\p{Default_Ignorable_Code_Point}+/gu, (hidden) =>
+    Array.from({ length: hidden.length }, (_, index) => `\\u${hidden.charCodeAt(index).toString(16).toUpperCase().padStart(4, "0")}`).join(""),
+  );
+}
+
 export function print(value: ConfigValue, depth: number): string {
   const indent = "  ".repeat(depth + 1);
   const close = "  ".repeat(depth);
   if (value === undefined) return "undefined";
   if (value === null || typeof value === "number" || typeof value === "boolean") return String(value);
-  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "string") return quote(value);
   if (value instanceof Reference) return value.name;
   if (value instanceof Environment) return value.print();
   if (value instanceof Call) {
@@ -85,7 +97,7 @@ export function print(value: ConfigValue, depth: number): string {
   }
   const entries = Object.entries(value).filter(([, item]) => item !== undefined);
   if (!entries.length) return "{}";
-  const key = (name: string) => (IDENTIFIER.test(name) ? name : JSON.stringify(name));
+  const key = (name: string) => (IDENTIFIER.test(name) ? name : quote(name));
   const inline = `{ ${entries.map(([name, item]) => `${key(name)}: ${print(item, depth)}`).join(", ")} }`;
   if (inline.length <= 72 && !inline.includes("\n") && entries.every(([, item]) => typeof item !== "object" || item === null || item instanceof Reference || item instanceof Environment))
     return inline;

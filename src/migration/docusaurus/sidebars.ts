@@ -36,6 +36,8 @@ interface CategoryMetadata {
 export interface GeneratedIndex {
   /** Path below the docs route. */
   path: string;
+  /** Where its page is written below the docs directory, as the navigation names it. */
+  file: string;
   title: string;
   description?: string;
   /** The native group it lists. */
@@ -151,7 +153,7 @@ export async function convertSidebars(context: SidebarContext): Promise<SidebarN
     } else if (link?.type === "generated-index") {
       const path = (link.slug ?? `/category/${labels.slug(item.label)}`).replace(/^\/+|\/+$/g, "");
       href = context.route(`/${path}`);
-      result.indexes.push({ path, title: link.title ?? item.label, description: link.description ?? item.description, section: id });
+      result.indexes.push({ path, file: path, title: link.title ?? item.label, description: link.description ?? item.description, section: id });
       pages.unshift({ page: path, hidden: true });
     }
     const collapsed = (item.collapsible ?? instance.sidebarCollapsible) && (item.collapsed ?? instance.sidebarCollapsed);
@@ -173,7 +175,35 @@ export async function convertSidebars(context: SidebarContext): Promise<SidebarN
     if (pages.length) result.groups.push({ group: name, id: section, collapsed: true, pages });
   }
   placeUnlisted(result.groups, docs.filter((entry) => !entry.draft && !listed.has(entry.id)).map((entry) => context.reference(entry)));
+  nameIndexFiles(result, new Set(docs.map((entry) => context.reference(entry))));
   return result;
+}
+
+/**
+ * Names each generated index's file. Docusaurus slugs a category label that opens with an emoji by
+ * dropping the emoji and keeping what followed it, so "⚙️ Admin" is at /category/️-admin/, its
+ * variation selector and a dash leading. Such a page is written under the plain name ("admin"),
+ * which no other page or index takes, and its frontmatter keeps the address.
+ */
+function nameIndexFiles(navigation: SidebarNavigation, references: ReadonlySet<string>): void {
+  const plain = (path: string) => path.split("/").map((segment) => segment.replace(/\p{Default_Ignorable_Code_Point}/gu, "").replace(/^-+|-+$/g, "") || segment).join("/");
+  const taken = new Set([...references, ...navigation.indexes.map((index) => index.path)]);
+  const renamed = new Map<string, string>();
+  for (const index of navigation.indexes) {
+    const file = plain(index.path);
+    if (file === index.path || taken.has(file)) continue;
+    taken.add(file);
+    index.file = file;
+    renamed.set(index.path, file);
+  }
+  const rename = (items: NavigationItem[]) => {
+    for (const item of items) {
+      if (typeof item !== "object") continue;
+      if ("group" in item) rename(item.pages);
+      else if ("page" in item && renamed.has(item.page)) item.page = renamed.get(item.page)!;
+    }
+  };
+  if (renamed.size) rename(navigation.groups);
 }
 
 /**

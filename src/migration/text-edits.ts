@@ -1,5 +1,6 @@
 import { diffArrays } from "diff";
 import { load as parseYaml } from "js-yaml";
+import { quote } from "./config-writer.js";
 
 export interface TextEdit {
   start: number;
@@ -98,7 +99,7 @@ export function frontmatterEdits(
 function yamlScalar(value: string): string {
   if (/^[\w./@-][\w ./@-]*$/.test(value) && !/^(true|false|null|yes|no|on|off|~|-?\d[\d.e+-]*)$/i.test(value) && !value.endsWith(" "))
     return value;
-  return JSON.stringify(value);
+  return quote(value);
 }
 
 /**

@@ -11,7 +11,7 @@ import { firstHeadingText, headingInfo, lexMarkdown } from "../../utils/markdown
 import { isAbsoluteHttpUrl } from "../../site-url.js";
 import type { Tokens } from "marked";
 import { identityKey } from "../components.js";
-import type { Call, ConfigValue } from "../config-writer.js";
+import { quote, type Call, type ConfigValue } from "../config-writer.js";
 import type { Diagnostics } from "../diagnostics.js";
 import { evaluate, identifierName, parseModule } from "../javascript.js";
 import type { ResolvedMapping } from "../mapping.js";
@@ -24,7 +24,7 @@ import { lineEnd, readFrontmatter } from "../text-edits.js";
 import { schemeColours, stylesheetFonts, themeColours } from "../theme.js";
 import { readDocs, type DocusaurusDoc } from "./docs.js";
 import { docusaurusConversion, docusaurusPreprocess } from "./markdown.js";
-import { convertSidebars, type SidebarNames, type SidebarNavigation } from "./sidebars.js";
+import { convertSidebars, type GeneratedIndex, type SidebarNames } from "./sidebars.js";
 import { loadSite, type DocsInstance, type DocusaurusSite } from "./site.js";
 import { localeLabel, readTranslations, translatedLocales } from "./translations.js";
 import { readVersions, type DocsVersion } from "./versions.js";
@@ -170,7 +170,6 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
   if (version.last) for (const doc of docs) collected.docRoutes.set(`${instance.id}#${doc.id}`, route(doc.slug));
   const reference = (doc: DocusaurusDoc) => doc.source.replace(/\.mdx?$/, "").replace(/(^|\/)index$/, "") || "index";
   const navigation = await convertSidebars({ project, diagnostics, site, instance, sidebarPath: version.sidebarPath, contentDir: version.contentDir, docs, reference, route, names });
-  await writeIndexes(project, version.contentDir, navigation, collected.files, route, collected.routes, fail);
   const translations = await readTranslations(project, site, instance, version, docs, fail);
   // A category's page lands it in every language.
   for (const [slug, group] of navigation.sections)
@@ -193,12 +192,14 @@ async function convertVersion(context: VersionContext, collected: Collected): Pr
     reference: string;
     path: string;
   }
+  const indexes = navigation.indexes.map((index) => ({ index, reference: index.file, path: index.path }));
   const published: Entry[] = [
     ...docs.map((doc) => ({ doc, reference: reference(doc), path: path(doc) })),
-    ...navigation.indexes.map((index) => ({ doc: undefined, reference: index.path, path: index.path })),
+    ...indexes,
     ...translations.flatMap((translation) => translation.docs.map((doc) => ({ doc, locale: translation.locale, reference: reference(doc), path: path(doc) }))),
   ];
   const markdown = markdownSource(version.contentDir, navigation.groups, published);
+  await writeIndexes(project, version.contentDir, indexes.map((entry) => ({ index: entry.index, slug: markdown.slugs.get(entry) })), collected.files, route, collected.routes, fail);
   const dialect = docsDialect(site, instance.admonitions, globals);
   const convert = docusaurusConversion(instance.admonitions, site.mdx1Compat, site.preprocessor);
   for (const entry of published) {
@@ -418,20 +419,24 @@ function openingHeading(body: string): string | undefined {
   return first?.type === "heading" && (first as Tokens.Heading).depth === 1 ? headingInfo(first as Tokens.Heading).text.trim() || undefined : undefined;
 }
 
-/** Generated category index pages become authored pages listing their section. */
+/** Generated category index pages become authored pages listing their section, each with the slug its file name does not give it. */
 async function writeIndexes(
   project: ProjectFiles,
   contentDir: string,
-  navigation: SidebarNavigation,
+  indexes: readonly { index: GeneratedIndex; slug?: string }[],
   files: NativePlan["files"],
   route: (slug: string) => string,
   routes: NativePlan["routes"],
   fail: (message: string) => void,
 ): Promise<void> {
-  for (const index of navigation.indexes) {
-    const file = posix.join(contentDir, `${index.path}.md`);
+  for (const { index, slug } of indexes) {
+    const file = posix.join(contentDir, `${index.file}.md`);
     if (await project.exists(file)) fail(`${file} already exists, so the generated index of "${index.title}" cannot be written there`);
-    const frontmatter = [`title: ${JSON.stringify(index.title)}`, ...(index.description ? [`description: ${JSON.stringify(index.description)}`] : [])];
+    const frontmatter = [
+      `title: ${quote(index.title)}`,
+      ...(index.description ? [`description: ${quote(index.description)}`] : []),
+      ...(slug === undefined ? [] : [`slug: ${quote(slug)}`]),
+    ];
     files.set(file, { bytes: `---\n${frontmatter.join("\n")}\n---\n\n<PageCards section="${index.section}" />\n`, reason: "Docusaurus generated this category index; native pages are authored" });
     routes.push({ route: route(`/${index.path}`), origin: "Docusaurus category index" });
   }
