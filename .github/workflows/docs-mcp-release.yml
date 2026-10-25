@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ !inputs.publisher_check }}
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
