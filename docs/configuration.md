@@ -141,6 +141,17 @@ navbar: {
 
 `navbar.links` sit at the header's end: a network's icon (`github`, `discord`, `discourse`, ...), a text link with its `label`, or a `menu`, links under one label that open below it, one menu at a time. A menu holds links only, one level deep; the mobile drawer lists them under its label. `navbar.primary` is the call to action, a button after the links and at the foot of the drawer.
 
+## Breadcrumbs
+
+```ts
+navigation: {
+  breadcrumbs: true,
+  tabs: [/* ... */],
+},
+```
+
+Each documentation and reference page then opens with the way to it above its title: the site's home, its tab where the site has several, and each section the page sits in, every step a link where the section has a page of its own. The page itself is not a step, since its title follows. The trail is drawn when the site builds, wraps on a phone, and is the same trail search engines read from the page's structured data. Off by default; without it, each theme names the page's section as it always has.
+
 ## Footer
 
 ```ts

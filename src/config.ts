@@ -275,6 +275,12 @@ export interface SourceyConfig {
   codeSamples?: string[];
   navigation: {
     tabs: TabConfig[];
+    /**
+     * A trail above each page's title, from the site's home through its tab
+     * and the sections it sits in, each linked where it has a page.
+     * @default false
+     */
+    breadcrumbs?: boolean;
   };
   navbar?: {
     /** Links in the header, and menus of links under one label. */
@@ -649,6 +655,7 @@ export interface ResolvedConfig {
   markdown: { smartypants: boolean };
   lastUpdated: boolean;
   feedback?: ResolvedFeedback;
+  breadcrumbs: boolean;
   search: { featured: string[] };
 }
 
@@ -902,6 +909,7 @@ export async function resolveConfigFromRaw(
     markdown: { smartypants: raw.markdown?.smartypants === true },
     lastUpdated: raw.lastUpdated === true,
     feedback: resolveFeedback(raw.feedback, theme.icons),
+    breadcrumbs: raw.navigation.breadcrumbs === true,
     search: {
       featured: raw.search?.featured ?? [],
     },

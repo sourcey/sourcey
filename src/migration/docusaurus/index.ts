@@ -116,7 +116,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
     navbar: navbarOption(header),
     ...footerOptions(theme.footer, navbarLinks(header), (href) => pages.has(href.replace(/\/+$/, "") || "/"), review),
     ...i18nOptions(site, collected.messages),
-    navigation: { tabs },
+    navigation: { tabs, ...(site.docs.some((instance) => instance.breadcrumbs) ? { breadcrumbs: true } : {}) },
     ...(await redirectOptions(site, documents)),
   };
   routes.push({ route: `${base}/404`, origin: "Docusaurus 404 page" });

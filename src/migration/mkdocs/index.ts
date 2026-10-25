@@ -203,7 +203,8 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
     ...linkOptions(config),
     ...(feedback ? { feedback } : {}),
     ...(plugins.some((plugin) => DATE_PLUGINS.includes(plugin)) ? { lastUpdated: true } : {}),
-    navigation: { tabs: markdown.tabs },
+    // Material's navigation.path draws the trail above each page's title.
+    navigation: { tabs: markdown.tabs, ...(theme.features?.includes("navigation.path") ? { breadcrumbs: true } : {}) },
     ...redirects(config.plugins, pages, directoryUrls, base),
   };
   if (config.extra_css?.length) review(`Custom styles (${config.extra_css.join(", ")}) are not carried over; replace what they do deliberately`);

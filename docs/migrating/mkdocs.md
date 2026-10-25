@@ -20,6 +20,7 @@ npx sourcey migrate mkdocs --dry-run
 | `repo_url`, `edit_uri` | `repo`, `editBranch`, `editBasePath`, and the repository link in `navbar.links` |
 | `nav`, or the default navigation without one | navigation groups, nested sections and external links |
 | Material `features: [navigation.tabs]` | a tab per top-level section |
+| Material `features: [navigation.path]` | [`navigation.breadcrumbs`](../configuration.md#breadcrumbs) |
 | Material's collapsed sidebar sections (`navigation.sections`, `navigation.expand`) | `collapsed` groups, which open on the page they hold |
 | Material frontmatter `hide: [navigation]`, or a page's own `template` | `layout: page`, the site's header and footer around the page; what has no native form (`hide: toc` alone, the template's HTML) is listed in the report |
 | Material `extra.analytics.feedback`, frontmatter `hide: [feedback]` | [`feedback`](../configuration.md#page-feedback) with the same title, ratings, values and notes, and its emoticon or thumb icons as Heroicons; frontmatter `feedback: false` |

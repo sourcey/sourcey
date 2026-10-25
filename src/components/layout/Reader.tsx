@@ -17,6 +17,7 @@ import { SearchDialog } from "./SearchDialog.js";
 import { PagePart } from "./PagePart.js";
 import { LastUpdated } from "../ui/LastUpdated.js";
 import { Feedback } from "../ui/Feedback.js";
+import { Breadcrumbs } from "../ui/Breadcrumbs.js";
 import { navbarLinks, type ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
 import { joinHref } from "../../site-url.js";
@@ -127,7 +128,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
   );
   const breadcrumb = (
     <div class="doc-breadcrumb">
-      {crumbs.map((crumb, i) => (
+      {site.breadcrumbs ? <Breadcrumbs /> : crumbs.map((crumb, i) => (
         <>
           {i > 0 && <Icon name="chevron" size={12} />}
           <span>{crumb}</span>

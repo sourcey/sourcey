@@ -136,6 +136,8 @@ export interface SiteConfig {
   pageParts?: Partial<Record<PagePartName, PagePart>>;
   /** The feedback question each documentation, reference and changelog page ends with. */
   feedback?: ResolvedFeedback;
+  /** A linked trail stands above each page's title. */
+  breadcrumbs?: true;
 }
 
 export const SiteContext = createContext<SiteConfig>(null as never);

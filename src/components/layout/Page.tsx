@@ -21,6 +21,7 @@ import { Header } from "./Header.js";
 import { PagePart } from "./PagePart.js";
 import { LastUpdated } from "../ui/LastUpdated.js";
 import { Feedback } from "../ui/Feedback.js";
+import { Breadcrumbs } from "../ui/Breadcrumbs.js";
 import { PageNotice } from "./ContextControls.js";
 import { Sidebar } from "./Sidebar.js";
 import { TableOfContents } from "./TableOfContents.js";
@@ -48,6 +49,8 @@ function PagePlace({ spacing }: { spacing?: string }) {
   const nav = useContext(NavigationContext);
   const site = useContext(SiteContext);
   const { messages } = useContext(OptionsContext);
+  // A site that asks for breadcrumbs has them in place of its theme's own trail.
+  if (site.breadcrumbs) return <Breadcrumbs class={spacing} />;
   const { tab, group } = activeSection(nav);
   const eyebrow = group?.label;
   const trail =

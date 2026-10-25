@@ -40,6 +40,8 @@ export interface DocsInstance {
   editUrl?: unknown;
   /** Whether its pages show when they last changed (`showLastUpdateTime`). */
   lastUpdated: boolean;
+  /** Whether its pages show breadcrumbs, as they do unless `breadcrumbs: false`. */
+  breadcrumbs: boolean;
   numberPrefixes: boolean;
   sidebarCollapsed: boolean;
   sidebarCollapsible: boolean;
@@ -213,6 +215,7 @@ function docsInstance(options: Options, local: (path: string) => string): DocsIn
     exclude: ((options.exclude as string[] | undefined) ?? DOCS_DEFAULTS.exclude).map((pattern) => pattern.replace(/^\.\//, "")),
     editUrl: options.editUrl,
     lastUpdated: options.showLastUpdateTime === true,
+    breadcrumbs: options.breadcrumbs !== false,
     numberPrefixes: options.numberPrefixParser !== false,
     sidebarCollapsed: options.sidebarCollapsed !== false,
     sidebarCollapsible: options.sidebarCollapsible !== false,

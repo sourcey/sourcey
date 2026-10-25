@@ -97,6 +97,7 @@ export default defineConfig({
         }),
       },
     ],
+    breadcrumbs: true,
   },
   redirects: { "/old-start": "/start/" },
 });
@@ -251,6 +252,7 @@ describe("sourcey migrate docusaurus", () => {
             "        },",
             "      },",
             "    ],",
+            "    breadcrumbs: true,",
             "  },",
             "});",
             "",
