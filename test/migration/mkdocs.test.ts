@@ -311,7 +311,7 @@ describe("sourcey migrate mkdocs", () => {
         "MkDocs built content/reference/README.md over this page at the same URL, so it stays unpublished",
         'Plugin "htmlproofer" is not carried over',
         "Nav labels other than the page heading titled 1 page; native titles a page by its heading and keeps the label in the navigation",
-        "Custom styles and scripts (css/extra.css) are not carried over; replace what they do deliberately",
+        "Custom styles (css/extra.css) are not carried over; replace what they do deliberately",
       ]);
       // MkDocs routes are file paths as written, which native keeps with one source option.
       expect(await read(root, "content/api/basic_json/basic_json.md")).toBe(site["content/api/basic_json/basic_json.md"]);
@@ -321,10 +321,24 @@ describe("sourcey migrate mkdocs", () => {
     });
   });
 
-  it("says Material's analytics are not carried over", async () => {
+  it("carries what MkDocs adds to every page: the author and analytics in the head, extra_javascript at the end of the body", async () => {
+    const analytics = '<script>var _paq = window._paq || []; _paq.push(["trackPageView"]);</script>\n';
+    await withProject({
+      ...site,
+      "mkdocs.yml": `${site["mkdocs.yml"]}\nsite_author: Ada\ntheme:\n  name: material\n  custom_dir: overrides\nextra:\n  analytics:\n    provider: custom\nextra_javascript:\n  - js/tables.js\n  - path: https://cdn.example.com/kit.js\n    defer: true\n`,
+      "overrides/partials/integrations/analytics/custom.html": analytics,
+      "overrides/404.html": "<h1>Gone</h1>\n",
+      "content/js/tables.js": "sortTables();\n",
+    }, async (root) => {
+      const report = await migrateProject({ framework: "mkdocs", root });
+      expect(await read(root, "components/Head.html")).toBe(`<meta name="author" content="Ada">\n${analytics}`);
+      expect(await read(root, "components/BodyEnd.html")).toBe('<script src="/json/js/tables.js"></script>\n<script src="https://cdn.example.com/kit.js" defer></script>\n');
+      expect(await read(root, "public/js/tables.js")).toBe("sortTables();\n");
+      expect(report.diagnostics.map((item) => item.message)).toContain("Theme overrides in overrides (404.html) are not carried over; a page part in components/, or pages/404.md for a not-found page, draws their place");
+    });
     await withProject({ ...site, "mkdocs.yml": `${site["mkdocs.yml"]}\nextra:\n  analytics:\n    provider: google\n    property: G-EXAMPLE\n` }, async (root) => {
-      const report = await migrateProject({ framework: "mkdocs", root, dryRun: true });
-      expect(report.diagnostics.map((item) => item.message)).toContain("Analytics (google G-EXAMPLE) are not carried over");
+      await migrateProject({ framework: "mkdocs", root });
+      expect(await read(root, "components/Head.html")).toContain('gtag("config", "G-EXAMPLE");');
     });
   });
 

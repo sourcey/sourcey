@@ -18,6 +18,7 @@ import { Markdown } from "../ui/Markdown.js";
 import { joinHref } from "../../site-url.js";
 import { linkTarget } from "../../utils/html.js";
 import { Header } from "./Header.js";
+import { PagePart } from "./PagePart.js";
 import { PageNotice } from "./ContextControls.js";
 import { Sidebar } from "./Sidebar.js";
 import { TableOfContents } from "./TableOfContents.js";
@@ -153,7 +154,7 @@ function SpecPageContent({ className = "", bare = false }: { className?: string;
   const mcpOverview = connection && view?.kind === "overview";
   const place = !bare && <><PageNotice /><PagePlace spacing="mt-0.5 mb-2.5" /></>;
   // A split reference's pages read in order, as guides do.
-  const end = !bare && <>{view && <PageNavigation />}<ContentFooter /></>;
+  const end = !bare && <><PageEnd navigation={!!view} /><ContentFooter /></>;
   // Every page of a reference shares a guide's column, and so its edges.
   const area = `relative grow box-border flex-col w-full mx-auto px-1 min-w-0 ${className}`;
   if (view?.kind === "operation") {
@@ -276,10 +277,10 @@ function useEditUrl(): string | undefined {
   return `${repoBase}/edit/${editBranch}/${basePath}${editPath}`;
 }
 
-/** A page's end: a way to edit its source, then the pages before and after it. */
-function PageEnd() {
+/** A page's end: the site's own part there, a way to edit its source, then the pages before and after it. */
+function PageEnd({ navigation = true }: { navigation?: boolean }) {
   const editUrl = useEditUrl();
-  return <>{editUrl && <EditPageLink href={editUrl} />}<PageNavigation spacing={editUrl ? "mt-8" : "mt-12"} /></>;
+  return <><PagePart name="ContentEnd" />{editUrl && <EditPageLink href={editUrl} />}{navigation && <PageNavigation spacing={editUrl ? "mt-8" : "mt-12"} />}</>;
 }
 
 function EditPageLink({ href: editUrl }: { href: string }) {
@@ -319,6 +320,7 @@ function EditPageLink({ href: editUrl }: { href: string }) {
  */
 function ContentFooter() {
   const site = useContext(SiteContext);
+  if (site.pageParts?.Footer) return <PagePart name="Footer" />;
   const words = site.footer.links.filter((link) => link.type === "link");
   const marks = site.footer.links.filter((link) => link.type !== "link");
   const linkStyle =

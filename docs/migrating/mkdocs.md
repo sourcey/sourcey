@@ -26,6 +26,8 @@ npx sourcey migrate mkdocs --dry-run
 | `theme.logo`, `theme.favicon`, Material `palette.primary`, `font` | `logo`, `favicon`, `theme.colors`, `theme.fonts` |
 | `copyright` | `footer.text` |
 | Material `extra.social` | `footer.links`, where Material shows them; a link without a network's icon shows its `name`, or its host |
+| `site_author`; Material `extra.analytics` with Google's `property`, or `provider: custom` and its `partials/integrations/analytics/custom.html` override | `components/Head.html`, which every page's head ends with: the author's `<meta>`, Google's tag, or the partial as written |
+| `extra_javascript` | `components/BodyEnd.html`, where Material loads them, at the end of every page; a local script moves to `public/` and keeps its address |
 | `mkdocs-redirects` `redirect_maps` | `redirects` |
 
 Pages keep their URLs, including file names with capitals or underscores (`markdown({ slugs: "file" })`), and a `README.md` stays its directory's index. Where MkDocs built two files to one URL, the one it built last stays published and the report names the other. Pages that `nav` leaves out stay published, beside their nearest listed sibling and out of the menu. Heading anchors keep MkDocs's spelling. A page with no title or heading keeps the title MkDocs gave it from its nav label or file name. A `CHANGELOG.md` stays an ordinary page; remove `changelog: false` from the configuration to get native changelog pages and feeds.
@@ -54,7 +56,7 @@ MkDocs leaves raw HTML alone and copies `docs_dir` to the site, so `<img src>` p
 
 Python-Markdown and CommonMark read a few things differently. A line opening with `#` is a heading to MkDocs even without a space after the hashes; the migration adds the space. A non-web address in angle brackets, such as `hash<nlohmann::basic_json\>`, is text to MkDocs; the migration escapes it so it stays text.
 
-Custom `extra_css` and `extra_javascript` are listed in the report rather than copied. A `.readthedocs.yaml` that builds with MkDocs is named too: switch its build to `sourcey build`.
+Custom `extra_css` is listed in the report rather than copied, since Material's stylesheet variables have no native meaning. So are the theme's other template overrides in `custom_dir`: a [page part](../components.md#page-parts) in `components/`, or `pages/404.md` for the not-found page, draws their place. A `.readthedocs.yaml` that builds with MkDocs is named too: switch its build to `sourcey build`.
 
 ## What stops a migration
 

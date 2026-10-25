@@ -9,6 +9,7 @@ import type { NavbarMenu } from "../../config.js";
 import { joinHref } from "../../site-url.js";
 import { linkTarget } from "../../utils/html.js";
 import { ContextControls, hasContextChoices } from "./ContextControls.js";
+import { PagePart } from "./PagePart.js";
 
 function SearchIcon() {
   return (
@@ -109,6 +110,7 @@ export function Header() {
   const nav = useContext(NavigationContext);
   const options = useContext(OptionsContext);
   const site = useContext(SiteContext);
+  if (site.pageParts?.Header) return <PagePart name="Header" />;
   const { messages } = options;
 
   const base = options.assetBase;

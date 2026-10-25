@@ -78,6 +78,8 @@ export interface DocusaurusSite {
   docs: DocsInstance[];
   customCss: string[];
   plugins: SitePlugin[];
+  /** The Google Analytics IDs the classic preset's `gtag` or the gtag plugin loads. */
+  gtag: string[];
   /** The pages plugin's directory, unless the site disabled it. */
   pages?: string;
   /** The admonition keywords its Markdown pages read. */
@@ -150,6 +152,8 @@ export async function loadSite(project: ProjectFiles, diagnostics: Diagnostics):
     docs: instances.map((options) => docsInstance(options, local)),
     customCss: [((classic.theme as Options | undefined)?.customCss ?? [])].flat().map(String).map(local),
     plugins: plugins.filter((plugin) => !plugin.name.includes("plugin-content-docs")),
+    gtag: [classic.gtag, ...plugins.filter((plugin) => plugin.name.includes("plugin-google-gtag")).map((plugin) => plugin.options)]
+      .flatMap((options) => [(options as Options | undefined)?.trackingID ?? []].flat().map(String)),
     pages,
     pageAdmonitions: admonitionKeywords((classic.pages as Options | undefined)?.admonitions),
     themeConfig: (config.themeConfig ?? {}) as Options,

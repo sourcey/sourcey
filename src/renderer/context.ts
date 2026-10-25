@@ -3,6 +3,7 @@ import { createContext } from "preact";
 import { english, type UiMessages } from "../core/messages.js";
 import type { NormalizedSpec } from "../core/types.js";
 import type { SiteNavigation } from "../core/navigation.js";
+import type { PagePart, PagePartName } from "../core/site-components.js";
 import type {
   NavbarEntry,
   NavbarLink,
@@ -47,6 +48,8 @@ export interface RenderOptions {
   dir: "ltr" | "rtl";
   messages: UiMessages;
   noindex?: boolean;
+  /** The page answers an address the site has no page for. */
+  notFound?: boolean;
   equivalents?: EquivalentPageLink[];
   notice?: string;
   searchIndexes?: string[];
@@ -126,6 +129,8 @@ export interface SiteConfig {
   smartypants?: boolean;
   /** The site root's address, when a page publishes there. */
   home?: string;
+  /** The site's own page parts, from its components folder. */
+  pageParts?: Partial<Record<PagePartName, PagePart>>;
 }
 
 export const SiteContext = createContext<SiteConfig>(null as never);

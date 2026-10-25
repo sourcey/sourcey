@@ -67,6 +67,8 @@ export default defineConfig({
 
 Pages are Markdown resolved from the config's folder (`"quickstart"` is `quickstart.md`), with `title` and `description` frontmatter. Callouts (`:::note[Title]`), tabs, steps, cards, accordions, fields, includes, figures and Mermaid diagrams are built in ([components](https://github.com/sourcey/sourcey/blob/main/docs/components.md)). Card and inline icons are names from the site's icon set, Heroicons by default (`book-open`, `rocket-launch`, `key`); a name the set lacks stops the build, so use the set's exact names.
 
+The site's own components live in `components/` beside the config, each file named for its component: `Note.html` (children where it writes `<slot />`) or `Badge.tsx` (a Preact component; Sourcey brings Preact) is `<Note>` or `<Badge>` in a page, and a built-in's name replaces it. Six names fill a part of every page instead: `Head.html` (analytics, verification tags), `Banner`, `Header`, `ContentEnd`, `Footer` and `BodyEnd`. Put a site's analytics in `components/Head.html`; never drop it.
+
 Themes: `default`, `api-first` (full width, operations in two columns), `minimal` and `reader` (editorial, for specifications). Set `theme.name`, `theme.colors.primary`, and `theme.fonts` (a Google Fonts family, or `"system"`).
 
 ## Migrating an existing site

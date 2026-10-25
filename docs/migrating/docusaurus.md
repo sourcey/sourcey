@@ -29,6 +29,8 @@ Docusaurus configuration and sidebar files are programs: they can read files, br
 | `themeConfig.navbar` logo, links, doc links and dropdowns, `footer` links and copyright | `logo`, `navbar.links` (dropdowns as menus), `footer.links`, `footer.text` |
 | `colorMode`, `--ifm-color-primary` in custom CSS | `theme.appearance`, `theme.colors` |
 | `@docusaurus/plugin-client-redirects` (`redirects` and `createRedirects`) | `redirects` |
+| `headTags`, `stylesheets`, `scripts`, and Google Analytics (`gtag` in the classic preset, or `@docusaurus/plugin-google-gtag`) | `components/Head.html`, which every page's head ends with |
+| swizzled theme components in `src/theme` | listed in the report; a [page part](../components.md#page-parts) in `components/` draws a header, footer or the end of a page of the site's own |
 
 ## Docs and sidebars
 

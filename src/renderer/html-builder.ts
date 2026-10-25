@@ -96,6 +96,7 @@ export function createRenderOptions(
     dir: context.localeConfig.dir,
     messages: context.localeConfig.messages,
     noindex: page.status === 404 || context.version.index === false || !translated,
+    ...(page.status === 404 ? { notFound: true } : {}),
     notice: translated ? context.version.notice || undefined : context.localeConfig.messages.fallback,
     assetBase,
     assets: options?.assets && {

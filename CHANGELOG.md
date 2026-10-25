@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A site's own components live in `components/`, beside its config, each file named for the component it is. An HTML file is drawn as written, with what a page puts inside it where it writes `<slot />`, and a `.tsx` or `.jsx` file is a Preact component, drawn with Sourcey's own Preact so the site installs none. A file with a built-in's name replaces the built-in. `Head`, `Banner`, `ContentEnd` and `BodyEnd` add to every page, for analytics and the like, and `Header` and `Footer` replace the theme's. `componentsDir` names another folder, or `false` for none.
+- A not-found page marks its root `<html data-sourcey-page="not-found">`, so a site's analytics can count missing pages.
+- `sourcey migrate mkdocs` carries `site_author`, Material's Google or custom analytics and `extra_javascript` into the site's components, and `sourcey migrate docusaurus` carries `headTags`, `stylesheets`, `scripts` and Google Analytics. Both had listed them as not carried over.
+
+### Fixed
+
+- A component written in a sentence draws what it holds as part of the sentence, where a site's component had drawn it as a paragraph inside the sentence.
+- A site's component named for a built-in, such as `Note` or `Card`, is drawn and exported as the site's own wherever it appears. A page's Markdown copy had read it as the built-in it replaced, and stopped the build.
+
 ## 3.9.1 - 2026-10-25
 
 ### Added

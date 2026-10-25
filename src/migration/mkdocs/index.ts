@@ -11,6 +11,7 @@ import { counted, type Diagnostics } from "../diagnostics.js";
 import { footerLinks, groupIds, navbarLink, navbarOption, networkOf, placeUnlisted, topLevelGroups } from "../navigation.js";
 import { markdownSource, type FrameworkMigration, type NativePlan, type PlannedDocument, type SourcePath } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
+import { element, googleTag, writePageParts, type PartMarkup } from "../page-parts.js";
 import { editLinkOptions } from "../repository.js";
 import { lineAt, readFrontmatter } from "../text-edits.js";
 import { convertMkDocsMarkdown, pageHeading, type MkDocsExtensions } from "./syntax.js";
@@ -71,10 +72,13 @@ interface MkDocsTheme {
   palette?: unknown;
   font?: { text?: string; code?: string } | false;
   features?: string[];
+  /** Templates that override the theme's, Material's analytics partial among them. */
+  custom_dir?: string;
 }
 
 interface MkDocsConfig {
   site_name?: string;
+  site_author?: string;
   /** The footer's notice, HTML as written. */
   copyright?: string;
   site_url?: string | Environment | null;
@@ -87,7 +91,7 @@ interface MkDocsConfig {
   theme?: string | MkDocsTheme;
   extra?: { social?: SocialLink[]; analytics?: { provider?: string; property?: string } };
   extra_css?: string[];
-  extra_javascript?: (string | { path?: string })[];
+  extra_javascript?: (string | { path?: string; type?: string; async?: boolean; defer?: boolean })[];
   markdown_extensions?: unknown[];
   plugins?: unknown[];
 }
@@ -170,6 +174,10 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
   if (relabelled)
     review(`Nav labels other than the page heading titled ${counted(relabelled, "page")}; native titles a page by its heading and keeps the label in the navigation`);
   const statics = await staticPages(project, docsDir, base, fail);
+  const parts = await pageParts(project, config, theme, docsDir, base, statics.files, review);
+  // The files that move to the public directory, before the page parts join the files written.
+  const publishesFiles = statics.files.size > 0;
+  await writePageParts(project, statics.files, parts, fail);
   const editUri = config.edit_uri ?? (config.repo_url && /github\.com|gitlab\.com/.test(config.repo_url) ? `edit/master/${docsDir}/` : undefined);
   const editUrl = editUri && config.repo_url ? new URL(editUri, config.repo_url.replace(/\/?$/, "/")).href : undefined;
   const native: Record<string, ConfigValue> = {
@@ -182,15 +190,12 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
     ...(theme.favicon ? { favicon: `./${posix.join(docsDir, theme.favicon)}` } : {}),
     ...themeOptions(theme, review),
     prettyUrls: directoryUrls ? "slash" : false,
-    ...(statics.files.size ? { publicDir: PUBLIC_DIR } : {}),
+    ...(publishesFiles ? { publicDir: PUBLIC_DIR } : {}),
     ...linkOptions(config),
     navigation: { tabs: markdown.tabs },
     ...redirects(config.plugins, pages, directoryUrls, base),
   };
-  const assets = [...(config.extra_css ?? []), ...(config.extra_javascript ?? []).map((item) => (typeof item === "string" ? item : (item.path ?? "")))].filter(Boolean);
-  if (assets.length) review(`Custom styles and scripts (${assets.join(", ")}) are not carried over; replace what they do deliberately`);
-  const analytics = config.extra?.analytics;
-  if (analytics) review(`Analytics (${[analytics.provider, analytics.property].filter(Boolean).join(" ") || "extra.analytics"}) are not carried over`);
+  if (config.extra_css?.length) review(`Custom styles (${config.extra_css.join(", ")}) are not carried over; replace what they do deliberately`);
   await reportHosting(project, diagnostics);
 
   const plan: NativePlan = {
@@ -229,6 +234,64 @@ async function staticPages(project: ProjectFiles, docsDir: string, base: string,
     routes.push({ route: `${base}/${path}`, origin: "MkDocs static page" });
   }
   return { files, routes };
+}
+
+/** Material's partial for analytics of the site's own, in its template overrides. */
+const ANALYTICS_PARTIAL = "partials/integrations/analytics/custom.html";
+
+/**
+ * What MkDocs adds to every page, as native page parts: the author and
+ * analytics in the head, and `extra_javascript` where Material loads it, at
+ * the end of the body. A local script moves to the public directory, keeping
+ * its address. Other template overrides are reported.
+ */
+async function pageParts(
+  project: ProjectFiles,
+  config: MkDocsConfig,
+  theme: MkDocsTheme,
+  docsDir: string,
+  base: string,
+  files: NativePlan["files"],
+  review: (message: string, file?: string) => void,
+): Promise<{ Head: PartMarkup[]; BodyEnd: PartMarkup[] }> {
+  const head: PartMarkup[] = [];
+  const bodyEnd: PartMarkup[] = [];
+  if (config.site_author) head.push({ html: element("meta", { name: "author", content: config.site_author }), from: "site_author" });
+  // MkDocs reads custom_dir from beside mkdocs.yml.
+  const overrides = theme.custom_dir ? posix.normalize(theme.custom_dir).replace(/\/$/, "") : undefined;
+  const partial = overrides && posix.join(overrides, ANALYTICS_PARTIAL);
+  const analytics = config.extra?.analytics;
+  let carried: string | undefined;
+  if (analytics?.provider === "google" && analytics.property) head.push({ html: googleTag(analytics.property), from: "extra.analytics" });
+  else if (analytics?.provider === "custom" && partial && (await project.exists(partial))) {
+    const text = await project.readText(partial);
+    if (/\{[{%#]/.test(text)) review("This partial is a MkDocs template; write what it does into components/Head.html", partial);
+    else head.push({ html: text, from: partial });
+    carried = partial;
+  } else if (analytics) review(`Analytics (${[analytics.provider, analytics.property].filter(Boolean).join(" ") || "extra.analytics"}) are not carried over`);
+  if (overrides && (await project.isDirectory(overrides))) {
+    const others = (await project.list(overrides, () => true)).filter((file) => file !== carried);
+    if (others.length)
+      review(`Theme overrides in ${overrides} (${others.map((file) => file.slice(overrides.length + 1)).join(", ")}) are not carried over; a page part in components/, or pages/404.md for a not-found page, draws their place`);
+  }
+  for (const item of config.extra_javascript ?? []) {
+    const script = typeof item === "string" ? { path: item } : item;
+    if (!script.path) continue;
+    let src = script.path;
+    if (!/^(?:[a-z][\w+.-]*:)?\/\//i.test(src)) {
+      const path = posix.normalize(src).replace(/^\/+/, "");
+      const source = posix.join(docsDir, path);
+      if (!(await project.exists(source))) {
+        review(`extra_javascript ${src} is not in ${docsDir}, so it is not carried over`);
+        continue;
+      }
+      files.set(posix.join(PUBLIC_DIR, path), { bytes: await project.readBytes(source), reason: `Moved from ${source}; every page loads it` });
+      files.set(source, { bytes: null, reason: `Moved to ${posix.join(PUBLIC_DIR, path)}` });
+      src = `${base}/${path}`;
+    }
+    bodyEnd.push({ html: element("script", { src, type: script.type, async: script.async, defer: script.defer }), from: "extra_javascript" });
+  }
+  return { Head: head, BodyEnd: bodyEnd };
 }
 
 /** A Read the Docs build that runs MkDocs; the project switches it to Sourcey. */

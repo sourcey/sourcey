@@ -1,5 +1,5 @@
 import { access } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { markdownPages } from "./adapters/shared.js";
 import { loadConfig, resolveConfigFromRaw, type ResolvedConfig } from "./config.js";
 import { enforceBuildDiagnostics, type ReferenceDiagnostic } from "./core/build-diagnostics.js";
@@ -164,6 +164,7 @@ export function collectSourceyWatchPaths(config: ResolvedConfig, configPath?: st
   const paths = new Set<string>();
   if (config.publicDir) paths.add(config.publicDir);
   if (config.pages) paths.add(config.pages);
+  if (config.componentsDir) paths.add(config.componentsDir);
   if (configPath) paths.add(resolve(configPath));
   for (const file of config.configDependencies ?? []) paths.add(file);
   for (const file of config.theme.css) paths.add(file);
@@ -192,13 +193,15 @@ export function collectSourceyWatchPaths(config: ResolvedConfig, configPath?: st
 /** Shared by standalone and Astro transports. A failed build never mutates previous. */
 export async function updateSourceySite(previous: SourceySiteArtifacts, changedPaths: string[], options: { signal?: AbortSignal } = {}): Promise<SourceySiteArtifacts> {
   changedPaths = await Promise.all(changedPaths.map(canonicalInputPath));
-  const structural = changedPaths.some(file => previous.config.configDependencies?.includes(resolve(file)));
+  // A file in the components folder, a new one too, changes what every page draws.
+  const ownComponents = previous.config.componentsDir;
+  const structural = changedPaths.some(file => previous.config.configDependencies?.includes(resolve(file)) || (ownComponents !== undefined && resolve(file).startsWith(ownComponents + sep)));
   const sourceInventoryChanged = (await Promise.all(changedPaths.map(async file => {
     if (!/\.(md|mdx)$/.test(file)) return false;
     return !await previous.assembly.cache.reader.contains(file) || !await access(file).then(() => true, () => false);
   }))).some(Boolean);
   let config = previous.config;
-  if (structural && config.configPath) config = await loadConfig(config.configPath, config.host);
+  if (structural) config = config.configPath ? await loadConfig(config.configPath, config.host) : await resolveConfigFromRaw(config.authoring, config.configDir, config.host);
   else if (sourceInventoryChanged) {
     const refreshed = await resolveConfigFromRaw(config.authoring, config.configDir, config.host);
     config = { ...config, contexts: refreshed.contexts };

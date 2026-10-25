@@ -12,6 +12,7 @@ import pkg from "../../../package.json" with { type: "json" };
 import { pageMetadata } from "../../core/page-metadata.js";
 import { breadcrumbList, structuredDataJson } from "../../core/breadcrumbs.js";
 import { isAbsoluteHttpUrl } from "../../site-url.js";
+import { PagePart } from "./PagePart.js";
 
 /**
  * The weights the themes set. Google serves each from a variable family's one file, or the
@@ -131,6 +132,7 @@ export function Head() {
       {page.kind === "spec" && options.assets && <link rel="stylesheet" href={options.assets.languageIcons} />}
       {site.customCSS && <style dangerouslySetInnerHTML={{ __html: site.customCSS }} />}
       {site.favicon && <link rel="icon" href={site.favicon} />}
+      <PagePart name="Head" />
     </head>
   );
 }

@@ -5,6 +5,8 @@ import { App } from "../components/App.js";
 import type { NormalizedSpec } from "../core/types.js";
 import type { SiteNavigation } from "../core/navigation.js";
 import type { RenderOptions, SiteConfig } from "./context.js";
+import { pageMetadata } from "../core/page-metadata.js";
+import { fillPageParts } from "../core/site-components.js";
 
 /**
  * Render a page to a complete HTML string using Preact SSG.
@@ -19,7 +21,15 @@ export function renderPage(
   site: SiteConfig,
 ): string {
   const vnode = h(App, { spec, options, navigation, currentPage, site });
-  const html = renderToString(vnode);
+  let html = renderToString(vnode);
+  if (site.pageParts) {
+    html = fillPageParts(html, site.pageParts, {
+      title: pageMetadata(currentPage, site).title,
+      url: options.pageUrl ?? "",
+      lang: options.lang,
+      notFound: options.notFound === true,
+    });
+  }
 
   if (options.embeddable) {
     return html;

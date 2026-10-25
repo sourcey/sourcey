@@ -11,6 +11,7 @@ import {
 import type { RenderOptions, SiteConfig } from "../renderer/context.js";
 import { Head } from "./layout/Head.js";
 import { Page } from "./layout/Page.js";
+import { PagePart } from "./layout/PagePart.js";
 
 export interface AppProps {
   spec: NormalizedSpec | undefined;
@@ -28,11 +29,14 @@ export function App({ spec, options, navigation, currentPage, site }: AppProps) 
   const content = options.embeddable ? (
     <Page />
   ) : (
-    <html lang={options.lang} dir={options.dir}>
+    // A not-found page says so on its root, where a script in the head can read it.
+    <html lang={options.lang} dir={options.dir} data-sourcey-page={options.notFound ? "not-found" : undefined}>
       <Head />
       <body id="sourcey" data-sourcey-theme={site.theme.name}>
+        <PagePart name="Banner" />
         <Page />
         {options.assets && <script src={options.assets.client} type={options.assets.clientType} defer />}
+        <PagePart name="BodyEnd" />
       </body>
     </html>
   );

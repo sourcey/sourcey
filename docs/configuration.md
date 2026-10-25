@@ -348,7 +348,7 @@ A page's frontmatter `layout` says how it is drawn:
 | `blank` | Nothing but the page's body. Sourcey keeps the page's `<head>`: its title, description, social card, theme colours and fonts. |
 | `changelog` | A changelog, as for `CHANGELOG.md`. |
 
-A `page` or `blank` page draws its own heading and opening; Sourcey adds no title above them. Prose keeps the theme's typography; wrap a block in `<div class="not-prose">` to style it yourself. A page can bring its own stylesheets with frontmatter `css: ./home.css` (or a list), resolved from the page's folder: Sourcey publishes each once, with its relative fonts and images, and links it from that page alone.
+The site's own head markup, banner, header, footer and the end of each page's content come from its [components folder](./components.md#page-parts). A `page` or `blank` page draws its own heading and opening; Sourcey adds no title above them. Prose keeps the theme's typography; wrap a block in `<div class="not-prose">` to style it yourself. A page can bring its own stylesheets with frontmatter `css: ./home.css` (or a list), resolved from the page's folder: Sourcey publishes each once, with its relative fonts and images, and links it from that page alone.
 
 ```md
 ---
@@ -367,7 +367,7 @@ css: ./home.css
 
 A page that publishes at the site root, `pages/index.md` or a documentation page at `/`, is the home page, and the logo leads there. When nothing publishes there, a standalone build redirects the root to the first section's first page.
 
-Sourcey generates `404.html` for standalone output; `pages/404.md` replaces it with a page of your own. A not-found page names its assets and links from the site root, because the host serves it at any address. Configure your static host to use that file with an HTTP 404 status. An HTML file alone cannot set a response status. Use `notFound: false` when the host already owns its missing-page route.
+Sourcey generates `404.html` for standalone output; `pages/404.md` replaces it with a page of your own. A not-found page names its assets and links from the site root, because the host serves it at any address, and marks its root `<html data-sourcey-page="not-found">`, so analytics in the site's [`Head` component](./components.md#page-parts) can count missing pages. Configure your static host to use that file with an HTTP 404 status. An HTML file alone cannot set a response status. Use `notFound: false` when the host already owns its missing-page route.
 
 ## Redirects
 

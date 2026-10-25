@@ -14,6 +14,7 @@ import type { ReferenceSplit } from "./core/reference-shape.js";
 import { canonicalInputPath } from "./core/loader.js";
 import { resolveContexts } from "./core/contexts.js";
 import type { NativeComponentDefinition } from "./core/markdown-components.js";
+import type { PagePart, PagePartName } from "./core/site-components.js";
 import type { MarkdownPreprocessor } from "./core/markdown-loader.js";
 import {
   resolveDiscovery,
@@ -175,6 +176,13 @@ export interface SourceyConfig {
   i18n?: I18nConfig;
   versions?: VersionsConfig;
   components?: Record<string, NativeComponentDefinition>;
+  /**
+   * The folder of the site's own components, beside the config: each file is named for the
+   * component it is, or for the part of every page it fills (`Head.html`, `Footer.tsx`), and a
+   * built-in's name replaces it. `false` reads none.
+   * @default "components"
+   */
+  componentsDir?: string | false;
   redirects?: Record<string, string | Redirect>;
   /** Interactive console on OpenAPI references. No requests run until Send. */
   tryIt?: false | TryItConfig;
@@ -588,6 +596,12 @@ export interface ResolvedConfig {
   configPath?: string;
   configDependencies?: string[];
   components: Record<string, NativeComponentDefinition>;
+  /** The site's own page parts, from its components folder. */
+  pageParts: Partial<Record<PagePartName, PagePart>>;
+  /** The components folder, when the site has one. */
+  componentsDir?: string;
+  /** The files its components were read from. */
+  componentFiles: string[];
   redirects: Record<string, Redirect>;
   navbar: { links: NavbarEntry[]; primary?: { type: "button"; label: string; href: string } };
   footer: { text?: string; links: NavbarLink[] };
@@ -733,7 +747,7 @@ export async function loadConfig(configOrDir?: string, host?: Readonly<SiteHostC
 
   const config = await resolveConfigFromRaw(raw, dirname(configPath), host);
   config.configPath = configPath;
-  config.configDependencies = [...new Set(await Promise.all([configPath, ...dependencies.filter(path => !path.includes("/node_modules/"))].map(canonicalInputPath)))];
+  config.configDependencies = [...new Set(await Promise.all([configPath, ...dependencies.filter(path => !path.includes("/node_modules/")), ...config.componentFiles].map(canonicalInputPath)))];
   return config;
 }
 
@@ -782,6 +796,9 @@ export async function resolveConfigFromRaw(
   const logo = resolveLogo(raw.logo, raw.theme?.reader?.logoMark, configDir);
   const contexts = await resolveContexts(raw, configDir, resolveTabs);
   const changelog = resolveChangelog(raw.changelog);
+  const own = raw.componentsDir === false
+    ? undefined
+    : await (await import("./core/site-components.js")).readSiteComponents(resolve(configDir, raw.componentsDir ?? "components"), raw.componentsDir !== undefined);
 
   return {
     ...publicSettings(raw, host),
@@ -802,7 +819,12 @@ export async function resolveConfigFromRaw(
     contexts,
     configDir,
     authoring: raw,
-    components: raw.components ?? {},
+    // A component the config names wins over a file of the same name.
+    components: { ...own?.components, ...raw.components },
+    pageParts: own?.parts ?? {},
+    // Named as a rebuild names the files it is told changed.
+    componentsDir: own?.directory && await canonicalInputPath(own.directory),
+    componentFiles: own?.files ?? [],
     notFound: raw.notFound !== false,
     redirects: resolveRedirects(raw.redirects),
     navbar: {

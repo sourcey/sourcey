@@ -117,7 +117,8 @@ const FRAGMENT = /^[A-Za-z0-9][\w-]*$/;
 
 type ComponentNode = Extract<ContentNode, { kind: "component" }>;
 /** Whether a node is a component of the given name. */
-const named = (node: ContentNode, name: string): node is ComponentNode => node.kind === "component" && node.name === name;
+/** The built-in component of that name; a site's own component of the name is not it. */
+const named = (node: ContentNode, name: string): node is ComponentNode => node.kind === "component" && node.definition === builtins[name];
 
 /** A container's content, under the heading its title or label gives it, which links where its `href` leads. */
 function headed(props: StaticAttributes, content: readonly ContentNode[], heading: JsonValue | undefined = props.title ?? props.label): ContentNode[] {
@@ -882,7 +883,7 @@ export function readableContent(nodes: readonly ContentNode[], audience: Audienc
     }
     if (node.kind === "component" && isField(node)) return `\n\n${fieldMarkdown(node, audience, links)}\n\n`;
     // A callout reads as the GitHub alert Markdown readers know, so it is never taken for the page's prose; a title of its own leads it.
-    if (node.kind === "component" && isCallout(node.name)) {
+    if (node.kind === "component" && isCallout(node.name) && named(node, node.name)) {
       const { props } = node.resolved.data as ContainerData;
       const own = prose(text(props.title ?? props.label));
       const body = `${own ? `**${own}**\n\n` : ""}${read(bodyNodes(node.resolved)).trim()}`;
@@ -921,7 +922,8 @@ export function renderContent(nodes: readonly ContentNode[], messages: UiMessage
     if (node.kind === "label") return block(`<p>${node.href ? `<a href="${escapeAttr(safeUrl(node.href) ?? "#")}">${escapeHtml(node.text)}</a>` : escapeHtml(node.text)}</p>`);
     if (node.kind === "code") return block(renderCodeBlock(node.value, node.language, node.metadata, options?.copyLabel));
     const under = level;
-    const helpers: ComponentRenderHelpers = { render: children => renderContent(children, messages, under), escape: escapeHtml, headingLevel: under };
+    // A component placed in a sentence draws its children as part of the sentence.
+    const helpers: ComponentRenderHelpers = { render: children => node.inline ? phrasing(renderContent(children, messages, under)) : renderContent(children, messages, under), escape: escapeHtml, headingLevel: under };
     const html = node.definition.renderHtml ? node.definition.renderHtml(node.resolved, helpers) : renderContent(node.resolved.content, messages, under);
     const wrapper = node.inline ? "span" : "div";
     // A component the site defines draws HTML of its own making, sanitized as an author's is.
@@ -930,6 +932,12 @@ export function renderContent(nodes: readonly ContentNode[], messages: UiMessage
     return node.inline ? generatedMarker(generated.push(rendered) - 1) : block(rendered, node.indent);
   }).join("");
   return renderMarkdown(markdown, options, generated);
+}
+
+/** One paragraph's text without the paragraph; anything else as it is. */
+function phrasing(html: string): string {
+  const paragraph = /^\s*<p>([\s\S]*)<\/p>\s*$/.exec(html);
+  return paragraph && !/<\/?p[\s>]/.test(paragraph[1]) ? paragraph[1] : html;
 }
 
 function assertJson(value: unknown, seen = new WeakSet<object>()): void {

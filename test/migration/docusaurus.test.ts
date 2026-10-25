@@ -152,6 +152,30 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("carries what the site adds to every page's head: Google Analytics, its head tags, stylesheets and scripts", async () => {
+    const config = site["docusaurus.config.js"]
+      .replace("  presets: [['classic', {", "  presets: [['classic', {\n    gtag: { trackingID: 'G-DOCS' },")
+      .replace("  themeConfig: {", [
+        "  headTags: [{ tagName: 'meta', attributes: { name: 'author', content: 'Ada & co' } }],",
+        "  stylesheets: ['https://fonts.example.com/a.css'],",
+        "  scripts: ['https://buttons.github.io/buttons.js', { src: '/js/kit.js', async: true }],",
+        "  themeConfig: {",
+      ].join("\n"));
+    await withProject({ ...site, "docusaurus.config.js": config, "static/js/kit.js": "kit();\n" }, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root });
+      const head = await read(root, "components/Head.html");
+      expect(head).toMatch(/^<script async src="https:\/\/www\.googletagmanager\.com\/gtag\/js\?id=G-DOCS"><\/script>\n<script>[^\n]*gtag\("config", "G-DOCS"\);<\/script>\n/);
+      expect(head.split("\n").slice(2).join("\n")).toBe([
+        '<meta name="author" content="Ada &amp; co">',
+        '<link rel="stylesheet" href="https://fonts.example.com/a.css">',
+        '<script src="https://buttons.github.io/buttons.js"></script>',
+        '<script src="/js/kit.js" async></script>',
+        "",
+      ].join("\n"));
+      expect(report.diagnostics.map((item) => item.message).join("\n")).not.toMatch(/scripts|analytics/i);
+    });
+  });
+
   it("writes a category whose label opens with an emoji under its plain name, keeping the address Docusaurus gave it", async () => {
     const category = '{ "label": "⚙️ Reference", "link": { "type": "generated-index", "description": "Every option." } }\n';
     await withProject({ ...site, "docs/guides/reference/_category_.json": category }, async (root) => {

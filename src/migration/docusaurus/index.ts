@@ -17,6 +17,7 @@ import { evaluate, identifierName, parseModule } from "../javascript.js";
 import type { ResolvedMapping } from "../mapping.js";
 import { parseDocument, parseMarkdown, textContent, type EstreeNode } from "../mdx.js";
 import { footerLinks, groupsOf, navbarLink, navbarOption, networkOf } from "../navigation.js";
+import { element, googleTag, writePageParts, type PartMarkup } from "../page-parts.js";
 import { markdownSource, type FrameworkMigration, type NativePlan, type PlannedDocument, type SourceDialect } from "../plan.js";
 import type { ProjectFiles } from "../project-files.js";
 import { editLinkOptions } from "../repository.js";
@@ -47,7 +48,8 @@ const PLUGINS: [RegExp, string | undefined][] = [
   [/plugin-sitemap/, undefined],
   [/plugin-client-redirects/, undefined],
   [/search/, "native search replaces it"],
-  [/plugin-google-|gtag|analytics|tag-manager/, "analytics are not carried over"],
+  [/plugin-google-gtag/, undefined],
+  [/plugin-google-|analytics|tag-manager/, "analytics are not carried over"],
 ];
 
 export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diagnostics, mapping: ResolvedMapping): Promise<FrameworkMigration> {
@@ -57,7 +59,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
   const review = (message: string) => diagnostics.review({ file: site.configFile, code: "docusaurus", message });
 
   reportPlugins(site, fail, review);
-  if (await project.exists("src/theme")) review("Swizzled theme components in src/theme are not carried over");
+  if (await project.exists("src/theme")) review("Swizzled theme components in src/theme are not carried over; a page part in components/ draws a header, footer or the end of a page of the site's own");
 
   const pretty = site.trailingSlash === false ? "strip" : "slash";
   const base = site.baseUrl.replace(/\/+$/, "");
@@ -95,6 +97,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
   const navbar = (theme.navbar ?? {}) as Record<string, unknown>;
   const statics = await existing(project, site.staticDirectories);
   const publicDir = await mergeStatics(project, statics, files, fail, review);
+  await writePageParts(project, files, { Head: headMarkup(site) }, fail);
   const header = navbarEntries(navbar.items, collected.docRoutes, new Set(site.docs.map((instance) => tabItem(site, instance))), review);
   // The site's pages by the paths links name them: `to` is read below the site's base.
   const pages = new Set(documents.flatMap((document) => [document.route, document.route.slice(base.length) || "/"]).map((route) => route.replace(/\/+$/, "") || "/"));
@@ -480,7 +483,21 @@ function reportPlugins(site: DocusaurusSite, fail: (message: string) => void, re
       else if (known[1]) review(`Plugin "${plugin.name}": ${known[1]}`);
     }
   }
-  if (Array.isArray(site.config.scripts) && site.config.scripts.length) review("Scripts the site adds to every page are not carried over");
+}
+
+/** What the site adds to every page's head: Google Analytics, then its `headTags`, `stylesheets` and `scripts`. */
+function headMarkup(site: DocusaurusSite): PartMarkup[] {
+  const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+  const attributes = (value: unknown, name: string) => (typeof value === "string" ? { [name]: value } : (value as Record<string, unknown>));
+  return [
+    ...site.gtag.map((id) => ({ html: googleTag(id), from: "gtag" })),
+    ...list(site.config.headTags).map((tag) => {
+      const { tagName, attributes: written, innerHTML } = tag as { tagName: string; attributes?: Record<string, unknown>; innerHTML?: string };
+      return { html: element(tagName, written ?? {}, innerHTML ?? ""), from: "headTags" };
+    }),
+    ...list(site.config.stylesheets).map((sheet) => ({ html: element("link", { rel: "stylesheet", ...attributes(sheet, "href") }), from: "stylesheets" })),
+    ...list(site.config.scripts).map((script) => ({ html: element("script", attributes(script, "src")), from: "scripts" })),
+  ];
 }
 
 async function existing(project: ProjectFiles, paths: readonly string[]): Promise<string[]> {

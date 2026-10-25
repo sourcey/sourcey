@@ -14,6 +14,7 @@ import {
   SiteContext,
 } from "../../renderer/context.js";
 import { SearchDialog } from "./SearchDialog.js";
+import { PagePart } from "./PagePart.js";
 import { navbarLinks, type ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
 import { joinHref } from "../../site-url.js";
@@ -151,7 +152,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
       )}
     </nav>
   );
-  const footer = (
+  const footer = site.pageParts?.Footer ? <PagePart name="Footer" /> : (
     <footer class="doc-footer">
       <span>{settings.footer?.text ?? (site.footer.text ? <Markdown inline content={site.footer.text} class="sourcey-footer-text" /> : site.name)}</span>
       <span class="doc-footer-links">
@@ -176,124 +177,126 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
       <a class="skip-link" href="#main">
         Skip to content
       </a>
-      <header class="site-header">
-        <div class="header-inner">
-          <a class="home-link" href={home} aria-label={`${site.name} home`}>
-            <span class="brand">
-              {site.logo?.light && (
-                <LogoImage
-                  className={site.logo.mark ? "brand-mark" : "brand-logo"}
-                  light={site.logo.dark ?? site.logo.light}
-                  dark={site.logo.dark}
-                  alt={site.logo.mark ? "" : site.name}
-                />
+      <PagePart name="Header">
+        <header class="site-header">
+          <div class="header-inner">
+            <a class="home-link" href={home} aria-label={`${site.name} home`}>
+              <span class="brand">
+                {site.logo?.light && (
+                  <LogoImage
+                    className={site.logo.mark ? "brand-mark" : "brand-logo"}
+                    light={site.logo.dark ?? site.logo.light}
+                    dark={site.logo.dark}
+                    alt={site.logo.mark ? "" : site.name}
+                  />
+                )}
+                {(!site.logo?.light || site.logo.mark) && <span>{site.name}</span>}
+              </span>
+            </a>
+            <nav class="desktop-nav" aria-label={messages.mainNavigation}>
+              {site.navbar.links.map((link) => link.type === "menu" ? (
+                <details key={link.label} class="sourcey-context-menu sourcey-header-menu" name="sourcey-header-menu">
+                  <summary>
+                    <span>{link.label}</span>
+                    <svg class="sourcey-context-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                  </summary>
+                  <ul aria-label={link.label}>{link.links.map((item) => (
+                    <li key={item.href}><a href={safeUrl(item.href) ?? undefined} aria-current={isCurrent(item.href) ? "page" : undefined}>{linkLabel(item)}</a></li>
+                  ))}</ul>
+                </details>
+              ) : (
+                <a
+                  key={link.href}
+                  href={safeUrl(link.href) ?? undefined}
+                  class={link.type === "link" ? undefined : "desktop-nav-icon"}
+                  aria-label={link.type === "link" ? undefined : linkLabel(link)}
+                  aria-current={isCurrent(link.href) ? "page" : undefined}
+                >
+                  {link.type === "link" ? linkLabel(link) : <SocialIcon type={link.type} size={18} />}
+                </a>
+              ))}
+            </nav>
+            <div class="header-actions">
+              {searchHref ? (
+                <a class="search-link" href={searchHref} aria-label={messages.search}>
+                  <Icon name="search" size={17} />
+                  <span>{messages.search}</span>
+                  <kbd>/</kbd>
+                </a>
+              ) : (
+                <button
+                  class="search-link"
+                  id="search-open"
+                  aria-label={messages.search}
+                  data-reader-enhancement
+                  hidden
+                >
+                  <Icon name="search" size={17} />
+                  <span>{messages.search}</span>
+                  <kbd>/</kbd>
+                </button>
               )}
-              {(!site.logo?.light || site.logo.mark) && <span>{site.name}</span>}
-            </span>
-          </a>
-          <nav class="desktop-nav" aria-label={messages.mainNavigation}>
-            {site.navbar.links.map((link) => link.type === "menu" ? (
-              <details key={link.label} class="sourcey-context-menu sourcey-header-menu" name="sourcey-header-menu">
-                <summary>
-                  <span>{link.label}</span>
-                  <svg class="sourcey-context-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                </summary>
-                <ul aria-label={link.label}>{link.links.map((item) => (
-                  <li key={item.href}><a href={safeUrl(item.href) ?? undefined} aria-current={isCurrent(item.href) ? "page" : undefined}>{linkLabel(item)}</a></li>
-                ))}</ul>
-              </details>
-            ) : (
-              <a
-                key={link.href}
-                href={safeUrl(link.href) ?? undefined}
-                class={link.type === "link" ? undefined : "desktop-nav-icon"}
-                aria-label={link.type === "link" ? undefined : linkLabel(link)}
-                aria-current={isCurrent(link.href) ? "page" : undefined}
-              >
-                {link.type === "link" ? linkLabel(link) : <SocialIcon type={link.type} size={18} />}
-              </a>
-            ))}
-          </nav>
-          <div class="header-actions">
-            {searchHref ? (
-              <a class="search-link" href={searchHref} aria-label={messages.search}>
-                <Icon name="search" size={17} />
-                <span>{messages.search}</span>
-                <kbd>/</kbd>
-              </a>
-            ) : (
               <button
-                class="search-link"
-                id="search-open"
-                aria-label={messages.search}
+                id="theme-toggle"
+                class="reader-theme-toggle"
+                type="button"
+                aria-label={messages.dark}
+                data-light-label={messages.light}
+                data-dark-label={messages.dark}
                 data-reader-enhancement
                 hidden
               >
-                <Icon name="search" size={17} />
-                <span>{messages.search}</span>
-                <kbd>/</kbd>
+                <span class="reader-theme-sun"><Icon name="sun" size={18} /></span>
+                <span class="reader-theme-moon"><Icon name="moon" size={18} /></span>
               </button>
-            )}
-            <button
-              id="theme-toggle"
-              class="reader-theme-toggle"
-              type="button"
-              aria-label={messages.dark}
-              data-light-label={messages.light}
-              data-dark-label={messages.dark}
-              data-reader-enhancement
-              hidden
-            >
-              <span class="reader-theme-sun"><Icon name="sun" size={18} /></span>
-              <span class="reader-theme-moon"><Icon name="moon" size={18} /></span>
-            </button>
-            {site.navbar.primary && (
-              <a class="header-cta" href={safeUrl(site.navbar.primary.href) ?? undefined}>
-                {site.navbar.primary.label}
-                <Icon size={15} />
+              {site.navbar.primary && (
+                <a class="header-cta" href={safeUrl(site.navbar.primary.href) ?? undefined}>
+                  {site.navbar.primary.label}
+                  <Icon size={15} />
+                </a>
+              )}
+              <button
+                class="menu-toggle"
+                aria-label={messages.openMenu}
+                data-open-label={messages.openMenu}
+                data-close-label={messages.closeMenu}
+                aria-controls="reader-mobile-nav"
+                aria-expanded="false"
+                data-reader-enhancement
+                hidden
+              >
+                <Icon name="menu" />
+              </button>
+            </div>
+          </div>
+          <div class="reader-context-row"><ContextControls /></div>
+          <nav id="reader-mobile-nav" aria-label={messages.mainNavigation} hidden>
+            {navigationLinks.map((link) => (
+              <Link key={link.href} link={link}>
+                {link.label}
+                <Icon />
+              </Link>
+            ))}
+            {searchHref && (
+              <a href={searchHref}>
+                Search documentation
+                <Icon name="search" />
               </a>
             )}
-            <button
-              class="menu-toggle"
-              aria-label={messages.openMenu}
-              data-open-label={messages.openMenu}
-              data-close-label={messages.closeMenu}
-              aria-controls="reader-mobile-nav"
-              aria-expanded="false"
-              data-reader-enhancement
-              hidden
-            >
-              <Icon name="menu" />
-            </button>
-          </div>
-        </div>
-        <div class="reader-context-row"><ContextControls /></div>
-        <nav id="reader-mobile-nav" aria-label={messages.mainNavigation} hidden>
-          {navigationLinks.map((link) => (
-            <Link key={link.href} link={link}>
-              {link.label}
-              <Icon />
-            </Link>
-          ))}
-          {searchHref && (
-            <a href={searchHref}>
-              Search documentation
-              <Icon name="search" />
-            </a>
-          )}
-          {site.navbar.primary && (
-            <a class="mobile-cta" href={safeUrl(site.navbar.primary.href) ?? undefined}>
-              {site.navbar.primary.label}
-              <Icon />
-            </a>
-          )}
-        </nav>
-        <nav class="reader-mobile-fallback" aria-label={messages.siteLinks} data-reader-fallback>
-          {navigationLinks.map((link) => (
-            <Link key={link.href} link={link} />
-          ))}
-        </nav>
-      </header>
+            {site.navbar.primary && (
+              <a class="mobile-cta" href={safeUrl(site.navbar.primary.href) ?? undefined}>
+                {site.navbar.primary.label}
+                <Icon />
+              </a>
+            )}
+          </nav>
+          <nav class="reader-mobile-fallback" aria-label={messages.siteLinks} data-reader-fallback>
+            {navigationLinks.map((link) => (
+              <Link key={link.href} link={link} />
+            ))}
+          </nav>
+        </header>
+      </PagePart>
       {docPage?.layout === "page" ? (
         // A page drawn by its author keeps the header and footer, without chapters or contents.
         <main id="main" class="reader-page">
@@ -382,6 +385,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
                 {children}
               </>
             )}
+            {paged && <PagePart name="ContentEnd" />}
             {paged && pagination}
             {paged && footer}
           </main>

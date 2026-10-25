@@ -121,6 +121,67 @@ A fenced `mermaid` block renders to static SVG at build time. The page retains i
 
 Ordinary relative Markdown images, titled images, linked thumbnails, HTML media and local downloads join the same asset closure. A Git LFS pointer is diagnosed as an unmaterialized asset; keep your project's LFS checkout step.
 
+## Your own components
+
+Put the site's own components in `components/`, beside `sourcey.config.ts`. Each file is the component it is named for: `components/Note.html` is `<Note>` in any page, and a file with a built-in's name replaces the built-in wherever the site uses it. Set `componentsDir` to read another folder, or `false` to read none.
+
+```text
+components/
+  Head.html     added to the head of every page
+  Footer.tsx    in place of the theme's footer
+  Note.html     <Note> in a page
+  Badge.tsx     <Badge tone="new">
+  format.ts     a helper Badge.tsx imports
+```
+
+An HTML file is drawn as written, with what the page puts inside the component where it writes `<slot />`:
+
+```html
+<!-- components/Note.html -->
+<div class="note"><slot /></div>
+```
+
+A `.tsx` or `.jsx` file's default export is a Preact component. It is given the attributes the page wrote as props, and what the page put inside it as `children`. Sourcey brings its own Preact, so the site installs nothing:
+
+```tsx
+// components/Badge.tsx
+export default function Badge({ tone, children }) {
+  return <span class={`badge badge-${tone}`}>{children}</span>;
+}
+```
+
+A file named in lower case is a helper for the components to import, not a component. A component written in a sentence holds part of the sentence, and one on lines of its own holds blocks. What a component holds stays the page's text, in search and in the page's Markdown copy. Its HTML is sanitized as an author's is, so scripts and inline event handlers are removed. A definition registered under `components` in the config wins over a file of the same name.
+
+### Page parts
+
+Six names fill a part of every page rather than a component in Markdown:
+
+| File | Draws |
+| --- | --- |
+| `Head` | At the end of every page's `<head>`: analytics, verification tags, fonts. |
+| `Banner` | At the start of every page's `<body>`, above the header. |
+| `Header` | In place of the theme's header. |
+| `ContentEnd` | After a documentation, reference or changelog page's content, above "Edit this page". |
+| `Footer` | In place of the theme's footer. |
+| `BodyEnd` | At the end of every page's `<body>`. |
+
+A page part is the site's own markup and is drawn as written, scripts included. A `.tsx` page part is given `page`, with the page's `title`, `url` and `lang`, and `notFound`, which is true on the not-found page. The theme lays the page out below a header `--header-height` tall, so a `Header` of another height sets that variable in the site's stylesheet.
+
+```html
+<!-- components/Head.html -->
+<script async src="https://analytics.example.com/script.js" data-site="docs"></script>
+```
+
+A not-found page also says so on its root, `<html data-sourcey-page="not-found">`, so a script in the head can tell it apart:
+
+```html
+<script>
+  if (document.documentElement.dataset.sourceyPage === "not-found") track("404", location.pathname);
+</script>
+```
+
+In `sourcey dev`, an edit to a component, or to a module it imports, redraws every page.
+
 ## Build-time components
 
 Register a native definition when a page should derive content from a specification, JSON file or other declared input:
