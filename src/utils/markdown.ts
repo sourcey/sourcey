@@ -337,9 +337,101 @@ export function generatedMarker(index: number): string {
   return `${GENERATED_OPEN}${index}${GENERATED_CLOSE}`;
 }
 
-/** Authored text keeps any marker characters it holds as characters. */
+/** Authored text keeps any marker characters it holds, the build's and its footnotes', as characters. */
 export function escapeGeneratedMarkers(markdown: string): string {
-  return /[\uE000\uE001]/.test(markdown) ? markdown.replace(/[\uE000\uE001]/g, (char) => `&#x${char.charCodeAt(0).toString(16)};`) : markdown;
+  return /[\uE000-\uE005]/.test(markdown) ? markdown.replace(/[\uE000-\uE005]/g, (char) => `&#x${char.charCodeAt(0).toString(16)};`) : markdown;
+}
+
+/**
+ * The footnotes of the document being drawn. A document is drawn in pieces,
+ * a component's content before the text around it, so a reference stands as a
+ * marker until the document is whole, and is then numbered in reading order.
+ * A note is drawn where it was written, sanitized with its piece, between
+ * markers, and moves to the document's end.
+ */
+interface FootnoteScope {
+  references: string[];
+  notes: string[];
+}
+let footnotes: FootnoteScope | undefined;
+const REFERENCE_OPEN = "\uE002", NOTE_OPEN = "\uE003", NOTE_LABEL_END = "\uE004", NOTE_CLOSE = "\uE005";
+const REFERENCE_MARKER = /\uE002(\d+)\uE002/g;
+const NOTE_MARKER = /\uE003(\d+)\uE004([\s\S]*?)\uE005/g;
+// A note's text runs on through lines indented four spaces, and blank lines between them.
+const NOTE_DEFINITION = /^\[\^([^\]\s]+)\]:[ \t]*([^\n]*(?:\n(?:[ \t]*\n)*(?: {4}|\t)[^\n]*)*)(?:\n+|$)/;
+
+const footnoteExtension: import("marked").MarkedExtension = {
+  extensions: [
+    {
+      name: "footnoteDefinition",
+      level: "block",
+      start: (src: string) => (footnotes ? blockStart(src, "[^", true) : undefined),
+      tokenizer(src: string) {
+        const match = footnotes && NOTE_DEFINITION.exec(src);
+        if (!match) return undefined;
+        const token = { type: "footnoteDefinition", raw: match[0], label: match[1], tokens: [] as Token[] };
+        this.lexer.blockTokens(match[2].replace(/^(?: {4}|\t)/gm, ""), token.tokens);
+        return token;
+      },
+      renderer(token: Tokens.Generic): string {
+        const index = footnotes!.notes.push(token.label as string) - 1;
+        return `${NOTE_OPEN}${index}${NOTE_LABEL_END}${this.parser.parse(token.tokens ?? [])}${NOTE_CLOSE}`;
+      },
+    },
+    {
+      name: "footnoteReference",
+      level: "inline",
+      start: (src: string) => { const at = footnotes ? src.indexOf("[^") : -1; return at < 0 ? undefined : at; },
+      tokenizer(src: string) {
+        const match = footnotes && /^\[\^([^\]\s]+)\]/.exec(src);
+        if (match) return { type: "footnoteReference", raw: match[0], label: match[1] };
+      },
+      renderer: (token: Tokens.Generic) => `${REFERENCE_OPEN}${footnotes!.references.push(token.label as string) - 1}${REFERENCE_OPEN}`,
+    },
+  ],
+};
+
+/**
+ * Draw a document whose footnotes, written `[^label]` and `[^label]: note`,
+ * number in reading order across every piece `draw` renders, with their notes
+ * after it, as GitHub draws them. A piece drawn within another's draw is part
+ * of that document.
+ */
+export function withFootnotes(messages: { footnotes: string; footnoteBack: string }, draw: () => string): string {
+  if (footnotes) return draw();
+  const scope: FootnoteScope = (footnotes = { references: [], notes: [] });
+  let html: string;
+  try { html = draw(); } finally { footnotes = undefined; }
+  if (!scope.references.length && !scope.notes.length) return html;
+  const notes = new Map<string, string>();
+  html = html.replace(NOTE_MARKER, (_, index: string, note: string) => {
+    const label = scope.notes[Number(index)].toLowerCase();
+    if (!notes.has(label)) notes.set(label, note.trim());
+    return "";
+  });
+  const numbers = new Map<string, number>();
+  const uses = new Map<string, number>();
+  html = html.replace(REFERENCE_MARKER, (_, index: string) => {
+    const written = scope.references[Number(index)];
+    const label = written.toLowerCase();
+    // A reference to no note is the text it was written as.
+    if (!notes.has(label)) return escapeHtml(`[^${written}]`);
+    if (!numbers.has(label)) numbers.set(label, numbers.size + 1);
+    const use = (uses.get(label) ?? 0) + 1;
+    uses.set(label, use);
+    const id = slugify(label);
+    return `<sup class="footnote-ref"><a href="#fn-${id}" id="fnref-${id}${use > 1 ? `-${use}` : ""}" aria-describedby="footnotes-label">${numbers.get(label)}</a></sup>`;
+  });
+  if (!numbers.size) return html;
+  const items = [...numbers].map(([label, number]) => {
+    const id = slugify(label);
+    const back = ` <a href="#fnref-${id}" class="footnote-back" aria-label="${escapeAttr(`${messages.footnoteBack} ${number}`)}">\u21A9</a>`;
+    const note = notes.get(label)!;
+    // The way back closes the note's last paragraph, or follows the note.
+    const end = note.endsWith("</p>") ? note.lastIndexOf("</p>") : note.length;
+    return `<li id="fn-${id}">${note.slice(0, end)}${back}${note.slice(end)}</li>`;
+  });
+  return `${html}\n<section class="footnotes"><h2 id="footnotes-label" class="footnotes-label">${escapeHtml(messages.footnotes)}</h2><ol>${items.join("")}</ol></section>\n`;
 }
 
 interface GeneratedToken extends Tokens.Generic { index: number }
@@ -376,7 +468,7 @@ function generatedPlace(index: number): string {
 
 /** Keep adapter rendering on the same Markdown, links and sanitization path. */
 function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
-  return new Marked(generatedExtension, videoExtension, iframeExtension, alertExtension(options.callouts ?? DEFAULT_CALLOUTS), {
+  return new Marked(generatedExtension, footnoteExtension, videoExtension, iframeExtension, alertExtension(options.callouts ?? DEFAULT_CALLOUTS), {
     walkTokens(token: Token) {
       if (token.type === "html") authoredHtml = true;
     },

@@ -101,6 +101,16 @@ Line numbers refer to the displayed source. `highlight=`, `focus=`, `add=` and `
 
 A code block names its language on its element, `<div class="prose-code-block" data-language="ts">`, so a stylesheet can label blocks by language.
 
+## Footnotes
+
+```md
+Install a LAMP stack[^lamp] first.
+
+[^lamp]: Linux, Apache, MySQL and PHP.
+```
+
+A footnote is written as GitHub writes one. Its reference is numbered in reading order across the page, a callout's text included, and its note is drawn at the end of the page with a link back. A note can run on through lines indented four spaces. A reference to no note stays as written, and a note nothing refers to is left out. The page's Markdown copy keeps both as written.
+
 ## Figures, video and diagrams
 
 ```md

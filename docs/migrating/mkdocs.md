@@ -48,6 +48,7 @@ Each conversion applies only when the extension is enabled in `mkdocs.yml`.
 | GitHub alerts (`gh-admonitions`) | unchanged; native Markdown reads `> [!NOTE]` as written, and an indented alert becomes a callout |
 | `pymdownx.snippets`, `markdown_include` | `<Include src>`; a fence holding only a snippet becomes a code include |
 | `attr_list` | heading IDs as `{#id}`; classes and other attributes are reported and removed |
+| Material annotations (`{ .annotate }` with `(1)` markers and the list after them), `footnotes` | [footnotes](../components.md#footnotes), numbered on through the page |
 | `md_in_html` | the `markdown` attribute goes and the content is separated by blank lines |
 | `pymdownx.emoji` icons, `pymdownx.inlinehilite` markers | removed and reported |
 | `pymdownx.highlight` line options | native code fence metadata |

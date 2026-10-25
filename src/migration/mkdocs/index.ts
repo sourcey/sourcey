@@ -33,7 +33,7 @@ const PROVIDED_PLUGINS = new Set(["search", "minify", "gh-admonitions", "redirec
 /** Plugins that generate or rewrite content; converting them needs work of its own. */
 const CONTENT_PLUGINS = new Set(["macros", "awesome-pages", "blog", "mkdocstrings", "i18n", "static-i18n", "include-markdown", "monorepo", "multirepo", "gen-files", "literate-nav", "section-index"]);
 /** Extensions whose syntax native Markdown reads as written, or that only style output. */
-const NATIVE_EXTENSIONS = new Set(["tables", "fenced_code", "toc", "codehilite", "pymdownx.highlight", "pymdownx.superfences", "pymdownx.tasklist", "pymdownx.magiclink", "pymdownx.betterem", "pymdownx.smartsymbols", "meta", "sane_lists", "nl2br"]);
+const NATIVE_EXTENSIONS = new Set(["tables", "footnotes", "fenced_code", "toc", "codehilite", "pymdownx.highlight", "pymdownx.superfences", "pymdownx.tasklist", "pymdownx.magiclink", "pymdownx.betterem", "pymdownx.smartsymbols", "meta", "sane_lists", "nl2br"]);
 
 /**
  * MkDocs configs carry environment and Python tags. `!ENV NAME` (or

@@ -9,7 +9,7 @@ import { canonicalInputPath } from "./loader.js";
 import type { InputReader } from "./loader.js";
 import type { NormalizedSchema } from "./types.js";
 import { escapeAttr, escapeHtml, safeUrl, rewriteHtmlUrls, sanitizeRenderedHtml } from "../utils/html.js";
-import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, renderMarkdownInline, renderCodeBlock, parseCodeFenceInfo, type CodeFenceMetadata, type MarkdownRenderOptions, type PageHeading, lexMarkdown, headingInfo, pageLinkHref, PAGE_CONTENT } from "../utils/markdown.js";
+import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, renderMarkdownInline, renderCodeBlock, parseCodeFenceInfo, type CodeFenceMetadata, type MarkdownRenderOptions, type PageHeading, lexMarkdown, headingInfo, pageLinkHref, PAGE_CONTENT, withFootnotes } from "../utils/markdown.js";
 import { iconDrawing, iconSource, iconSvg, isImageIcon, type IconPresentation } from "../utils/icons.js";
 import { ALERT, ALERT_TYPE, CALLOUTS, alertBody, alertCallout, isCallout, renderCallout, type CalloutKind } from "../utils/callouts.js";
 import type { IconSet } from "../config.js";
@@ -904,7 +904,12 @@ let builtinDefinitions: ReadonlySet<NativeComponentDefinition> | undefined;
 /** Sourcey's own components, which draw their HTML from escaped and checked values. */
 const isBuiltin = (definition: NativeComponentDefinition) => (builtinDefinitions ??= new Set(Object.values(builtins))).has(definition);
 
+/** A document's content as HTML, its footnotes numbered across all of it. */
 export function renderContent(nodes: readonly ContentNode[], messages: UiMessages, headingLevel = 1): string {
+  return withFootnotes(messages, () => drawContent(nodes, messages, headingLevel));
+}
+
+function drawContent(nodes: readonly ContentNode[], messages: UiMessages, headingLevel: number): string {
   let options = renderOptions.get(messages);
   if (!options) { options = { ...PAGE_CONTENT, copyLabel: messages.copyCode }; renderOptions.set(messages, options); }
   // Components learn the level of the heading they sit under, read in document order.

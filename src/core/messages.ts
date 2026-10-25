@@ -55,6 +55,8 @@ export const english = {
   pagination: "Previous and next page",
   chapterPagination: "Previous and next chapter",
   codeLanguage: "Code language",
+  footnotes: "Footnotes",
+  footnoteBack: "Back to reference",
 } as const;
 export type UiMessages = { [K in keyof typeof english]: string };
 export type UiMessageOverrides = Partial<UiMessages> & { navigation?: Record<string, string> };
@@ -117,6 +119,8 @@ const translations: Record<string, Partial<UiMessages>> = {
     pagination: "Page précédente et page suivante",
     chapterPagination: "Chapitre précédent et chapitre suivant",
     codeLanguage: "Langage du code",
+    footnotes: "Notes de bas de page",
+    footnoteBack: "Retour à l’appel de note",
   },
   es: {
     copyCode: "Copiar código",
@@ -175,6 +179,8 @@ const translations: Record<string, Partial<UiMessages>> = {
     pagination: "Página anterior y siguiente",
     chapterPagination: "Capítulo anterior y siguiente",
     codeLanguage: "Lenguaje del código",
+    footnotes: "Notas al pie",
+    footnoteBack: "Volver a la referencia",
   },
   it: {
     copyCode: "Copia codice",
@@ -233,6 +239,8 @@ const translations: Record<string, Partial<UiMessages>> = {
     pagination: "Pagina precedente e successiva",
     chapterPagination: "Capitolo precedente e successivo",
     codeLanguage: "Linguaggio del codice",
+    footnotes: "Note a piè di pagina",
+    footnoteBack: "Torna al rimando",
   },
 };
 

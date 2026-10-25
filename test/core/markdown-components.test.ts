@@ -240,6 +240,45 @@ describe("inline components", () => {
   });
 });
 
+describe("footnotes", () => {
+  it("number in reading order across the page, a callout's included, with their notes at its end and a way back", async () => {
+    const page = await guide([
+      "# Guide",
+      "",
+      "Opening.",
+      "",
+      "Install a LAMP stack[^lamp] first.",
+      "",
+      ":::note",
+      "PHP 8.5 or later[^php], as the stack[^lamp] provides.",
+      ":::",
+      "",
+      "[^php]: Earlier releases miss the **JSON** functions.",
+      "",
+      "    They were added in 8.3.",
+      "[^lamp]: Linux, Apache, MySQL, PHP.",
+      "[^unused]: Never cited.",
+      "",
+      "A [^missing] reference stays as written.",
+      "",
+    ].join("\n"));
+    expect(page.html).toContain('LAMP stack<sup class="footnote-ref"><a href="#fn-lamp" id="fnref-lamp" aria-describedby="footnotes-label">1</a></sup> first.');
+    expect(page.html).toContain('PHP 8.5 or later<sup class="footnote-ref"><a href="#fn-php" id="fnref-php" aria-describedby="footnotes-label">2</a></sup>, as the stack<sup class="footnote-ref"><a href="#fn-lamp" id="fnref-lamp-2"');
+    expect(page.html).toContain("A [^missing] reference stays as written.");
+    const notes = page.html.slice(page.html.indexOf('<section class="footnotes">'));
+    expect(notes).toBe([
+      '<section class="footnotes"><h2 id="footnotes-label" class="footnotes-label">Footnotes</h2><ol>',
+      '<li id="fn-lamp"><p>Linux, Apache, MySQL, PHP. <a href="#fnref-lamp" class="footnote-back" aria-label="Back to reference 1">↩</a></p></li>',
+      '<li id="fn-php"><p>Earlier releases miss the <strong>JSON</strong> functions.</p>\n<p>They were added in 8.3. <a href="#fnref-php" class="footnote-back" aria-label="Back to reference 2">↩</a></p></li>',
+      "</ol></section>\n",
+    ].join(""));
+    expect(page.html).not.toContain("Never cited");
+    expect(page.html).not.toMatch(/[-]/);
+    // The page's Markdown copy keeps them as written.
+    expect(page.markdown).toContain("[^lamp]: Linux, Apache, MySQL, PHP.");
+  });
+});
+
 describe("accordion anchors", () => {
   it("publish an accordion's own anchor among the page's, strict as a field's", async () => {
     const page = await guide('# Guide\n\n<AccordionGroup>\n<Accordion title="Billing" anchor="billing-faq">Monthly.</Accordion>\n</AccordionGroup>\n');

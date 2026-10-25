@@ -73,7 +73,7 @@ const ATTRIBUTE = /^(?:#[\w-]+|\.[\w-]+|[\w:-]+=(?:"[^"]*"|'[^']*'|[^\s"'}]+)|[\
  * the block syntax rewritten here, must appear in the result.
  */
 export async function convertMkDocsMarkdown(source: string, context: SyntaxContext): Promise<string> {
-  const lines = source.split("\n");
+  const lines = context.extensions.attrList ? annotationsAsFootnotes(source.split("\n")) : source.split("\n");
   const converted = (await convertBlock(lines, context, 0)).join("\n");
   const flat = (text: string) => text.replace(/\s+/g, " ").trim();
   const result = flat(converted);
@@ -96,6 +96,57 @@ export async function convertMkDocsMarkdown(source: string, context: SyntaxConte
       context.diagnostics.error({ file: context.file, line: index + 1, code: "mkdocs-content", message: `This line did not survive conversion: "${kept.length > 70 ? `${kept.slice(0, 67)}...` : kept}"` });
   }
   return converted;
+}
+
+/**
+ * Material's annotations as footnotes: a block marked `{ .annotate }` shows
+ * each `(1)` in its text as a note, and the numbered list after it holds the
+ * notes in order. Each marker becomes a reference and each item its note,
+ * numbered on through the page as Material numbers them.
+ */
+function annotationsAsFootnotes(source: string[]): string[] {
+  const lines = [...source];
+  // Labels of the page's own footnotes stay clear of the annotations'.
+  const own = lines.some((line) => /\[\^[^\]\s]+\]/.test(line));
+  let count = 0;
+  for (let index = 1; index < lines.length; index += 1) {
+    const attributes = lines[index].match(BLOCK_ATTRIBUTES);
+    const entries = attributes?.[2].split(/\s+/) ?? [];
+    if (!entries.includes(".annotate") || !lines[index - 1].trim()) continue;
+    const indent = lines[index].match(/^[ \t]*/)![0];
+    let start = index;
+    while (start > 0 && lines[start - 1].trim()) start -= 1;
+    const labels = new Map<string, string>();
+    for (let at = start; at < index; at += 1) {
+      const code = [...lines[at].matchAll(/(`+)(?:(?!\1)[^`]|`(?!\1))*?\1/g)].map((match) => [match.index!, match.index! + match[0].length]);
+      lines[at] = lines[at].replace(/[ \t]?\((\d+)\)/g, (match, number: string, offset: number) => {
+        if (code.some(([open, close]) => offset >= open && offset < close)) return match;
+        if (!labels.has(number)) labels.set(number, own ? `annotation-${++count}` : String(++count));
+        return `[^${labels.get(number)}]`;
+      });
+    }
+    if (!labels.size) continue;
+    const rest = entries.filter((entry) => entry !== ".annotate");
+    if (rest.length) lines[index] = `${indent}{${attributes![1]} ${rest.join(" ")} }`;
+    else lines.splice(index--, 1);
+    let at = index + 1;
+    while (at < lines.length && !lines[at].trim()) at += 1;
+    const item = new RegExp(`^${escapeRegExp(indent)}(\\d+)\\.[ \\t]+(.*)$`);
+    const after = (from: number) => {
+      while (from < lines.length && !lines[from].trim()) from += 1;
+      return from;
+    };
+    for (let entry = item.exec(lines[at] ?? ""); entry && labels.has(entry[1]); at = after(at), entry = item.exec(lines[at] ?? "")) {
+      lines[at] = `${indent}[^${labels.get(entry[1])}]: ${entry[2]}`;
+      // An item's further lines, indented under it, are its note's, indented as a note's are.
+      for (let next = after(at + 1); next < lines.length && lines[next].startsWith(`${indent} `); next = after(next + 1)) {
+        lines[next] = `${indent}    ${lines[next].trimStart()}`;
+        at = next;
+      }
+      at += 1;
+    }
+  }
+  return lines;
 }
 
 /** Fenced code blocks at any indent, as [first line, last line] pairs; an unclosed fence runs to the end. */

@@ -132,6 +132,32 @@
   white-space: nowrap;
 }
 
+/* ── Footnotes ────────────────────────────────────────────────────── */
+
+/* A note's number rides above the line; the notes end the page under a rule, a step smaller than its text. */
+#sourcey .footnote-ref a,
+#sourcey .footnote-back {
+  text-decoration: none;
+}
+#sourcey .footnotes {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(var(--color-gray-200) / 0.7);
+  font-size: 0.875em;
+}
+.dark #sourcey .footnotes {
+  border-top-color: rgb(var(--color-gray-800) / 0.5);
+}
+/* The heading names the notes for assistive technology; the rule shows where they begin. */
+#sourcey .footnotes-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ── Prose Video (::video directive) ──────────────────────────────── */
 
 #sourcey .prose-video {

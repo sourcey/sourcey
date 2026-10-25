@@ -31,6 +31,39 @@ async function convert(markdown: string, files: Record<string, string> = {}, ext
 }
 
 describe("MkDocs syntax", () => {
+  it("writes Material's annotations as footnotes, numbered on through the page", async () => {
+    const { text, diagnostics } = await convert(
+      [
+        "You need a LAMP, LEMP or WAMP (1) stack. Use `f(2)` in PHP (2).",
+        "{ .annotate }",
+        "",
+        "1. Linux, Apache, MySQL, PHP.",
+        "2. The current release,",
+        "   which the installer checks.",
+        "",
+        "The guides (1) differ.",
+        "{ .annotate }",
+        "",
+        "1. Each covers one system.",
+      ].join("\n"),
+    );
+    expect(diagnostics.errors).toEqual([]);
+    expect(diagnostics.sorted()).toEqual([]);
+    expect(text).toBe(
+      [
+        "You need a LAMP, LEMP or WAMP[^1] stack. Use `f(2)` in PHP[^2].",
+        "",
+        "[^1]: Linux, Apache, MySQL, PHP.",
+        "[^2]: The current release,",
+        "    which the installer checks.",
+        "",
+        "The guides[^3] differ.",
+        "",
+        "[^3]: Each covers one system.",
+      ].join("\n"),
+    );
+  });
+
   it("writes admonitions, collapsibles, tabs and indented GitHub alerts as native blocks", async () => {
     const { text, diagnostics } = await convert(
       [
