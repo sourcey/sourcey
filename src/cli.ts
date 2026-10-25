@@ -126,7 +126,7 @@ const dev = defineCommand({
     host: {
       type: "string",
       description:
-        "Address to bind to (e.g. 0.0.0.0 to expose externally; defaults to 127.0.0.1, or $HOST if set)",
+        "Address to bind to (e.g. 0.0.0.0 to expose externally; defaults to localhost, or $HOST if set)",
       required: false,
     },
     config: {
