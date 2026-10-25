@@ -38,7 +38,7 @@ describe("page feedback", () => {
     expect(question).toContain('<p id="sourcey-feedback-title" class="sourcey-feedback-title">Was this page helpful?</p>');
     expect(question).toMatch(/<button type="button" class="sourcey-feedback-rating" data-rating="0" data-value="1" aria-pressed="false" aria-label="Yes" title="Yes"><svg class="sourcey-feedback-icon"/);
     expect(question).toContain('data-rating="1" data-value="0" aria-pressed="false" aria-label="No" title="No"');
-    expect(question).toContain('<div class="sourcey-feedback-note" data-rating="0" hidden><p>Thanks for your feedback.</p>\n</div>');
+    expect(question).toContain('<div class="sourcey-feedback-note" data-rating="0" hidden><p>Thanks for your feedback.</p></div>');
     expect(guide.indexOf("Install it.")).toBeLessThan(guide.indexOf("sourcey-feedback"));
     expect(page("api/index.html")).toContain("data-sourcey-feedback");
     expect(page("docs/quiet/index.html")).not.toContain("data-sourcey-feedback");

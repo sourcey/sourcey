@@ -27,14 +27,17 @@ export interface PagePartProps {
 export interface PagePart {
   file: string;
   digest: string;
-  render(page: PagePartProps): string;
+  /** The part for a page, which reads the page's details only if it draws from them, as a `.tsx` part does. */
+  render(page: () => PagePartProps): string;
 }
 
 /** The element a page leaves where a site's own part goes, filled once the page is drawn. */
 export const PAGE_PART_TAG = "sourcey-part";
 
-/** Draw each of a site's parts into the slot the page left for it. */
-export function fillPageParts(html: string, parts: Partial<Record<PagePartName, PagePart>>, page: PagePartProps): string {
+/** Draw each of a site's parts into the slot the page left for it, working out the page's details once if one asks. */
+export function fillPageParts(html: string, parts: Partial<Record<PagePartName, PagePart>>, details: () => PagePartProps): string {
+  let known: PagePartProps | undefined;
+  const page = () => (known ??= details());
   for (const name of PAGE_PARTS) {
     const part = parts[name];
     if (!part) continue;
@@ -88,9 +91,11 @@ export async function readSiteComponents(directory: string, required: boolean): 
     seen.set(name, file);
     let draw: (props: Record<string, unknown>, children: string) => string;
     let files: string[];
+    let part: PagePart["render"];
     if (extension === ".html") {
       const source = await readFile(path, "utf8");
       draw = (_props, children) => source.replace(/<slot\s*\/?>(?:\s*<\/slot>)?/g, () => children);
+      part = () => source;
       files = [path];
     } else {
       const imported = await importComponent(path);
@@ -99,13 +104,14 @@ export async function readSiteComponents(directory: string, required: boolean): 
       draw = (props, children) => children
         ? renderToString(h(component, { ...props, children: h(CHILDREN_TAG, null) })).split(`<${CHILDREN_TAG}></${CHILDREN_TAG}>`).join(children)
         : renderToString(h(component, props));
+      part = (page) => renderToString(h(component, { page: page() }));
       files = imported.files;
     }
     result.files.push(...files);
     if ((PAGE_PARTS as readonly string[]).includes(name)) {
       const digest = createHash("sha256");
       for (const source of files) digest.update(await readFile(source));
-      result.parts[name as PagePartName] = { file: path, digest: digest.digest("hex"), render: (page) => draw({ page }, "") };
+      result.parts[name as PagePartName] = { file: path, digest: digest.digest("hex"), render: part };
     } else result.components[name] = markdownComponent(draw);
   }
   return result;

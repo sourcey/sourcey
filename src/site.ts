@@ -8,7 +8,7 @@ import type { GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import { canonicalInputPath } from "./core/loader.js";
 import type { ContentDiagnostic } from "./core/markdown-loader.js";
 import { buildSiteNavigation, type SiteNavigation } from "./core/navigation.js";
-import { lastChanged } from "./core/page-dates.js";
+import { lastChanged, readRepository, type Repository } from "./core/page-dates.js";
 import type { OverlayDiagnostic } from "./core/overlay.js";
 import type { RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
 import { buildSearchIndex, searchDocuments, type SearchEntry } from "./core/search-indexer.js";
@@ -20,7 +20,7 @@ import { generateExports } from "./exports/index.js";
 import type { SiteConfig } from "./renderer/context.js";
 import { buildSite as buildSiteHtml, renderSiteArtifacts, type PageRenderCache } from "./renderer/html-builder.js";
 import { assembleSite, type SiteAssembly } from "./site-assembly.js";
-import { buildSiteConfig } from "./site-assets.js";
+import { buildSiteConfig, readNavbarLinks } from "./site-assets.js";
 import { drawingCards, planCards, type SiteCards } from "./site-cards.js";
 import { publishSearch, searchRowsByContext, type SearchCache } from "./site-search.js";
 import { isAbsoluteHttpUrl } from "./site-url.js";
@@ -90,16 +90,19 @@ export async function buildSourceySite(
   const config = options.config ?? (await loadConfig(options.configDir));
   const previousCache = options.previous && compilationCaches.get(options.previous);
 
+  // What the build reads from outside the site, GitHub's numbers and the repository's history, it reads while the pages load.
+  const siteWarnings: SiteDiagnostic[] = [];
+  const navbarLinks = readNavbarLinks(config, siteWarnings);
+  const repository = config.lastUpdated ? readRepository(config.configDir) : undefined;
   const assembled = await assembleSite(config, options.previous?.assembly.cache, options.changedPaths, options.signal, { copyFromSource: options.copyFromSource });
   // Diagrams are drawn as pages load; their renderer's memory goes with it.
   await closeDiagramRenderer();
-  const siteWarnings: SiteDiagnostic[] = [];
-  const site = await buildSiteConfig(config, assembled.cache.reader, assembled.extraFiles, siteWarnings);
+  const site = await buildSiteConfig(config, assembled.cache.reader, assembled.extraFiles, await navbarLinks);
   const root = config.baseUrl || "/";
   const home = assembled.routes.match(root);
   if (home && !home.aliasOf) site.home = root;
   const pages = Array.from(assembled.pageMap.values());
-  if (config.lastUpdated) await datePages(pages, config.configDir);
+  if (repository) await datePages(pages, config.configDir, repository);
   const navigation = buildSiteNavigation(assembled.siteTabs);
 
   enforceBuildDiagnostics(assembled, options.strictChangelog);
@@ -144,14 +147,14 @@ export async function buildSourceySite(
 }
 
 /** Date each documentation page and changelog by its file's last commit. */
-async function datePages(pages: readonly SitePage[], configDir: string): Promise<void> {
+async function datePages(pages: readonly SitePage[], configDir: string, repository: Promise<Repository>): Promise<void> {
   const files = new Map<SitePage, string>();
   for (const page of pages) {
     const current = page.currentPage;
     const source = current.kind === "markdown" ? current.markdown.sourcePath : current.kind === "changelog" ? current.changelog.sourcePath : undefined;
     if (source) files.set(page, resolve(configDir, source));
   }
-  const dates = await lastChanged(configDir, [...new Set(files.values())]);
+  const dates = await lastChanged(repository, [...new Set(files.values())]);
   for (const [page, file] of files) page.updated = dates.get(file);
 }
 

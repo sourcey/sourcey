@@ -156,24 +156,26 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
       )}
     </nav>
   );
-  const footer = site.pageParts?.Footer ? <PagePart name="Footer" /> : (
-    <footer class="doc-footer">
-      <span>{settings.footer?.text ?? (site.footer.text ? <Markdown inline content={site.footer.text} class="sourcey-footer-text" /> : site.name)}</span>
-      <span class="doc-footer-links">
-        {settings.footer?.links?.map((link) => (
-          <Link key={link.href} link={link}>
-            {link.label}
-            <Icon name="northeast" size={12} />
-          </Link>
-        ))}
-        <span class="sourcey-attribution">
-          <a href="https://sourcey.com/docs" target="_blank" rel="noopener">
-            Docs by Sourcey
-            <Icon name="northeast" size={12} />
-          </a>
+  const footer = (
+    <PagePart name="Footer">
+      <footer class="doc-footer">
+        <span>{settings.footer?.text ?? (site.footer.text ? <Markdown inline content={site.footer.text} class="sourcey-footer-text" /> : site.name)}</span>
+        <span class="doc-footer-links">
+          {settings.footer?.links?.map((link) => (
+            <Link key={link.href} link={link}>
+              {link.label}
+              <Icon name="northeast" size={12} />
+            </Link>
+          ))}
+          <span class="sourcey-attribution">
+            <a href="https://sourcey.com/docs" target="_blank" rel="noopener">
+              Docs by Sourcey
+              <Icon name="northeast" size={12} />
+            </a>
+          </span>
         </span>
-      </span>
-    </footer>
+      </footer>
+    </PagePart>
   );
 
   return (

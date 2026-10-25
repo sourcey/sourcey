@@ -23,12 +23,12 @@ export function renderPage(
   const vnode = h(App, { spec, options, navigation, currentPage, site });
   let html = renderToString(vnode);
   if (site.pageParts) {
-    html = fillPageParts(html, site.pageParts, {
+    html = fillPageParts(html, site.pageParts, () => ({
       title: pageMetadata(currentPage, site).title,
       url: options.pageUrl ?? "",
       lang: options.lang,
       notFound: options.notFound === true,
-    });
+    }));
   }
 
   if (options.embeddable) {

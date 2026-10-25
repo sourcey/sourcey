@@ -16,7 +16,7 @@ import { tabPath, toPublicUrl } from "./site-url.js";
  * The site as its pages draw it: its name, theme and links, with its logo,
  * favicon and theme stylesheets published as assets and named by their URLs.
  */
-export async function buildSiteConfig(config: ResolvedConfig, input: InputReader, assets: Map<string, ArtifactBody>, warnings: SiteDiagnostic[] = []): Promise<SiteConfig> {
+export async function buildSiteConfig(config: ResolvedConfig, input: InputReader, assets: Map<string, ArtifactBody>, links: SiteConfig["navbar"]["links"] = config.navbar.links): Promise<SiteConfig> {
   async function assetUrl(source: string): Promise<string> {
     if (!source || /^(?:data:|https?:\/\/)/.test(source)) return source;
     const asset = await staticMediaAsset(source, input, "site");
@@ -47,19 +47,6 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
 
   const customCSS = await loadCustomCSS(config.theme.css, input, assetUrl);
 
-  // A GitHub link that asks for its repository's numbers shows them; when GitHub does not answer,
-  // the build says so and the link shows without them.
-  const links = await Promise.all(config.navbar.links.map(async (link) => {
-    const repository = link.type !== "menu" && link.stats ? githubRepository(link.href) : undefined;
-    if (link.type === "menu" || !repository) return link;
-    try {
-      return { ...link, repository: await repositoryStats(repository) };
-    } catch (error) {
-      warnings.push({ severity: "warning", code: "github-stats", message: `${link.href}: GitHub's release, stars and forks could not be read (${(error as Error).message}); the link shows without them` });
-      return link;
-    }
-  }));
-
   return {
     name: config.name,
     tryIt: config.tryIt,
@@ -83,6 +70,24 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
     ...(config.feedback ? { feedback: config.feedback } : {}),
     ...(config.breadcrumbs ? { breadcrumbs: true as const } : {}),
   };
+}
+
+/**
+ * The navbar's links, a GitHub link that asks for its repository's numbers
+ * with them. When GitHub does not answer, the build says so and the link
+ * shows without them; it never fails.
+ */
+export function readNavbarLinks(config: ResolvedConfig, warnings: SiteDiagnostic[]): Promise<SiteConfig["navbar"]["links"]> {
+  return Promise.all(config.navbar.links.map(async (link) => {
+    const repository = link.type !== "menu" && link.stats ? githubRepository(link.href) : undefined;
+    if (link.type === "menu" || !repository) return link;
+    try {
+      return { ...link, repository: await repositoryStats(repository) };
+    } catch (error) {
+      warnings.push({ severity: "warning", code: "github-stats", message: `${link.href}: GitHub's release, stars and forks could not be read (${(error as Error).message}); the link shows without them` });
+      return link;
+    }
+  }));
 }
 
 /**

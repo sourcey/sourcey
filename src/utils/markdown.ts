@@ -401,6 +401,7 @@ function footnoteId(label: string): string {
  */
 export function footnoteAnchors(markdown: readonly string[]): string[] {
   const text = markdown.join("\n");
+  if (!text.includes("[^")) return [];
   const notes = new Set([...text.matchAll(/^[ \t]*\[\^([^\]\s]+)\]:/gm)].map((match) => match[1].toLowerCase()));
   const uses = new Map<string, number>();
   for (const match of text.matchAll(/\[\^([^\]\s]+)\](?!:)/g)) {

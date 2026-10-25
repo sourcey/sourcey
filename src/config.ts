@@ -143,7 +143,8 @@ export interface FeedbackConfig {
 /** Feedback as the pages draw it: the site's own wording, or the page language's where it has none. */
 export interface ResolvedFeedback {
   title?: string;
-  ratings?: (Omit<FeedbackRating, "icon"> & { icon?: string })[];
+  /** The site's own ratings, each icon and note drawn once for every page. */
+  ratings?: Array<{ label: string; value: string | number; iconHtml?: string; noteHtml?: string }>;
   /** The icon set's thumbs, drawn, for the default ratings. */
   thumbs: { up: string; down: string };
 }
@@ -858,17 +859,23 @@ function resolveBrokenLinks(value: SourceyConfig["brokenLinks"]): "warn" | "erro
 }
 
 /** The feedback question, each rating's icon drawn from the site's set; a name the set lacks stops the build. */
-function resolveFeedback(feedback: SourceyConfig["feedback"], icons: IconSet): ResolvedFeedback | undefined {
+async function resolveFeedback(feedback: SourceyConfig["feedback"], icons: IconSet): Promise<ResolvedFeedback | undefined> {
   if (!feedback) return undefined;
   const custom = feedback === true ? {} : feedback;
+  // Notes are Markdown, drawn once here; the renderer loads only for a site that writes them.
+  const { renderMarkdown } = custom.ratings?.some((rating) => rating.note) ? await import("./utils/markdown.js") : { renderMarkdown: undefined };
   const ratings = custom.ratings?.map((rating, index) => {
     const at = `feedback.ratings[${index}]`;
     if (typeof rating.label !== "string" || !rating.label.trim()) throw new Error(`${at}: a rating names its label`);
     if (typeof rating.value !== "string" && typeof rating.value !== "number") throw new Error(`${at}: a rating's value is a string or a number`);
-    if (rating.icon === undefined) return { ...rating, icon: undefined };
-    const drawing = iconDrawing(icons, rating.icon);
-    if (!drawing) throw new Error(`${at}: the ${icons} icon set has no "${rating.icon}" icon`);
-    return { ...rating, icon: iconSvg(drawing, { class: "sourcey-feedback-icon" }) };
+    const drawing = rating.icon === undefined ? undefined : iconDrawing(icons, rating.icon);
+    if (rating.icon !== undefined && !drawing) throw new Error(`${at}: the ${icons} icon set has no "${rating.icon}" icon`);
+    return {
+      label: rating.label,
+      value: rating.value,
+      ...(drawing ? { iconHtml: iconSvg(drawing, { class: "sourcey-feedback-icon" }) } : {}),
+      ...(rating.note && renderMarkdown ? { noteHtml: renderMarkdown(rating.note) } : {}),
+    };
   });
   if (ratings?.length === 0) throw new Error("feedback.ratings: the question needs at least one rating");
   return {
@@ -930,7 +937,7 @@ export async function resolveConfigFromRaw(
     markdown: { smartypants: raw.markdown?.smartypants === true },
     lastUpdated: raw.lastUpdated === true,
     brokenLinks: resolveBrokenLinks(raw.brokenLinks),
-    feedback: resolveFeedback(raw.feedback, theme.icons),
+    feedback: await resolveFeedback(raw.feedback, theme.icons),
     breadcrumbs: raw.navigation.breadcrumbs === true,
     search: {
       featured: raw.search?.featured ?? [],

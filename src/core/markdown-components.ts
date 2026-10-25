@@ -116,7 +116,6 @@ const pictureSources = (light: string, dark: string, type?: string, sizes?: stri
 const FRAGMENT = /^[A-Za-z0-9][\w-]*$/;
 
 type ComponentNode = Extract<ContentNode, { kind: "component" }>;
-/** Whether a node is a component of the given name. */
 /** The built-in component of that name; a site's own component of the name is not it. */
 const named = (node: ContentNode, name: string): node is ComponentNode => node.kind === "component" && node.definition === builtins[name];
 

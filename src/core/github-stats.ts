@@ -16,7 +16,8 @@ const read = new Map<string, Promise<RepositoryStats>>();
 /**
  * A repository's latest release, stars and forks from GitHub's API: two
  * requests, made with `GITHUB_TOKEN` when it is set, for GitHub's higher
- * limit. A repository with no release has no release to show.
+ * limit. A repository with no release has no release to show. GitHub has
+ * three seconds to answer, so a slow answer never holds a build for long.
  */
 export function repositoryStats(repository: string): Promise<RepositoryStats> {
   let stats = read.get(repository);
@@ -34,7 +35,7 @@ async function readStats(repository: string): Promise<RepositoryStats> {
   const headers: Record<string, string> = { accept: "application/vnd.github+json", "user-agent": "sourcey", ...(token ? { authorization: `Bearer ${token}` } : {}) };
   const api = `https://api.github.com/repos/${repository}`;
   const get = async (url: string) => {
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(3_000) });
     if (response.status === 404 && url !== api) return undefined;
     if (!response.ok) throw new Error(`GitHub answered ${response.status} for ${url}`);
     return (await response.json()) as Record<string, unknown>;
