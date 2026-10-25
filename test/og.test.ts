@@ -36,6 +36,38 @@ describe("social image rendering", () => {
     }
   });
 
+  it("wraps a name too wide for a line between its words, inside the card and beside its bar", async () => {
+    const root = await mkdtemp(join(tmpdir(), "sourcey-og-name-"));
+    try {
+      const config = await resolveConfigFromRaw({ navigation: { tabs: [] } }, root);
+      vi.mocked(drawCard).mockClear();
+      const png = await generateOgImage({
+        title: "AccountingTemplatePreviewRequestDTO",
+        description: "Built with JavaScript.",
+        siteName: `Name ${root.split("-").at(-1)}`,
+        theme: { ...config.theme, colors: { ...config.theme.colors, primary: "220 20 20" } },
+      });
+      const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const pixel = (x: number, y: number) => [...data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3)];
+      const ink = (x0: number, x1: number, y: number) => {
+        for (let x = x0; x < x1; x++) if (pixel(x, y).every((channel) => channel > 128)) return true;
+        return false;
+      };
+      const rows = Array.from({ length: 630 - 140 }, (_, i) => 140 + i);
+      expect(pixel(73, 315)[0]).toBeGreaterThan(150);
+      // Nothing is drawn in the right margin, and the name takes two lines of the column.
+      expect(rows.some((y) => ink(1129, 1200, y))).toBe(false);
+      const lines = rows.filter((y) => ink(108, 1129, y) && !ink(108, 1129, y - 1));
+      expect(lines).toHaveLength(3);
+      // The name may break only between its words; a word that fits a line stays whole.
+      const text = JSON.stringify(vi.mocked(drawCard).mock.calls[0][0].card);
+      expect(text).toContain("Accounting​Template​Preview​Request​DTO");
+      expect(text).toContain("Built with JavaScript.");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("draws again after the drawer is closed, as each build closes it", async () => {
     const card = { type: "div", props: { style: { display: "flex", width: "100%", height: "100%" }, children: "Closed" } };
     const ground = '<rect width="1200" height="630" fill="#0f172a"/>';

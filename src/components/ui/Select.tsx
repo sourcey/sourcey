@@ -1,7 +1,7 @@
-import type { JSX } from "preact";
+import type { SelectHTMLAttributes } from "preact";
 
 /** Native selection, with one theme-aware arrow and a shared control surface. */
-export function Select(props: JSX.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <span class="sourcey-select-wrap">
       <select {...props} class={props.class ?? "sourcey-select"} />

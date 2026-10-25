@@ -8,7 +8,7 @@ export function useRequest(id: string) {
   const [message, setMessage] = useState("");
   const [response, setResponse] = useState<ConsoleResponse>();
   const [sentDraft, setSentDraft] = useState<RequestDraft>();
-  const controller = useRef<AbortController>();
+  const controller = useRef<AbortController | undefined>(undefined);
   const generation = useRef(0);
   const active = useRef(true);
 

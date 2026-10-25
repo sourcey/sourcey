@@ -1,3 +1,4 @@
+import type { TargetedInputEvent } from "preact";
 import { Select } from "../ui/Select.js";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { NormalizedSchema } from "../../core/types.js";
@@ -51,6 +52,23 @@ export function Field(props: FieldProps) {
     "aria-required": required || undefined,
     "aria-describedby":
       (description ? id + "-help " : "") + (error ? id + "-error" : "") || undefined,
+  };
+  // A value typed in: each input type takes its own element, as each takes its own roles.
+  const textProps = {
+    ...inputProps,
+    value: value === undefined || value === null ? "" : String(value),
+    placeholder: required ? undefined : "Not set",
+    readOnly: schema.const !== undefined,
+    onInput: (e: TargetedInputEvent<HTMLInputElement>) =>
+      onChange(
+        e.currentTarget.value === ""
+          ? required
+            ? ""
+            : undefined
+          : type === "number" || type === "integer"
+            ? Number(e.currentTarget.value)
+            : e.currentTarget.value,
+      ),
   };
   const control = alternatives ? (
     <>
@@ -208,39 +226,22 @@ export function Field(props: FieldProps) {
         }
       }}
     />
-  ) : (
+  ) : schema.format === "password" ? (
+    <input {...textProps} type="password" autoComplete="off" />
+  ) : type === "integer" || type === "number" ? (
     <input
-      {...inputProps}
-      type={
-        schema.format === "password"
-          ? "password"
-          : type === "integer" || type === "number"
-            ? "number"
-            : schema.format === "date"
-              ? "date"
-              : schema.format === "email"
-                ? "email"
-                : "text"
-      }
-      value={value === undefined || value === null ? "" : String(value)}
-      placeholder={required ? undefined : "Not set"}
-      autoComplete={schema.format === "password" ? "off" : undefined}
+      {...textProps}
+      type="number"
       min={schema.minimum}
       max={schema.maximum}
       step={type === "integer" ? 1 : "any"}
-      readOnly={schema.const !== undefined}
-      onInput={(e) =>
-        onChange(
-          e.currentTarget.value === ""
-            ? required
-              ? ""
-              : undefined
-            : type === "number" || type === "integer"
-              ? Number(e.currentTarget.value)
-              : e.currentTarget.value,
-        )
-      }
     />
+  ) : schema.format === "date" ? (
+    <input {...textProps} type="date" />
+  ) : schema.format === "email" ? (
+    <input {...textProps} type="email" />
+  ) : (
+    <input {...textProps} type="text" />
   );
   return (
     <div class="sourcey-field">

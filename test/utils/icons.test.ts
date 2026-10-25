@@ -112,7 +112,7 @@ describe("brand marks", () => {
   it("draw Font Awesome's mark with its own viewBox, carrying the file's attribution", () => {
     const drawing = iconDrawing("brands", "aws")!;
     expect(drawing.attributes.viewBox).toBe("0 0 640 512");
-    expect(drawing.attributes["data-sourcey-attribution"]).toMatch(/^Font Awesome Free 7\.2\.0 by @fontawesome - https:\/\/fontawesome\.com License - https:\/\/fontawesome\.com\/license\/free \(Icons: CC BY 4\.0, .*\) Copyright \d{4} Fonticons, Inc\. Licence: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/\. SVG attributes adapted by Sourcey for inline rendering\.$/);
+    expect(drawing.attributes["data-sourcey-attribution"]).toMatch(/^Font Awesome Free \d+\.\d+\.\d+ by @fontawesome - https:\/\/fontawesome\.com License - https:\/\/fontawesome\.com\/license\/free \(Icons: CC BY 4\.0, .*\) Copyright \d{4} Fonticons, Inc\. Licence: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/\. SVG attributes adapted by Sourcey for inline rendering\.$/);
     expect(drawing.body).toMatch(/^<path fill="currentColor" d="/);
     expect(hasIcon("brands", "no-such-brand")).toBe(false);
   });
@@ -130,8 +130,8 @@ describe("brand marks", () => {
       if (page.kind !== "markdown") throw new Error("Expected a guide");
       const published = String((await sourceyArtifacts(site)).get("guide.html"));
       for (const html of [page.markdown.html, published]) {
-        expect(html).toMatch(/<svg class="card-icon" aria-hidden="true" xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 640 512" data-sourcey-attribution="Font Awesome Free 7\.2\.0 [^"]*Licence: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/\. SVG attributes adapted by Sourcey for inline rendering\."><path fill="currentColor" d="/);
-        expect(html).toMatch(/<svg class="sourcey-inline-icon" role="img" aria-label="GitHub" [^>]*data-sourcey-attribution="Font Awesome Free 7\.2\.0 /);
+        expect(html).toMatch(/<svg class="card-icon" aria-hidden="true" xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 640 512" data-sourcey-attribution="Font Awesome Free \d+\.\d+\.\d+ [^"]*Licence: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/\. SVG attributes adapted by Sourcey for inline rendering\."><path fill="currentColor" d="/);
+        expect(html).toMatch(/<svg class="sourcey-inline-icon" role="img" aria-label="GitHub" [^>]*data-sourcey-attribution="Font Awesome Free \d+\.\d+\.\d+ /);
       }
       await expect(build('# Guide\n\n<Card title="Nope" icon="brand:nope">No.</Card>\n')).rejects.toThrow(/Icon "brand:nope" is not in Font Awesome's brand marks at .*guide\.md/);
     } finally {

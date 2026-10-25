@@ -47,12 +47,12 @@ npx sourcey init
 
 The full Sourcey binary handles OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown sources. Existing Astro and MkDocs projects have one-time converters.
 
-| Path     | Command                                        | Requires          |
-| -------- | ---------------------------------------------- | ----------------- |
-| npm      | `npm install -g sourcey`                       | Node 22.19+       |
-| Homebrew | `brew tap sourcey/tap && brew install sourcey` | macOS / Linuxbrew |
-| Docker   | `docker run -v "$PWD":/docs sourcey/sourcey`   | Docker            |
-| Nix      | `nix run github:sourcey/sourcey`               | Nix (flakes)      |
+| Path     | Command                                        | Requires                     |
+| -------- | ---------------------------------------------- | ---------------------------- |
+| npm      | `npm install -g sourcey`                       | Node 22.22.2+, 24.15+ or 26+ |
+| Homebrew | `brew tap sourcey/tap && brew install sourcey` | macOS / Linuxbrew            |
+| Docker   | `docker run -v "$PWD":/docs sourcey/sourcey`   | Docker                       |
+| Nix      | `nix run github:sourcey/sourcey`               | Nix (flakes)                 |
 
 Then `sourcey init` to scaffold a new project, or `sourcey build` against an existing one. See [docs/install.md](docs/install.md) for full Docker invocations (`init` / `dev` / `build`), the `--host` flag for containerized dev, Linuxbrew notes, and Nix profile install.
 

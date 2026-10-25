@@ -4,7 +4,7 @@
   "description": "Read and search a built Sourcey documentation site over MCP.",
   "type": "module",
   "engines": {
-    "node": ">=22.19"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "bin": {
     "sourcey-docs-mcp": "cli.js"
@@ -20,7 +20,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "sourcey": "^3.7.1",
     "zod": "4.6.7"
   },

@@ -7,13 +7,6 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>');
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.Option = dom.window.Option;
-dom.window.CSS = {
-  supports(property, value) {
-    const style = new dom.window.Option().style;
-    style.setProperty(property, value);
-    return style.getPropertyValue(property) !== '';
-  },
-};
 const { default: mermaid } = await import('mermaid');
 const { renderMermaidDiagram } = await import('@sourcey/beautiful-mermaid');
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });

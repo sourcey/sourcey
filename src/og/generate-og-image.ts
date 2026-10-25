@@ -101,6 +101,28 @@ function clip(text: string, max: number): string {
 }
 
 /**
+ * The most characters of a word a title or summary line always holds: the card's
+ * text column over the widest glyph, Inter Bold's W at 64px and Inter's at 26px.
+ */
+const TITLE_WORD = 15;
+const SUMMARY_WORD = 40;
+
+/**
+ * A name longer than a line may be, with a break opportunity between its words:
+ * before each camelCase hump, after an acronym and after an underscore, so a
+ * name too wide for the card wraps between its words rather than inside one.
+ * Shorter words, brand names among them, stay whole, as does each part of a path
+ * short enough to fit between the slashes and hyphens a line already breaks at.
+ */
+function breakable(text: string, longest: number): string {
+  return text.replace(/[^\s/-]+/g, (word) =>
+    word.length <= longest
+      ? word
+      : word.replace(/(?<=[a-z\d])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=_)(?=.)/g, "\u200b"),
+  );
+}
+
+/**
  * The card's ground: dark, with the primary colour glowing low on the left, in an
  * ellipse 70% of the card wide and 50% high that fades out by 70% of its radius.
  * It is one gradient drawn beneath the card, because satori draws a CSS gradient as
@@ -120,8 +142,8 @@ type OgCardInput = Omit<OgImageOptions, "theme"> & { primary: string };
 function ogCard({ title, description, siteName, primary: color, logo, logoMark }: OgCardInput) {
   const primary = rgbCss(color);
 
-  const displayTitle = clip(title, 90);
-  const displayDesc = description ? clip(description, 160) : undefined;
+  const displayTitle = breakable(clip(title, 90), TITLE_WORD);
+  const displayDesc = description ? breakable(clip(description, 160), SUMMARY_WORD) : undefined;
 
   return {
     type: "div",
@@ -131,6 +153,8 @@ function ogCard({ title, description, siteName, primary: color, logo, logoMark }
         flexDirection: "column",
         width: "100%",
         height: "100%",
+        // The padding sits inside the card's frame rather than around it.
+        boxSizing: "border-box",
         padding: "72px",
         fontFamily: "Inter",
       },
@@ -218,8 +242,9 @@ function ogCard({ title, description, siteName, primary: color, logo, logoMark }
                           color: "#ffffff",
                           lineHeight: 1.1,
                           letterSpacing: "-0.02em",
+                          overflowWrap: "anywhere",
                           display: "-webkit-box",
-                          WebkitLineClamp: 2,
+                          WebkitLineClamp: 4,
                           WebkitBoxOrient: "vertical",
                           overflow: "hidden",
                         },
@@ -238,8 +263,9 @@ function ogCard({ title, description, siteName, primary: color, logo, logoMark }
                                 marginTop: "24px",
                                 lineHeight: 1.4,
                                 letterSpacing: "-0.005em",
+                                overflowWrap: "anywhere",
                                 display: "-webkit-box",
-                                WebkitLineClamp: 2,
+                                WebkitLineClamp: 3,
                                 WebkitBoxOrient: "vertical",
                                 overflow: "hidden",
                               },

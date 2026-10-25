@@ -1,3 +1,4 @@
+import type { TargetedInputEvent } from "preact";
 import { Select } from "../ui/Select.js";
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
@@ -280,46 +281,48 @@ export function Console({ data, id, onClose, headingLevel = 3 }: Props) {
                         authorization flow.
                       </p>
                     ) : null}
-                    {fields.map((field) => (
-                      <div class="sourcey-field">
-                        <label
-                          class="sourcey-label"
-                          for={id + "-auth-" + encodeURIComponent(name) + "-" + field}
-                        >
-                          {basic
-                            ? field === "username"
-                              ? "Username"
-                              : "Password"
-                            : scheme.type === "apiKey"
-                              ? (scheme.name ?? name)
-                              : name + " access token"}
-                        </label>
-                        <input
-                          class="sourcey-input"
-                          id={id + "-auth-" + encodeURIComponent(name) + "-" + field}
-                          type={field === "username" ? "text" : "password"}
-                          autoComplete="off"
-                          spellcheck={false}
-                          value={draft.auth[name]?.[field] ?? ""}
-                          aria-invalid={!!error}
-                          aria-describedby={error ? errorId : undefined}
-                          onInput={(event) =>
-                            change(
-                              {
-                                auth: {
-                                  ...draft.auth,
-                                  [name]: {
-                                    ...draft.auth[name],
-                                    [field]: event.currentTarget.value,
-                                  },
+                    {fields.map((field) => {
+                      const input = {
+                        class: "sourcey-input",
+                        id: id + "-auth-" + encodeURIComponent(name) + "-" + field,
+                        autoComplete: "off",
+                        spellcheck: false,
+                        value: draft.auth[name]?.[field] ?? "",
+                        "aria-invalid": !!error,
+                        "aria-describedby": error ? errorId : undefined,
+                        onInput: (event: TargetedInputEvent<HTMLInputElement>) =>
+                          change(
+                            {
+                              auth: {
+                                ...draft.auth,
+                                [name]: {
+                                  ...draft.auth[name],
+                                  [field]: event.currentTarget.value,
                                 },
                               },
-                              false,
-                            )
-                          }
-                        />
-                      </div>
-                    ))}
+                            },
+                            false,
+                          ),
+                      };
+                      return (
+                        <div class="sourcey-field">
+                          <label class="sourcey-label" for={input.id}>
+                            {basic
+                              ? field === "username"
+                                ? "Username"
+                                : "Password"
+                              : scheme.type === "apiKey"
+                                ? (scheme.name ?? name)
+                                : name + " access token"}
+                          </label>
+                          {field === "username" ? (
+                            <input {...input} type="text" />
+                          ) : (
+                            <input {...input} type="password" />
+                          )}
+                        </div>
+                      );
+                    })}
                     {error && (
                       <p class="sourcey-error" id={errorId}>
                         {error}
