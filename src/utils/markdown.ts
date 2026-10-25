@@ -321,7 +321,8 @@ let authoredHtml = false;
  * component, stands in the Markdown rendered around it as a marker that
  * renders as that HTML. The Markdown still reads as one document, but the
  * build's own HTML is never read again as Markdown, or sanitized as an
- * author's would be.
+ * author's would be: markers stay in place through rendering and
+ * sanitizing, and the HTML goes in last.
  */
 let generatedHtml: readonly string[] = [];
 const GENERATED_OPEN = "\uE000", GENERATED_CLOSE = "\uE001";
@@ -353,7 +354,7 @@ const generatedExtension = {
         const match = GENERATED_BLOCK.exec(src);
         if (match) return { type: "generated", raw: match[0], index: Number(match[1]) };
       },
-      renderer: (token: Tokens.Generic) => generatedHtml[(token as GeneratedToken).index] ?? "",
+      renderer: (token: Tokens.Generic) => generatedPlace((token as GeneratedToken).index),
     },
     {
       name: "generatedInline",
@@ -363,10 +364,15 @@ const generatedExtension = {
         const match = GENERATED_INLINE.exec(src);
         if (match) return { type: "generatedInline", raw: match[0], index: Number(match[1]) };
       },
-      renderer: (token: Tokens.Generic) => generatedHtml[(token as GeneratedToken).index] ?? "",
+      renderer: (token: Tokens.Generic) => generatedPlace((token as GeneratedToken).index),
     },
   ],
 };
+
+/** A marker's place in the rendered HTML, kept for its HTML to go in after sanitizing; nothing, for a marker with none. */
+function generatedPlace(index: number): string {
+  return index < generatedHtml.length ? generatedMarker(index) : "";
+}
 
 /** Keep adapter rendering on the same Markdown, links and sanitization path. */
 function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
@@ -400,7 +406,7 @@ function createMarkdownParser(options: MarkdownRenderOptions = {}): Marked {
       },
       html(token: Tokens.HTML | Tokens.Tag): string {
         // A component written inside an author's HTML, such as an icon in a <div>, stands there as its marker.
-        return (token.block ? wrapAuthoredTables(token.text) : token.text).replace(GENERATED_MARKER, (_, index: string) => generatedHtml[Number(index)] ?? "");
+        return token.block ? wrapAuthoredTables(token.text) : token.text;
       },
       link({ href, title, tokens }: Tokens.Link): string {
         const text = this.parser.parseInline(tokens);
@@ -455,7 +461,9 @@ function rendered(render: () => string, operationLinks: boolean | undefined, gen
   generatedHtml = generated;
   try {
     const html = render();
-    return authoredHtml ? sanitizeRenderedHtml(html, operationLinks ? ["operation"] : []) : html;
+    const sanitized = authoredHtml ? sanitizeRenderedHtml(html, operationLinks ? ["operation"] : []) : html;
+    // The build's own HTML goes in after the author's is sanitized, so the sanitizer never reads it.
+    return generatedHtml.length ? sanitized.replace(GENERATED_MARKER, (_, index: string) => generatedHtml[Number(index)] ?? "") : sanitized;
   } finally {
     // A nested render, such as a component's content, leaves its parent's as it was.
     authoredHtml = outer;

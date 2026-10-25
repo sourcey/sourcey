@@ -135,6 +135,13 @@ describe("diagrams", () => {
     expect(page.fonts).toEqual(["Inter"]);
   });
 
+  it("keeps a drawing whole on a page whose author wrote HTML, which the sanitizer reads and the drawing never passes through", async () => {
+    const page = await guide('# Flow\n\n<div class="lead">Written <em>by hand</em><script>alert(1)</script></div>\n\n```mermaid\ngraph LR\n  a[Request] --> b[Response]\n```\n');
+    expect(page.html).not.toContain("<script>");
+    expect(page.html).toContain('<div class="lead">Written <em>by hand</em></div>');
+    expect(page.html).toMatch(/<template shadowrootmode="open"><style>:host[^<]*<\/style><svg [^>]*viewBox="[^"]+"[^>]*>\s*<style>/);
+  });
+
   it("breaks a label's lines at <br>, wherever Mermaid allows one", async () => {
     const flowchart = await diagramSvg('graph TB\n  subgraph S["Client<br>Layer"]\n  x["Ever Teams<br/>(React/RN)"] -->|HTTP<br/>WS| y[End]\n  end');
     expect(lines(flowchart)).toEqual(expect.arrayContaining(["Ever Teams|(React/RN)", "HTTP|WS", "Client|Layer"]));
