@@ -290,7 +290,7 @@ describe("native compilation", () => {
     const edit = (page: string) => files.get(page)!.toString().match(/class="sourcey-edit-page[^"]*"><a href="([^"]+)"/)?.[1];
     expect(edit("guide.html")).toBe("https://github.com/example/agent/edit/main/docs/guide.md");
     expect(edit("chat.html")).toBeUndefined();
-    expect(edit("plain.html")).toBe("https://github.com/example/project/edit/main/docs/plain.md");
+    expect(edit("plain.html")).toBe("https://github.com/example/project/blob/main/docs/plain.md");
     await file(root, "docs/chat.md", "---\neditUrl: docs/chat.md\n---\n\n# Chat\n");
     await expect(buildSourceySite({ config, generateOgImages: false })).rejects.toThrow("editUrl is an http(s) address, or false for no edit link");
   }));
@@ -308,8 +308,8 @@ describe("native compilation", () => {
     const archived = first.pages.find(page => page.outputPath === "archive/guide.html")!;
     expect(archived.currentPage.kind === "markdown" && archived.currentPage.markdown.sourcePath).toBe("archive/docs/guide.md");
     const files = await sourceyArtifacts(first);
-    expect(files.get("guide.html")!.toString()).toContain("https://github.com/example/project/edit/main/docs/guide.md");
-    expect(files.get("archive/guide.html")!.toString()).toContain("https://github.com/example/project/edit/release-tag/docs/guide.md");
+    expect(files.get("guide.html")!.toString()).toContain("https://github.com/example/project/blob/main/docs/guide.md");
+    expect(files.get("archive/guide.html")!.toString()).toContain("https://github.com/example/project/blob/release-tag/docs/guide.md");
     expect(files.get("archive/guide.html")!.toString()).toContain("https://github.com/example/project/tree/release-tag/src/index.ts");
     const second = first.pages.find(page => page.outputPath === "second.html")!.currentPage;
     await writeFile(guide, "# Guide\n\nChanged body.\n");

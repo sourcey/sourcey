@@ -694,8 +694,8 @@ describe("renderPage (spec)", () => {
     expect(footer.indexOf(">Demo<")).toBeLessThan(footer.indexOf('aria-label="Discord"'));
     expect(footer).toMatch(/<span class="flex items-center gap-3\.5"><a [^>]*aria-label="Discord"[^>]*>.*?<\/a><a [^>]*aria-label="Twitter"/s);
     // Editing is the page's own action, not the site's: it ends the page, before the footer.
-    expect(footer).not.toContain("/edit/main/");
-    expect(html.indexOf("/edit/main/guide.md")).toBeLessThan(html.indexOf("sourcey-footer-text"));
+    expect(footer).not.toContain("/blob/main/");
+    expect(html.indexOf("/blob/main/guide.md")).toBeLessThan(html.indexOf("sourcey-footer-text"));
   });
 
   it("uses the global edit base for markdown pages unless the page overrides it", () => {
@@ -716,7 +716,7 @@ describe("renderPage (spec)", () => {
       site,
     );
     expect(markdownHtml).toContain(
-      "https://github.com/sourcey/example/edit/main/docs/guides/current.md",
+      "https://github.com/sourcey/example/blob/main/docs/guides/current.md",
     );
 
     const generatedHtml = renderPage(
@@ -733,10 +733,10 @@ describe("renderPage (spec)", () => {
       site,
     );
     expect(generatedHtml).toContain(
-      "https://github.com/sourcey/example/edit/main/internal/app/build/build.go",
+      "https://github.com/sourcey/example/blob/main/internal/app/build/build.go",
     );
     expect(generatedHtml).not.toContain(
-      "https://github.com/sourcey/example/edit/main/docs/internal/app/build/build.go",
+      "https://github.com/sourcey/example/blob/main/docs/internal/app/build/build.go",
     );
   });
 

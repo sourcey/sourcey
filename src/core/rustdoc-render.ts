@@ -31,6 +31,7 @@ import type {
 } from "./rustdoc-types.js";
 import { RUSTDOC_DIAGNOSTIC_CODES } from "./rustdoc-types.js";
 import { fencedCode } from "../exports/markdown.js";
+import { repositoryFileUrl } from "../site-url.js";
 
 export interface RenderContext {
   callouts: CalloutRenderOptions;
@@ -569,9 +570,7 @@ export function renderSourceHref(item: Item, ctx: RenderContext): string | null 
   if (!item.source) return null;
   const { repo, editBranch, editBasePath } = ctx.sourceLinks;
   if (!repo || !editBranch) return null;
-  const base = repo.replace(/\/+$/, "");
-  const basePath = editBasePath ? `${editBasePath.replace(/^\/+|\/+$/g, "")}/` : "";
-  return `${base}/blob/${editBranch}/${basePath}${item.source.file}#L${item.source.line_start}-L${item.source.line_end}`;
+  return repositoryFileUrl(repo, editBranch, editBasePath, item.source.file, [item.source.line_start, item.source.line_end]);
 }
 
 // ---------------------------------------------------------------------------

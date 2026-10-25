@@ -123,6 +123,17 @@ export function toPrettyLink(target: string, { prettyUrls, baseUrl }: LinkStyle)
 }
 
 /** Resolve a link target against the linking page's base; public paths stand alone. */
+/**
+ * A file in the site's repository, as GitHub shows it at a revision: a page
+ * that answers anyone, signed in or not, and offers its editor to whoever can
+ * edit. `lines` marks a line, or a range.
+ */
+export function repositoryFileUrl(repo: string, revision: string, basePath: string | null | undefined, path: string, lines?: [number, number?]): string {
+  const base = basePath?.replace(/^\/+|\/+$/g, "");
+  const anchor = lines ? `#L${lines[0]}${lines[1] === undefined ? "" : `-L${lines[1]}`}` : "";
+  return `${repo.replace(/\/+$/, "")}/blob/${revision}/${base ? `${base}/` : ""}${path}${anchor}`;
+}
+
 export function joinHref(base: string, target: string): string {
   if (target.startsWith("/")) return target;
   return `${base}${target}` || "./";

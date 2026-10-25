@@ -8,6 +8,10 @@
 - A not-found page marks its root `<html data-sourcey-page="not-found">`, so a site's analytics can count missing pages.
 - `sourcey migrate mkdocs` carries `site_author`, Material's Google or custom analytics and `extra_javascript` into the site's components, and `sourcey migrate docusaurus` carries `headTags`, `stylesheets`, `scripts` and Google Analytics. Both had listed them as not carried over.
 
+### Changed
+
+- "Edit this page" opens the page's file on GitHub, which anyone can read, with GitHub's editor one click away for whoever can edit. It had opened the editor itself, which sends a visitor who is not signed in, and every crawler, to GitHub's sign-in page. API source links are built the same way.
+
 ### Fixed
 
 - A component written in a sentence draws what it holds as part of the sentence, where a site's component had drawn it as a paragraph inside the sentence.

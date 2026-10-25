@@ -70,13 +70,13 @@ skipWithoutGo("buildSiteDocs (integration) – godoc tab", () => {
     expect(packagePage).toContain('id="func-New"');
     expect(packagePage.match(/<h1/g)?.length ?? 0).toBe(1);
     expect(packagePage).toContain(
-      "https://github.com/sourcey/example/edit/main/go/basic/widget.go",
+      "https://github.com/sourcey/example/blob/main/go/basic/widget.go",
     );
     expect(packagePage).toContain(
       "https://github.com/sourcey/example/blob/main/go/basic/widget.go#L",
     );
     expect(packagePage).not.toContain(
-      "https://github.com/sourcey/example/edit/main/docs/widget.go",
+      "https://github.com/sourcey/example/blob/main/docs/widget.go",
     );
     expect(packagePage).not.toContain(
       "https://github.com/sourcey/example/blob/main/docs/widget.go#L",

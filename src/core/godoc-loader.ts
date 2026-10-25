@@ -12,6 +12,7 @@ import type {
 } from "./godoc-types.js";
 import { GODOC_SCHEMA_VERSION } from "./godoc-types.js";
 import { godocMarkdown } from "./godoc-markdown.js";
+import { repositoryFileUrl } from "../site-url.js";
 import { runIntrospector, GodocIntrospectorError } from "./godoc-introspector.js";
 import {
   DEFAULT_CALLOUTS,
@@ -698,11 +699,7 @@ function sourceURL(
   sourceLinks: GodocSourceLinkOptions,
 ): string | undefined {
   if (!position || !sourceLinks.repo || !sourceLinks.editBranch) return undefined;
-  const repoBase = sourceLinks.repo.replace(/\/$/, "");
-  const basePath = sourceLinks.editBasePath
-    ? `${sourceLinks.editBasePath.replace(/^\/|\/$/g, "")}/`
-    : "";
-  return `${repoBase}/blob/${sourceLinks.editBranch}/${basePath}${position.file}#L${position.line}`;
+  return repositoryFileUrl(sourceLinks.repo, sourceLinks.editBranch, sourceLinks.editBasePath, position.file, [position.line]);
 }
 
 function renderExample(ex: GodocExample, render: GodocRender): string {

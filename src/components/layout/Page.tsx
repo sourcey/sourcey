@@ -15,7 +15,7 @@ import type {
   MarkdownPage,
 } from "../../core/markdown-loader.js";
 import { Markdown } from "../ui/Markdown.js";
-import { joinHref } from "../../site-url.js";
+import { joinHref, repositoryFileUrl } from "../../site-url.js";
 import { linkTarget } from "../../utils/html.js";
 import { Header } from "./Header.js";
 import { PagePart } from "./PagePart.js";
@@ -268,13 +268,11 @@ function useEditUrl(): string | undefined {
           : page.changelog.editPath
         : undefined;
   if (!site.repo || !editBranch || !editPath) return undefined;
-  const repoBase = site.repo.replace(/\/$/, "");
   const editBasePath =
     page.kind === "markdown" && page.markdown.editBasePath !== undefined
       ? page.markdown.editBasePath
       : site.editBasePath;
-  const basePath = editBasePath ? `${editBasePath.replace(/^\/|\/$/g, "")}/` : "";
-  return `${repoBase}/edit/${editBranch}/${basePath}${editPath}`;
+  return repositoryFileUrl(site.repo, editBranch, editBasePath, editPath);
 }
 
 /** A page's end: the site's own part there, a way to edit its source, then the pages before and after it. */
