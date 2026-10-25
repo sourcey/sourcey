@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sourcey-docs",
-  "version": "3.9.0",
+  "version": "3.9.1",
   "description": "Build, migrate and review documentation sites with Sourcey: Markdown guides, OpenAPI and MCP references, Doxygen, Go and Rust, from a project's own sources.",
   "author": {
     "name": "Sourcey",
