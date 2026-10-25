@@ -1,5 +1,6 @@
 import process from 'node:process';
 import { JSDOM } from 'jsdom';
+import { load as parseYaml } from 'js-yaml';
 
 // Mermaid reads a diagram in a DOM: a document, and the browser's Option and
 // CSS.supports, with which it tells a sequence box's colour from its name.
@@ -19,6 +20,18 @@ const OPTIONS = { bg: 'var(--diagram-bg)', fg: 'var(--diagram-fg)', transparent:
 /** Frontmatter or a directive configures a diagram; Mermaid applies them as it parses, until it is reset. */
 const CONFIGURED = /^\s*---\s*$|%%\{/m;
 
+/** The title a diagram's frontmatter gives it, which Mermaid's own render hands the diagram as it reads it. */
+function frontmatterTitle(source) {
+  const block = /^\s*---[ \t]*\n([\s\S]*?)\n[ \t]*---[ \t]*(?:\n|$)/.exec(source);
+  if (!block) return undefined;
+  try {
+    const data = parseYaml(block[1]);
+    return data && typeof data === 'object' && typeof data.title === 'string' ? data.title : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // The build's diagram renderer, in a process of its own: one diagram at a time,
 // read by Mermaid's own parser and drawn from what it reads.
 let queue = Promise.resolve();
@@ -27,7 +40,8 @@ process.on('message', request => {
     const configured = CONFIGURED.test(request.source);
     try {
       if (configured) await mermaid.mermaidAPI.parse(request.source);
-      const { type, db } = await mermaid.mermaidAPI.getDiagramFromText(request.source);
+      const title = frontmatterTitle(request.source);
+      const { type, db } = await mermaid.mermaidAPI.getDiagramFromText(request.source, title ? { title } : {});
       const svg = renderMermaidDiagram({ type, db, config: mermaid.mermaidAPI.getConfig() }, OPTIONS);
       process.send({ id: request.id, svg });
     } catch (error) {

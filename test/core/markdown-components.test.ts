@@ -142,6 +142,10 @@ describe("diagrams", () => {
     expect(page.html).toMatch(/<template shadowrootmode="open"><style>:host[^<]*<\/style><svg [^>]*viewBox="[^"]+"[^>]*>\s*<style>/);
   });
 
+  it("titles a chart by its frontmatter, as Mermaid does", async () => {
+    expect(lines(await diagramSvg('---\ntitle: Pets by kind\n---\npie\n  "Cats": 3\n  "Dogs": 2'))).toContain("Pets by kind");
+  });
+
   it("breaks a label's lines at <br>, wherever Mermaid allows one", async () => {
     const flowchart = await diagramSvg('graph TB\n  subgraph S["Client<br>Layer"]\n  x["Ever Teams<br/>(React/RN)"] -->|HTTP<br/>WS| y[End]\n  end');
     expect(lines(flowchart)).toEqual(expect.arrayContaining(["Ever Teams|(React/RN)", "HTTP|WS", "Client|Layer"]));
