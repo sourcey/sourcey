@@ -152,6 +152,22 @@ footer: {
 
 `footer.text` is one line of inline Markdown at the foot of every page, such as a copyright or licence notice; the reader theme shows it in place of the site name unless `reader.footer.text` is set. `footer.links` take the same form as `navbar.links`: a network's icon, or a text link with its `label`. The footer sets text links first and the networks' icons together after them. Keep it to places the header and sidebar do not already lead: the site's own pages are in the sidebar, and its repository is usually in the header. "Edit this page" is the page's own: it ends each page, above previous and next, and opens the page's file on GitHub, which anyone can read and whoever can edit opens in GitHub's editor from there. A page edited somewhere other than the site's repository names its own address in frontmatter, `editUrl: https://github.com/example/agent/edit/main/docs/guide.md`, and `editUrl: false` leaves the link off.
 
+## Last updated
+
+```ts
+lastUpdated: true,
+```
+
+Each documentation page and changelog shows when it last changed, beside "Edit this page": the day of the last commit to its file, in the page's language. The sitemap names the same date as the page's `lastmod`. A file no commit holds yet has no date. Off by default.
+
+The build reads the repository's history, so a CI checkout needs all of it. A shallow checkout stops the build, since it would date every page by its one commit:
+
+```yaml
+- uses: actions/checkout@v7
+  with:
+    fetch-depth: 0
+```
+
 ## Typography
 
 ```ts

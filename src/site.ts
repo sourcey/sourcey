@@ -8,6 +8,7 @@ import type { GodocLoaderDiagnostic } from "./core/godoc-loader.js";
 import { canonicalInputPath } from "./core/loader.js";
 import type { ContentDiagnostic } from "./core/markdown-loader.js";
 import { buildSiteNavigation, type SiteNavigation } from "./core/navigation.js";
+import { lastChanged } from "./core/page-dates.js";
 import type { OverlayDiagnostic } from "./core/overlay.js";
 import type { RustdocLoaderDiagnostic } from "./core/rustdoc-loader.js";
 import { buildSearchIndex, searchDocuments, type SearchEntry } from "./core/search-indexer.js";
@@ -97,6 +98,7 @@ export async function buildSourceySite(
   const home = assembled.routes.match(root);
   if (home && !home.aliasOf) site.home = root;
   const pages = Array.from(assembled.pageMap.values());
+  if (config.lastUpdated) await datePages(pages, config.configDir);
   const navigation = buildSiteNavigation(assembled.siteTabs);
 
   enforceBuildDiagnostics(assembled, options.strictChangelog);
@@ -138,6 +140,18 @@ export async function buildSourceySite(
   };
   compilationCaches.set(result, cache);
   return result;
+}
+
+/** Date each documentation page and changelog by its file's last commit. */
+async function datePages(pages: readonly SitePage[], configDir: string): Promise<void> {
+  const files = new Map<SitePage, string>();
+  for (const page of pages) {
+    const current = page.currentPage;
+    const source = current.kind === "markdown" ? current.markdown.sourcePath : current.kind === "changelog" ? current.changelog.sourcePath : undefined;
+    if (source) files.set(page, resolve(configDir, source));
+  }
+  const dates = await lastChanged(configDir, [...new Set(files.values())]);
+  for (const [page, file] of files) page.updated = dates.get(file);
 }
 
 export async function writeSourceySite(

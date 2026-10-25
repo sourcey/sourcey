@@ -15,6 +15,7 @@ import {
 } from "../../renderer/context.js";
 import { SearchDialog } from "./SearchDialog.js";
 import { PagePart } from "./PagePart.js";
+import { LastUpdated } from "../ui/LastUpdated.js";
 import { navbarLinks, type ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
 import { joinHref } from "../../site-url.js";
@@ -85,7 +86,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
   const site = useContext(SiteContext);
   const nav = useContext(NavigationContext);
   const page = useContext(PageContext);
-  const { assetBase: base, messages = english } = useContext(OptionsContext);
+  const { assetBase: base, messages = english, updated } = useContext(OptionsContext);
   const settings = site.theme.reader ?? {};
   const document = settings.document;
   const { tab, group } = activeSection(nav);
@@ -371,7 +372,8 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
                 </header>
                 <div class="doc-metadata">
                   {document?.status && <span>{document.status}</span>}
-                  {document?.updated && <span>{document.updated}</span>}
+                  {/* The page's own date, where the site dates its pages, before the edition's. */}
+                  {updated ? <LastUpdated inline /> : document?.updated && <span>{document.updated}</span>}
                   <button data-copy-page data-reader-enhancement data-copied-label={messages.copied} data-failure-label={messages.copyAddress} data-copy-label={messages.copyLink} hidden>
                     <Icon name="copy" size={12} />
                     <span aria-live="polite">{messages.copyLink}</span>

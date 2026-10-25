@@ -24,14 +24,13 @@ const DOC_EXTENSIONS = /\.(markdown|mdown|mkdn|mkd|mdwn|md|mdx)$/;
 
 /** Options this converter maps. Anything else stops the migration with its location. */
 const MAPPED_OPTIONS = new Set([
-  "title", "logo", "favicon", "social", "editLink", "customCss", "sidebar", "defaultLocale", "locales", "plugins", "disable404Route",
+  "title", "logo", "favicon", "social", "editLink", "customCss", "sidebar", "defaultLocale", "locales", "plugins", "disable404Route", "lastUpdated",
 ]);
 /** Options with no native equivalent whose loss is a reviewable choice, not lost content. */
 const UNCARRIED_OPTIONS: Record<string, string> = {
   description: "The site description has no native setting; page descriptions are kept",
   credits: "The Starlight credit link is not carried over",
   pagination: "Native pages always show previous and next links",
-  lastUpdated: "Native pages do not show a last-updated date",
   tableOfContents: "Native themes size the page outline themselves",
 };
 
@@ -113,6 +112,7 @@ export async function convertStarlight(context: StarlightContext): Promise<Starl
     ...logoOptions(json("logo")),
     favicon: await faviconPath(project, root.dir, json("favicon")),
     ...editOptions(json("editLink")),
+    ...(json("lastUpdated") === true ? { lastUpdated: true } : {}),
     ...(await themeOptions(context, json("customCss"))),
     prettyUrls: "slash",
     ...(locales.length > 1 ? { i18n: i18nOptions(locales, navigation.messages) } : {}),

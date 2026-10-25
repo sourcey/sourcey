@@ -375,6 +375,14 @@ describe("sourcey migrate mkdocs", () => {
     });
   });
 
+  it("dates pages by their last commit where a git revision date plugin did", async () => {
+    await withProject({ ...site, "mkdocs.yml": site["mkdocs.yml"].replace("  - search\n", "  - search\n  - git-revision-date-localized\n") }, async (root) => {
+      const report = await migrateProject({ framework: "mkdocs", root, dryRun: true });
+      expect(report.changes.find((change) => change.path === "sourcey.config.ts")!.bytes!.toString()).toContain("  lastUpdated: true,\n");
+      expect(report.diagnostics.map((item) => item.message).join("\n")).not.toContain("git-revision-date");
+    });
+  });
+
   it("reads an !ENV site URL at build time, as MkDocs did", async () => {
     await withProject({ ...site, "mkdocs.yml": site["mkdocs.yml"].replace("site_url: https://example.com/json/", "site_url: !ENV READTHEDOCS_CANONICAL_URL") }, async (root) => {
       const report = await migrateProject({ framework: "mkdocs", root, dryRun: true });

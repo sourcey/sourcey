@@ -112,6 +112,8 @@ export interface SitePage {
   alternateLinks?: AlternateLink[];
   /** Served for every address the site does not have. */
   status?: 404;
+  /** When the page's file last changed, as its last commit dates it, with `lastUpdated`. */
+  updated?: string;
   /** The page's own published stylesheets. */
   stylesheets?: string[];
 }

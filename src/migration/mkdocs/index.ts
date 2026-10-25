@@ -28,8 +28,10 @@ const MATERIAL_COLOURS: Record<string, string> = {
   "blue-grey": "#546d78", black: "#000000", white: "#ffffff",
 };
 
+/** Plugins that date each page by its last commit, as native `lastUpdated` does. */
+const DATE_PLUGINS = ["git-revision-date", "git-revision-date-localized"];
 /** Plugins whose output native builds provide or that change nothing a reader sees. */
-const PROVIDED_PLUGINS = new Set(["search", "minify", "gh-admonitions", "redirects"]);
+const PROVIDED_PLUGINS = new Set(["search", "minify", "gh-admonitions", "redirects", ...DATE_PLUGINS]);
 /** Plugins that generate or rewrite content; converting them needs work of its own. */
 const CONTENT_PLUGINS = new Set(["macros", "awesome-pages", "blog", "mkdocstrings", "i18n", "static-i18n", "include-markdown", "monorepo", "multirepo", "gen-files", "literate-nav", "section-index"]);
 /** Extensions whose syntax native Markdown reads as written, or that only style output. */
@@ -192,6 +194,7 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
     prettyUrls: directoryUrls ? "slash" : false,
     ...(publishesFiles ? { publicDir: PUBLIC_DIR } : {}),
     ...linkOptions(config),
+    ...(plugins.some((plugin) => DATE_PLUGINS.includes(plugin)) ? { lastUpdated: true } : {}),
     navigation: { tabs: markdown.tabs },
     ...redirects(config.plugins, pages, directoryUrls, base),
   };

@@ -10,6 +10,7 @@ import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { prepareAstroSourcey } from "../astro/index.js";
 import { outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
+import { loadConfig } from "../config.js";
 import { toPublicPath } from "../site-url.js";
 import { buildSourceySite, sourceyArtifacts, type SourceySiteArtifacts } from "../site.js";
 import { identityKey } from "./components.js";
@@ -119,16 +120,21 @@ function packageRoot(): string {
   return resolve(fileURLToPath(new URL("../..", import.meta.url)));
 }
 
+/**
+ * The native site built from its staged copy. The copy holds no history, so its
+ * pages are not dated; a date changes no address or text verification reads.
+ */
 async function buildStaged(stage: string, plan: NativePlan): Promise<SourceySiteArtifacts> {
   const dir = join(stage, plan.configDir);
-  if (!plan.host) return buildSourceySite({ configDir: dir, generateOgImages: false });
-  const prepared = await prepareAstroSourcey(plan.host.options, {
-    root: pathToFileURL(`${dir}/`),
-    base: plan.host.base ?? "/",
-    site: plan.host.site,
-    build: { format: plan.host.format ?? "directory" },
-  });
-  return buildSourceySite({ config: prepared.config, generateOgImages: false });
+  const config = plan.host
+    ? (await prepareAstroSourcey(plan.host.options, {
+        root: pathToFileURL(`${dir}/`),
+        base: plan.host.base ?? "/",
+        site: plan.host.site,
+        build: { format: plan.host.format ?? "directory" },
+      })).config
+    : await loadConfig(dir);
+  return buildSourceySite({ config: { ...config, lastUpdated: false }, generateOgImages: false });
 }
 
 /** Sourcey must not publish a path an Astro page of the host already serves. */

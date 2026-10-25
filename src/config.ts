@@ -225,6 +225,13 @@ export interface SourceyConfig {
   repo?: string;
   /** Branch name for "Edit this page" links (e.g. "main", "master"). When set, enables edit links on markdown pages. */
   editBranch?: string;
+  /**
+   * Date each page by its file's last commit, at the page's end and in the
+   * sitemap. The build reads the repository's history, so a CI checkout needs
+   * all of it (`fetch-depth: 0` for actions/checkout).
+   * @default false
+   */
+  lastUpdated?: boolean;
   /** Base path prepended to source file paths in "Edit this page" URLs. Use when docs source lives in a subdirectory of the repo (e.g. "docs"). */
   editBasePath?: string;
   /**
@@ -607,6 +614,7 @@ export interface ResolvedConfig {
   footer: { text?: string; links: NavbarLink[] };
   changelog: ResolvedChangelogConfig;
   markdown: { smartypants: boolean };
+  lastUpdated: boolean;
   search: { featured: string[] };
 }
 
@@ -837,6 +845,7 @@ export async function resolveConfigFromRaw(
     },
     changelog,
     markdown: { smartypants: raw.markdown?.smartypants === true },
+    lastUpdated: raw.lastUpdated === true,
     search: {
       featured: raw.search?.featured ?? [],
     },

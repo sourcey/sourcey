@@ -23,6 +23,7 @@ Docusaurus configuration and sidebar files are programs: they can read files, br
 | `versions.json`, `versioned_docs`, `versioned_sidebars`, `lastVersion`, `versions` | tab versions with the same paths and labels; `banner` becomes the version's status and `noIndex` keeps it out of search engines |
 | `i18n.locales`, `localeConfigs` | `i18n` with the same URL prefixes, labels, language and direction |
 | `editUrl` (a string) | `repo`, `editBranch`, `editBasePath` |
+| `showLastUpdateTime` | [`lastUpdated`](../configuration.md#last-updated) |
 | frontmatter `custom_edit_url` | frontmatter `editUrl` (`null` becomes `false`) |
 | `markdown.preprocessor` | run on each document as Docusaurus runs it; its result is written as the native page |
 | `staticDirectories` | `publicDir`; several directories are merged into one |

@@ -108,6 +108,7 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
     ...(base ? { baseUrl: `${base}/` } : {}),
     ...(await logoOptions(project, statics, publicDir, navbar, site.config.favicon, review)),
     ...editOptions(site.docs[0]?.editUrl, review),
+    ...(site.docs.some((instance) => instance.lastUpdated) ? { lastUpdated: true } : {}),
     ...(await themeOptions(project, site, review)),
     prettyUrls: pretty,
     ...(publicDir ? { publicDir } : {}),

@@ -97,6 +97,7 @@ export function createRenderOptions(
     messages: context.localeConfig.messages,
     noindex: page.status === 404 || context.version.index === false || !translated,
     ...(page.status === 404 ? { notFound: true } : {}),
+    ...(page.updated ? { updated: page.updated } : {}),
     notice: translated ? context.version.notice || undefined : context.localeConfig.messages.fallback,
     assetBase,
     assets: options?.assets && {
@@ -205,7 +206,7 @@ export async function* siteArtifacts(
     const siteUrl = site.siteUrl;
     const urls = pages.flatMap(page => {
       const route = routes.byOutputPath.get(page.outputPath);
-      return route?.index ? [`  <url><loc>${escapeXml(toAbsoluteUrl(route.publicPath, siteUrl))}</loc></url>`] : [];
+      return route?.index ? [`  <url><loc>${escapeXml(toAbsoluteUrl(route.publicPath, siteUrl))}</loc>${page.updated ? `<lastmod>${page.updated}</lastmod>` : ""}</url>`] : [];
     });
     yield claim("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`);
   }

@@ -50,6 +50,8 @@ export interface RenderOptions {
   noindex?: boolean;
   /** The page answers an address the site has no page for. */
   notFound?: boolean;
+  /** When the page's file last changed, an ISO 8601 date. */
+  updated?: string;
   equivalents?: EquivalentPageLink[];
   notice?: string;
   searchIndexes?: string[];

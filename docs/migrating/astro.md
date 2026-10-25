@@ -20,6 +20,7 @@ Astro roots built by a package script with `--root` (for example a second, app-b
 | `title`, `logo`, `favicon` | `name`, `logo`, `favicon` |
 | `social` | `navbar.links` |
 | `editLink.baseUrl` | `repo`, `editBranch`, `editBasePath` |
+| `lastUpdated` | [`lastUpdated`](../configuration.md#last-updated) |
 | `--sl-color-accent` in custom CSS | `theme.colors` (other Starlight styles are reported, not copied) |
 | `sidebar`: groups, links, slugs, `collapsed`, `translations` | navigation groups with stable IDs and translated labels |
 | `sidebar` `autogenerate` | explicit pages in Starlight's order (`sidebar.order`, then slug) |

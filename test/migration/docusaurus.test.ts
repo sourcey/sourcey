@@ -176,6 +176,14 @@ describe("sourcey migrate docusaurus", () => {
     });
   });
 
+  it("dates pages by their last commit where the docs showed their last update time", async () => {
+    const config = site["docusaurus.config.js"].replace("editUrl: 'https://github.com/example/docs/edit/main/' }", "editUrl: 'https://github.com/example/docs/edit/main/', showLastUpdateTime: true }");
+    await withProject({ ...site, "docusaurus.config.js": config }, async (root) => {
+      const report = await migrateProject({ framework: "docusaurus", root, dryRun: true });
+      expect(report.changes.find((change) => change.path === "sourcey.config.ts")!.bytes!.toString()).toContain("  lastUpdated: true,\n");
+    });
+  });
+
   it("writes a category whose label opens with an emoji under its plain name, keeping the address Docusaurus gave it", async () => {
     const category = '{ "label": "⚙️ Reference", "link": { "type": "generated-index", "description": "Every option." } }\n';
     await withProject({ ...site, "docs/guides/reference/_category_.json": category }, async (root) => {

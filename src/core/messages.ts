@@ -57,6 +57,7 @@ export const english = {
   codeLanguage: "Code language",
   footnotes: "Footnotes",
   footnoteBack: "Back to reference",
+  lastUpdated: "Last updated",
 } as const;
 export type UiMessages = { [K in keyof typeof english]: string };
 export type UiMessageOverrides = Partial<UiMessages> & { navigation?: Record<string, string> };
@@ -121,6 +122,7 @@ const translations: Record<string, Partial<UiMessages>> = {
     codeLanguage: "Langage du code",
     footnotes: "Notes de bas de page",
     footnoteBack: "Retour à l’appel de note",
+    lastUpdated: "Dernière mise à jour",
   },
   es: {
     copyCode: "Copiar código",
@@ -181,6 +183,7 @@ const translations: Record<string, Partial<UiMessages>> = {
     codeLanguage: "Lenguaje del código",
     footnotes: "Notas al pie",
     footnoteBack: "Volver a la referencia",
+    lastUpdated: "Última actualización",
   },
   it: {
     copyCode: "Copia codice",
@@ -241,6 +244,7 @@ const translations: Record<string, Partial<UiMessages>> = {
     codeLanguage: "Linguaggio del codice",
     footnotes: "Note a piè di pagina",
     footnoteBack: "Torna al rimando",
+    lastUpdated: "Ultimo aggiornamento",
   },
 };
 

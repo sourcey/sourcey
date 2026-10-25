@@ -38,6 +38,8 @@ export interface DocsInstance {
   include: string[];
   exclude: string[];
   editUrl?: unknown;
+  /** Whether its pages show when they last changed (`showLastUpdateTime`). */
+  lastUpdated: boolean;
   numberPrefixes: boolean;
   sidebarCollapsed: boolean;
   sidebarCollapsible: boolean;
@@ -210,6 +212,7 @@ function docsInstance(options: Options, local: (path: string) => string): DocsIn
     include: (options.include as string[] | undefined) ?? DOCS_DEFAULTS.include,
     exclude: ((options.exclude as string[] | undefined) ?? DOCS_DEFAULTS.exclude).map((pattern) => pattern.replace(/^\.\//, "")),
     editUrl: options.editUrl,
+    lastUpdated: options.showLastUpdateTime === true,
     numberPrefixes: options.numberPrefixParser !== false,
     sidebarCollapsed: options.sidebarCollapsed !== false,
     sidebarCollapsible: options.sidebarCollapsible !== false,
