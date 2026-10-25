@@ -7,15 +7,13 @@ export class DiagramSourceError extends Error {
   override name = "DiagramSourceError";
 }
 /** Mermaid draws in a process of its own: it loads a DOM and the whole Mermaid library to parse a diagram. */
-const renderer = new HelperProcess<
-  { source: string; prefixes: { light: string; dark: string } },
-  { light?: string; dark?: string; error?: string }
->(new URL("./diagram-worker.js", import.meta.url));
+const renderer = new HelperProcess<{ source: string }, { svg?: string; error?: string }>(new URL("./diagram-worker.js", import.meta.url));
 let diagramQueue = Promise.resolve();
-/** What a diagram's SVG keeps: shapes, text, links and their presentation. */
+/** What a diagram's SVG keeps: shapes, text, links, their presentation, and the style that names its colours. */
 const SVG_CONTENT = {
   allowedTags: [
     "svg",
+    "style",
     "g",
     "path",
     "rect",
@@ -60,12 +58,15 @@ const SVG_CONTENT = {
       "stroke-dasharray",
       "stroke-linecap",
       "stroke-linejoin",
+      "paint-order",
       "opacity",
       "transform",
       "font-family",
       "font-size",
       "font-weight",
+      "font-style",
       "text-anchor",
+      "text-decoration",
       "dominant-baseline",
       "dy",
       "dx",
@@ -82,33 +83,30 @@ const SVG_CONTENT = {
       "target",
       "rel",
       "style",
+      "data-*",
     ],
   },
   parser: { lowerCaseTags: false, lowerCaseAttributeNames: false },
   allowedSchemes: ["http", "https", "mailto"],
+  // The renderer writes the style itself, naming the theme's colours; no label reaches it.
+  allowVulnerableTags: true,
 };
-/** Each theme's drawing names its parts apart, by the source and the theme. */
-const prefix = (source: string, dark: boolean) =>
-  `diagram-${createHash("sha256")
-    .update(JSON.stringify([source, dark]))
-    .digest("hex")
-    .slice(0, 16)}`;
 
-/** A diagram in the light and dark themes, drawn from one reading and one layout of its source. */
-export async function diagramSvgs(source: string): Promise<{ light: string; dark: string }> {
+/**
+ * A diagram drawn once for every theme: its colours are CSS variables the
+ * page sets (`--diagram-bg`, `--diagram-fg`) and its text is set in Inter.
+ */
+export async function diagramSvg(source: string): Promise<string> {
   const files = await cachedArtifacts(
     "diagram",
     createHash("sha256").update(source).digest("hex"),
-    ["@speajus/mermaid-to-svg", "mermaid", "sanitize-html"],
+    ["@sourcey/beautiful-mermaid", "jsdom", "mermaid", "sanitize-html"],
     async () => {
       const job = diagramQueue.then(() =>
         heavyBuildJob(async () => {
-          const reply = await renderer.request({
-            source,
-            prefixes: { light: prefix(source, false), dark: prefix(source, true) },
-          });
+          const reply = await renderer.request({ source });
           if (reply.error !== undefined) throw new DiagramSourceError(reply.error);
-          return { light: reply.light!, dark: reply.dark! };
+          return reply.svg!;
         }),
       );
       diagramQueue = job.then(
@@ -116,14 +114,10 @@ export async function diagramSvgs(source: string): Promise<{ light: string; dark
         () => undefined,
       );
       const { default: sanitizeHtml } = await import("sanitize-html");
-      const { light, dark } = await job;
-      return new Map([
-        ["light.svg", Buffer.from(sanitizeHtml(light, SVG_CONTENT))],
-        ["dark.svg", Buffer.from(sanitizeHtml(dark, SVG_CONTENT))],
-      ]);
+      return new Map([["diagram.svg", Buffer.from(sanitizeHtml(await job, SVG_CONTENT))]]);
     },
   );
-  return { light: files.get("light.svg")!.toString(), dark: files.get("dark.svg")!.toString() };
+  return files.get("diagram.svg")!.toString();
 }
 
 /** Ends the renderer and gives back what it held; the next diagram starts another. */

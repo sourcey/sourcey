@@ -39,6 +39,8 @@ export function Head() {
   const languages = options.equivalents?.filter(e => e.kind === "locale" && e.lang && isAbsoluteHttpUrl(e.href)) ?? [];
 
   const { colors, fonts, layout } = site.theme;
+  // A page's diagrams are set in Inter, loaded alongside the theme's families where the site loads them from Google.
+  const googleFonts = fonts.google.length > 0 ? [...new Set([...fonts.google, ...(options.contentFonts ?? [])])] : [];
   // Desktop: h-16 row + h-12 tabs (when multi-tab) = 7rem, or h-16 alone = 4rem.
   // Mobile: h-16 row + h-14 breadcrumb = 7.5rem (always).
   const headerHeight = nav.tabs.length > 1 || hasContextChoices(options.equivalents) ? "7rem" : "4rem";
@@ -113,12 +115,12 @@ export function Head() {
           title={link.title}
         />
       ))}
-      {fonts.google.length > 0 && (
+      {googleFonts.length > 0 && (
         <>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
           {/* One stylesheet per family, so a family Google lacks cannot stop the other loading. */}
-          {fonts.google.map(family => (
+          {googleFonts.map(family => (
             <link key={family} rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${GOOGLE_FONT_WEIGHTS}&display=swap`} />
           ))}
         </>

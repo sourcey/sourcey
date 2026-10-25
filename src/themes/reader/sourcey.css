@@ -77,6 +77,12 @@ body.light {
   background: var(--paper);
   color: var(--reader-heading);
 }
+/* A diagram draws on the paper in its ink, in either scheme. */
+.sourcey-diagram,
+.dark .sourcey-diagram {
+  --diagram-bg: var(--paper);
+  --diagram-fg: var(--reader-heading);
+}
 a {
   color: inherit;
   text-decoration: none;

@@ -197,7 +197,7 @@ describe("native compilation", () => {
     const guide = await file(root, "workflow.md", source);
     const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Guides", pages: ["workflow"] }] }) }] } }, root);
     const cold = await buildSourceySite({ config, generateOgImages: false });
-    expect(cold.contentDiagnostics).toEqual([expect.objectContaining({ severity: "warning", code: "diagram", file: await realpath(guide), message: expect.stringContaining('Unsupported diagram type: "gitgraph"') })]);
+    expect(cold.contentDiagnostics).toEqual([expect.objectContaining({ severity: "warning", code: "diagram", file: await realpath(guide), message: expect.stringContaining('Diagram type "gitGraph" is not supported') })]);
     const page = cold.pages.find(page => page.identity.document === "workflow")!.currentPage;
     if (page.kind !== "markdown") throw new Error("Expected a Markdown page");
     expect(page.markdown.html).toContain('class="sourcey-diagram sourcey-diagram-unrendered"');

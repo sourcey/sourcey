@@ -51,6 +51,8 @@ export interface RenderOptions {
   notice?: string;
   searchIndexes?: string[];
   componentStyles?: string[];
+  /** Font families the page's content is drawn in beyond the theme's, which load with the theme's from Google Fonts */
+  contentFonts?: string[];
   referenceTargets?: import("../core/site-model.js").ReferenceTargets;
   sourceRevision?: string;
 }

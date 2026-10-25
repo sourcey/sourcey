@@ -89,6 +89,7 @@ export function createRenderOptions(
     referenceTargets: page.referenceTargets,
     sourceRevision: context.version.revision,
     componentStyles: [...(page.currentPage.kind === "markdown" ? page.currentPage.markdown.componentStyles ?? [] : []), ...page.stylesheets ?? []],
+    contentFonts: page.currentPage.kind === "markdown" ? page.currentPage.markdown.fonts : undefined,
     lang: translated ? context.localeConfig.lang : context.defaultLang,
     equivalents: page.equivalents?.map(link => ({ ...link, href: site.siteUrl ? toAbsoluteUrl(link.href, site.siteUrl) : link.href })),
     searchIndexes: page.searchIndexes?.map(path => `${assetBase}${path}`),

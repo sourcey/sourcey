@@ -139,8 +139,24 @@
 .sourcey-figure figcaption { margin-block-start:.5rem; font-size:.8rem; color:rgb(var(--color-gray-500)); text-align:center; }
 html:not(.sourcey-tabs-ready) [data-sourcey-tabs] .directive-tab-panel { display:block; }
 
+/* A diagram's drawing takes its colours from the page, and its colour scheme, which picks its palette's steps. */
+.sourcey-diagram { --diagram-bg:rgb(var(--color-background-light)); --diagram-fg:rgb(var(--color-gray-900)); }
+.dark .sourcey-diagram { --diagram-bg:rgb(var(--color-background-dark)); --diagram-fg:rgb(var(--color-gray-200)); color-scheme:dark; }
 .sourcey-diagram-scroll { overflow-x:auto; max-width:100%; }
-.sourcey-diagram-scroll img { display:block; width:auto; height:auto; max-width:none; }
+/* A drawing wider than the column scrolls; it fades out at an edge more of it lies past, on whatever is behind it. */
+@property --sourcey-diagram-fade-start { syntax:"<length>"; inherits:false; initial-value:0px; }
+@property --sourcey-diagram-fade-end { syntax:"<length>"; inherits:false; initial-value:0px; }
+@keyframes sourcey-diagram-edges {
+  from { --sourcey-diagram-fade-start:0px; --sourcey-diagram-fade-end:2.5rem; }
+  8%, 92% { --sourcey-diagram-fade-start:2.5rem; --sourcey-diagram-fade-end:2.5rem; }
+  to { --sourcey-diagram-fade-start:2.5rem; --sourcey-diagram-fade-end:0px; }
+}
+@supports (animation-timeline: scroll()) {
+  .sourcey-diagram-scroll {
+    mask-image:linear-gradient(to right, transparent, #000 var(--sourcey-diagram-fade-start), #000 calc(100% - var(--sourcey-diagram-fade-end)), transparent);
+    animation:sourcey-diagram-edges linear both; animation-timeline:scroll(self inline);
+  }
+}
 .sourcey-diagram-source { margin-top:.6rem; font-size:.8rem; }
 .sourcey-diagram-source summary { cursor:pointer; color:rgb(var(--color-gray-500)); }
 .sourcey-diagram-unrendered figcaption { margin-block-end:.5rem; font-size:.8rem; color:rgb(var(--color-gray-500)); }

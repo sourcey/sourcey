@@ -74,7 +74,8 @@ export interface ComponentBuildContext {
   readJson(path: string): Promise<unknown>;
   asset(path: string): Promise<string>;
   figure(path: string, options: FigureOptions): Promise<ImageVariant[]>;
-  diagram(source: string): Promise<{ light: string; dark: string }>;
+  /** A diagram's drawing, one SVG for every theme */
+  diagram(source: string): Promise<string>;
   parseMarkdown(markdown: string): Promise<readonly ContentNode[]>;
   id(label: string): string;
 }
@@ -488,22 +489,36 @@ const Figure = defineComponent({
     return `<figure class="sourcey-figure"><picture data-sourcey-picture>${[...new Set(light.map(i => i.format))].map(format => pictureSources(source(light, format), source(dark, format), `image/${format}`, sizes)).join("")}<img src="${fallback.src}" width="${fallback.width}" height="${fallback.height}" alt="${escapeAttr(alt)}" loading="${loading}" decoding="async" /></picture>${caption ? `<figcaption>${renderMarkdownInline(caption)}</figcaption>` : ""}</figure>`;
   },
 });
-/** A drawn diagram's light and dark pictures, or why the renderer could not draw it and where it is written. */
-type DiagramData = { light: string; dark: string } | { failure: string; location: SourceLocation; explanation: string };
+/** A drawn diagram, or why the renderer could not draw it and where it is written. */
+type DiagramData = { svg: string } | { failure: string; location: SourceLocation; explanation: string };
+/** The family a diagram's text is set and measured in. */
+export const DIAGRAM_FONT = "Inter";
+/**
+ * A drawing sits in a shadow root of its own, so its marker ids and its style
+ * stay its own, while the page's fonts, colours and color-scheme reach it.
+ */
+const DIAGRAM_SHADOW_STYLE = ":host{display:block}svg{display:block;width:100%;height:auto}";
+/** How far a wide drawing shrinks to fit the column before it scrolls instead: its text stays legible. */
+const DIAGRAM_LEAST_SCALE = 0.8;
+/** A drawing's width: its own at most, the column's where that is narrower, but never under the least scale. */
+function diagramSize(svg: string): string {
+  const width = Number(svg.match(/^<svg[^>]*\swidth="([\d.]+)"/)?.[1]);
+  return Number.isFinite(width) && width > 0 ? ` style="max-width:${width}px;min-width:${Math.round(width * DIAGRAM_LEAST_SCALE)}px"` : "";
+}
 const Diagram = defineComponent({
   parseProps: a => a,
   async resolve({ children }, context): Promise<ResolvedComponent<DiagramData>> {
     const code = readableContent(children).replace(/^\s*```mermaid\s*\n|\n```\s*$/g, "");
     const content: ContentNode[] = [{ kind: "code", language: "mermaid", value: code }];
     try {
-      return { content, data: await context.diagram(code) };
+      return { content, data: { svg: await context.diagram(code) } };
     } catch (error) {
       // A type the renderer does not draw, or invalid syntax: the source stays, without a picture claiming otherwise.
       if ((error as Error).name !== "DiagramSourceError") throw error;
       return { content, data: { failure: (error as Error).message, location: context.location, explanation: context.context.messages.diagramUnrendered } };
     }
   },
-  renderHtml: ({ data, content }, helpers) => "failure" in data! ? `<figure class="sourcey-diagram sourcey-diagram-unrendered"><figcaption>${escapeHtml(data.explanation)}</figcaption>${helpers.render(content)}</figure>` : `<figure class="sourcey-diagram"><div class="sourcey-diagram-scroll" tabindex="0" aria-label="Diagram"><picture data-sourcey-picture>${pictureSources(data!.light, data!.dark)}<img src="${data!.light}" alt="Diagram; its source is available below" loading="lazy" /></picture></div><details class="sourcey-diagram-source"><summary>Diagram source</summary>${helpers.render(content)}</details></figure>`,
+  renderHtml: ({ data, content }, helpers) => "failure" in data! ? `<figure class="sourcey-diagram sourcey-diagram-unrendered"><figcaption>${escapeHtml(data.explanation)}</figcaption>${helpers.render(content)}</figure>` : `<figure class="sourcey-diagram"><div class="sourcey-diagram-scroll" tabindex="0" aria-label="Diagram"><div class="sourcey-diagram-drawing"${diagramSize(data!.svg)} role="img" aria-label="Diagram; its source is available below"><template shadowrootmode="open"><style>${DIAGRAM_SHADOW_STYLE}</style>${data!.svg}</template></div></div><details class="sourcey-diagram-source"><summary>Diagram source</summary>${helpers.render(content)}</details></figure>`,
 });
 
 /** Sourcey's own components, by the name a page writes them by; a site's components of the same name take their place. */
@@ -690,15 +705,8 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
       return images.map(image => ({ ...image, src: toPublicPath(image.src, options.baseUrl) }));
     },
     async diagram(source) {
-      const { diagramSvgs } = await import("./diagrams.js");
-      const { light, dark } = await diagramSvgs(source);
-      const result = { light: "", dark: "" };
-      for (const mode of ["light", "dark"] as const) {
-        const svg = mode === "light" ? light : dark;
-        const path = `_media/${createHash("sha256").update(svg).digest("hex").slice(0,20)}.svg`;
-        result[mode] = toPublicPath(path, options.baseUrl); options.assets?.set(path, svg);
-      }
-      return result;
+      const { diagramSvg } = await import("./diagrams.js");
+      return diagramSvg(source);
     },
     parseMarkdown: value => parseComponents(value, { ...options, stack, normalize: false }),
     id: value => `sourcey-${ids.prefix}-${value.replace(/[^\w-]/g, "-")}-${++ids.sequence}`,
@@ -947,6 +955,10 @@ export function contentAnchors(nodes: readonly ContentNode[]): string[] {
 function accordionAnchor(node: ComponentNode): string[] {
   const anchor = node.definition === Accordion ? (node.resolved.data as ContainerData).props.anchor : undefined;
   return anchor === undefined ? [] : [text(anchor)];
+}
+/** The font families a page's content is drawn in beyond its theme's: Inter, for its diagrams. */
+export function contentFonts(nodes: readonly ContentNode[]): string[] {
+  return [...new Set(nodes.flatMap(node => node.kind === "component" ? [...(node.definition === Diagram && !("failure" in (node.resolved.data as DiagramData)) ? [DIAGRAM_FONT] : []), ...contentFonts(node.resolved.content)] : []))];
 }
 export function componentStyles(nodes: readonly ContentNode[]): string[] {
   return [...new Set(nodes.flatMap(node => node.kind === "component" ? [...(node.client?.css ?? []), ...componentStyles(node.resolved.content)] : []))];

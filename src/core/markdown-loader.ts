@@ -13,7 +13,7 @@ import {
   type PageHeading,
 } from "../utils/markdown.js";
 import { InputReader } from "./loader.js";
-import { hasAgentContent, openingHasComponent, parseComponents, readableContent, renderContent, componentStyles, contentHeadings, contentAnchors, contentDiagnostics, resolveSectionIndexes, type ContentLinks, type ContentNode, type NativeComponentDefinition, type NativeContentContext } from "./markdown-components.js";
+import { hasAgentContent, openingHasComponent, parseComponents, readableContent, renderContent, componentStyles, contentFonts, contentHeadings, contentAnchors, contentDiagnostics, resolveSectionIndexes, type ContentLinks, type ContentNode, type NativeComponentDefinition, type NativeContentContext } from "./markdown-components.js";
 import type { Links } from "marked";
 import type { NormalizedChangelog } from "./types.js";
 import { english, type UiMessages } from "./messages.js";
@@ -32,6 +32,8 @@ export interface MarkdownPage {
   draft?: boolean;
   assets?: Map<string, ArtifactBody>;
   componentStyles?: string[];
+  /** Font families the page's content is drawn in beyond the theme's */
+  fonts?: string[];
   diagnostics?: ContentDiagnostic[];
   kind: "markdown";
   /** Page title from frontmatter */
@@ -110,7 +112,7 @@ export interface ChangelogPage {
 
 export type DocsPage = MarkdownPage | ChangelogPage;
 /** Parsed and resolved content, before navigation-dependent projections. */
-export interface MarkdownSource extends Omit<MarkdownPage, "html" | "markdown" | "headings" | "anchors" | "hideLede" | "componentStyles" | "diagnostics"> {
+export interface MarkdownSource extends Omit<MarkdownPage, "html" | "markdown" | "headings" | "anchors" | "hideLede" | "componentStyles" | "fonts" | "diagnostics"> {
   messages: UiMessages;
   nodes: readonly ContentNode[];
   /** The page's reference link definitions, which its `[text][name]` links read. */
@@ -312,7 +314,7 @@ export function drawDocsSource(source: DocsSource, navigation?: SiteTab, documen
   // Content that cannot render, such as a code fence's unknown metadata, names its page.
   try { html = renderContent(nodes, messages); }
   catch (error) { throw new Error(`${source.sourcePath}: ${(error as Error).message}`, { cause: error }); }
-  const page = { ...metadata, headings: contentHeadings(nodes), anchors: contentAnchors(nodes), diagnostics: contentDiagnostics(nodes), componentStyles: componentStyles(nodes) };
+  const page = { ...metadata, headings: contentHeadings(nodes), anchors: contentAnchors(nodes), diagnostics: contentDiagnostics(nodes), componentStyles: componentStyles(nodes), fonts: contentFonts(nodes) };
   // A page drawn by its author keeps its own heading and opening; the doc frame draws both for it.
   if (source.layout === "page" || source.layout === "blank") return { ...page, html: smart ? smartypants(html) : html };
   let cleanHtml = html.replace(/^\s*<h1([^>]*)>(.*?)<\/h1>\s*/i, (match, attributes: string, inner: string) => {

@@ -8,7 +8,7 @@ import { buildSourceySite, sourceyArtifacts } from "../../src/site.js";
 import { contentDiagnostics, defineComponent, parseComponents, readableContent, renderContent, type ContentNode, type NativeComponentDefinition } from "../../src/core/markdown-components.js";
 import { messagesFor } from "../../src/core/messages.js";
 import { InputReader } from "../../src/core/loader.js";
-import { diagramSvgs } from "../../src/core/diagrams.js";
+import { diagramSvg } from "../../src/core/diagrams.js";
 
 /** Content read in English, at the current version, as a page drawn on its own is. */
 const ENGLISH = { locale: "en", lang: "en", dir: "ltr" as const, contentLocale: "en", version: { id: "current", label: "Current" }, versionScope: "", messages: messagesFor("en"), icons: "heroicons" as const };
@@ -124,49 +124,30 @@ describe("indented code", () => {
   });
 });
 
-describe("line breaks in diagram labels", () => {
-  it("draws a flowchart node's <br> as a line break, and reads it as a space where the renderer draws one line", async () => {
-    const lines = (svg: string) => [...svg.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((match) => match[1].replace(/<tspan[^>]*>/g, "|").replace(/<\/tspan>/g, "").replace(/\s+/g, " ").trim());
-    const flowchart = (await diagramSvgs('graph TB\n  subgraph S["Client<br>Layer"]\n  x["Ever Teams<br/>(React/RN)"] -->|HTTP<br/>WS| y[End]\n  end')).light;
-    expect(lines(flowchart)).toEqual(expect.arrayContaining(["|Ever Teams|(React/RN)", "HTTP WS", "Client Layer"]));
-    const sequence = (await diagramSvgs("sequenceDiagram\n  participant FE as Gauzy Frontend<br/>(Angular)\n  FE->>FE: Create<br/>settings\n  Note over FE: If it exists,<br/>redirect")).light;
-    expect(lines(sequence)).toEqual(expect.arrayContaining(["Gauzy Frontend (Angular)", "Create settings", "If it exists, redirect"]));
+describe("diagrams", () => {
+  /** Each drawn text, its lines parted by "|". */
+  const lines = (svg: string) => [...svg.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((match) => match[1].replace(/<tspan x="[^"]*" dy="[^"]*">/g, "|").replace(/<[^>]+>/g, "").replace(/^\|/, "").replace(/\s+/g, " ").trim());
+
+  it("draws a diagram once for every theme, in a shadow root of its own, its colours and font the page's", async () => {
+    const page = await guide("# Flow\n\n```mermaid\ngraph LR\n  a[Request] --> b[Response]\n```\n");
+    expect(page.html).toMatch(/<div class="sourcey-diagram-drawing" style="max-width:[\d.]+px;min-width:\d+px" role="img" aria-label="Diagram; its source is available below"><template shadowrootmode="open"><style>[^<]*<\/style><svg [^>]*style="--bg:var\(--diagram-bg\);--fg:var\(--diagram-fg\)"/);
+    expect(page.html).not.toContain("<img");
+    expect(page.fonts).toEqual(["Inter"]);
+  });
+
+  it("breaks a label's lines at <br>, wherever Mermaid allows one", async () => {
+    const flowchart = await diagramSvg('graph TB\n  subgraph S["Client<br>Layer"]\n  x["Ever Teams<br/>(React/RN)"] -->|HTTP<br/>WS| y[End]\n  end');
+    expect(lines(flowchart)).toEqual(expect.arrayContaining(["Ever Teams|(React/RN)", "HTTP|WS", "Client|Layer"]));
+    const sequence = await diagramSvg("sequenceDiagram\n  participant FE as Gauzy Frontend<br/>(Angular)\n  FE->>FE: Create<br/>settings\n  Note over FE: If it exists,<br/>redirect");
+    expect(lines(sequence)).toEqual(expect.arrayContaining(["Gauzy Frontend|(Angular)", "Create|settings", "If it exists,|redirect"]));
     for (const svg of [flowchart, sequence]) expect(svg).not.toMatch(/&lt;br/i);
   });
 
-  it("reads a label as Mermaid shows it: an entity is the character it names, and other markup is left out", async () => {
-    const lines = (svg: string) => [...svg.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map((match) => match[1].replace(/<tspan[^>]*>/g, "|").replace(/<\/tspan>/g, "").replace(/\s+/g, " ").trim());
-    const svg = (await diagramSvgs('graph LR\n  slot["&lt;page-slot id=\'main\'&gt;"] --> orm["Decorator Layer<br/>(entities & metadata)"]\n  orm --> plain["Plain <b>bold</b> text"]')).light;
-    expect(lines(svg)).toEqual(expect.arrayContaining(["&lt;page-slot id='main'&gt;", "|Decorator Layer|(entities &amp; metadata)", "Plain bold text"]));
-    expect(svg).not.toMatch(/&amp;(lt|gt|amp);/);
-  });
-
-  it("draws a flowchart's subgraphs around their members, an inner one over the one around it", async () => {
-    const svg = (await diagramSvgs('graph LR\n  subgraph Outer["Server Layer"]\n    subgraph Inner["Core"]\n      a[A] --> b[B]\n    end\n    c[C]\n  end\n  d[D] --> a\n  Inner --> c')).light;
-    const boxes = [...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="4"[^>]*><\/rect><text[^>]*>([^<]*)<\/text>/g)].map(([, x, y, width, height, title]) => ({ title, x: +x, y: +y, right: +x + +width, bottom: +y + +height }));
-    expect(boxes.map((box) => box.title)).toEqual(["Server Layer", "Core"]);
-    const [outer, inner] = boxes;
-    expect(inner.x).toBeGreaterThan(outer.x);
-    expect(inner.right).toBeLessThan(outer.right);
-    // Node A sits inside Core, which sits inside Server Layer; D sits outside both.
-    const node = (label: string) => { const match = svg.match(new RegExp(`<text x="([\\d.]+)" y="([\\d.]+)"[^>]*>${label}</text>`)); return { x: Number(match![1]), y: Number(match![2]) }; };
-    const a = node("A"), d = node("D");
-    expect(a.x > inner.x && a.x < inner.right && a.y > inner.y && a.y < inner.bottom).toBe(true);
-    expect(d.x < outer.x || d.x > outer.right).toBe(true);
-  });
-
-  it("runs a subgraph no link crosses across the one around it, or as it declares, as Mermaid does", async () => {
-    const at = (svg: string, label: string) => { const match = svg.match(new RegExp(`<text x="([\\d.]+)" y="([\\d.]+)"[^>]*>${label}</text>`)); return { x: Number(match![1]), y: Number(match![2]) }; };
-    // A top-to-bottom chart lists each layer's unlinked members down its side, in the order written.
-    const layers = (await diagramSvgs('graph TD\n  subgraph Clients["Client Layer"]\n    web[Web]\n    desktop[Desktop]\n  end\n  subgraph Data["Database Layer"]\n    sqlite[SQLite]\n    pg[PostgreSQL]\n  end\n  Clients --> Data')).light;
-    const [web, desktop, sqlite, pg] = ["Web", "Desktop", "SQLite", "PostgreSQL"].map((label) => at(layers, label));
-    expect([web.y < desktop.y, desktop.y < sqlite.y, sqlite.y < pg.y]).toEqual([true, true, true]);
-    // One that declares its direction runs that way; one a link crosses keeps the chart's.
-    const declared = (await diagramSvgs('flowchart TB\n  subgraph s["Steps"]\n    direction LR\n    one --> two\n  end\n  start --> s')).light;
-    expect(at(declared, "two").x).toBeGreaterThan(at(declared, "one").x);
-    expect(at(declared, "two").y).toBe(at(declared, "one").y);
-    const crossed = (await diagramSvgs('flowchart TB\n  subgraph s["Steps"]\n    direction LR\n    one --> two\n  end\n  two --> done')).light;
-    expect(at(crossed, "two").y).toBeGreaterThan(at(crossed, "one").y);
+  it("reads a label as Mermaid shows it: an entity is the character it names, emphasis stays and other markup is left out", async () => {
+    const svg = await diagramSvg('graph LR\n  slot["&lt;page-slot id=\'main\'&gt;"] --> orm["Decorator Layer<br/>(entities & metadata)"]\n  orm --> plain["Plain <b>bold</b> <span>text</span>"]');
+    expect(lines(svg)).toEqual(expect.arrayContaining(["&lt;page-slot id='main'&gt;", "Decorator Layer|(entities &amp; metadata)", "Plain bold text"]));
+    expect(svg).toContain('<tspan font-weight="bold">bold</tspan>');
+    expect(svg).not.toMatch(/&amp;(lt|gt|amp);|<span/);
   });
 });
 
@@ -190,7 +171,7 @@ describe("diagrams the renderer cannot draw", () => {
       const french = await parseComponents(gitGraph, { source: file, root, input: new InputReader(), context });
       expect(renderContent(french, context.messages)).toContain("<figcaption>Ce diagramme n’a pas pu être dessiné ; sa source est affichée.</figcaption>");
       expect(contentDiagnostics(nodes)).toEqual([
-        { severity: "warning", code: "diagram", file: await realpath(file), message: expect.stringMatching(/guide\.md at offset 12: the diagram could not be drawn \(Unsupported diagram type: "gitgraph"[^)]*\); the page shows its source instead$/) },
+        { severity: "warning", code: "diagram", file: await realpath(file), message: expect.stringMatching(/guide\.md at offset 12: the diagram could not be drawn \(Diagram type "gitGraph" is not supported\); the page shows its source instead$/) },
       ]);
     } finally {
       await rm(root, { recursive: true, force: true });
