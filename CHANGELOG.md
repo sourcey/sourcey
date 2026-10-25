@@ -6,6 +6,8 @@
 
 - An author's HTML keeps more of its inline style, on any element: type (size, weight, style, family, line height, spacing, alignment, case, decoration), margins and padding, borders and radii, shadows, flex and grid tracks, overflow, object fit, and placement within the content with `position: relative` or `absolute` and offsets, which the content holds as its containing block. Colours can be `rgb()`, `hsl()`, `color-mix()`, gradients and theme variables (`var(--name)`) as well as hex. A style that is fixed to the window, raises an element above the page's layers, pulls it back with a negative margin or offset, or loads anything (`url()`, `image-set()`) is still removed. A responsive video, a padded box holding an absolutely placed iframe, had shown as a small frame of the browser's default size.
 - A component or directive written in a list item's text, indented up to three spaces, stays in the list item, with what follows it there, as CommonMark and MDX read it. It had ended the list, and the item's later lines could read as code.
+- Mermaid diagrams are read by Mermaid's own parser and laid out as Mermaid lays them out, by `@sourcey/beautiful-mermaid`: flowcharts, state, class, ER, sequence, Gantt, pie and mindmap diagrams. A page carries one drawing for both themes, in the page's colours and set in Inter, and a drawing wider than the column shrinks to fit down to 80% of its size, then scrolls.
+- Sourcey runs on Node.js 22.22.2 or later, 24.15 or later, or 26, as the DOM its diagrams are read in (jsdom 30) does. It had run on 22.19. Its dependencies are current, among them Mermaid 12, Preact 11 and satori 0.63.
 
 ### Added
 
@@ -64,6 +66,7 @@
 - A migration reads an MDX import or export written inside an element, which MDX hoists to the module, where it had stopped at the components it imports as not imported.
 - `sourcey migrate docusaurus` names the line a finding is on as the file is written. After an `mdx-code-block` fence, which Docusaurus unwraps before reading a document, a finding had named a line two earlier for each fence above it.
 - `sourcey migrate docusaurus` names a plugin or custom CSS file the configuration gives with `require.resolve` by its path in the project, where the report had printed its absolute path on the machine that ran the migration.
+- A social card sets its text with the font's kerning, as a browser does, and wraps a name too wide for a line between its words, `AccountingTemplatePreviewRequestDTO` after `Preview`. Such a name had been cut off at the card's edge, mid-letter.
 
 ## 3.9.0 - 2026-10-23
 
