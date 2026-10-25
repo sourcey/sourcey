@@ -34,12 +34,13 @@ describe("breadcrumbs", () => {
     const page = await pages(root, true, theme);
     const docker = trail(page("guides/install/docker/index.html"))!;
     expect(docker).toMatch(/^<nav class="sourcey-breadcrumbs[^"]*" aria-label="Breadcrumb"><ol><li><a href="\/guides\/start\/" aria-label="Pets"><svg class="sourcey-breadcrumbs-home"/);
-    expect(docker).toContain('<li><a href="/guides/start/">Guides</a></li><li><span>How-to guides</span></li><li><a href="/guides/install/">How to install</a></li><li><span>Containers</span></li></ol>');
+    // The Guides tab opens on the home page, where the home mark already leads, so it is no step of its own.
+    expect(docker).toContain('</svg></a></li><li><span>How-to guides</span></li><li><a href="/guides/install/">How to install</a></li><li><span>Containers</span></li></ol>');
     // A section's own page is not a step on the way to itself.
-    expect(trail(page("guides/install/index.html"))).toContain("<li><span>How-to guides</span></li></ol>");
-    // A page in no named section has the tab alone.
-    expect(trail(page("guides/start/index.html"))).toContain('<li><a href="/guides/start/">Guides</a></li></ol>');
-    expect(trail(page("api/index.html"))).toContain('<li><a href="/api/">API</a></li></ol>');
+    expect(trail(page("guides/install/index.html"))).toContain("</svg></a></li><li><span>How-to guides</span></li></ol>");
+    // A page in no named section of the home tab has no way to show; another tab's names its tab.
+    expect(trail(page("guides/start/index.html"))).toBeUndefined();
+    expect(trail(page("api/index.html"))).toContain('</svg></a></li><li><a href="/api/">API</a></li></ol>');
   }));
 
   it("are off unless the site asks, leaving the theme's own trail", () => fixture(async root => {

@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- A page of the site's own (`layout: page`) keeps its text to a reading measure, while HTML its author draws keeps the page's width. Its lines had run the window's width.
 - A diagram's frontmatter `title`, such as a pie chart's, is drawn as its title, as Mermaid draws it. It had been left out.
 - A component written in a sentence draws what it holds as part of the sentence, where a site's component had drawn it as a paragraph inside the sentence.
 - A site's component named for a built-in, such as `Note` or `Card`, is drawn and exported as the site's own wherever it appears. A page's Markdown copy had read it as the built-in it replaced, and stopped the build.

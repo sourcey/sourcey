@@ -6,6 +6,7 @@ import { buildSiteDocs } from "../../src/index.js";
 import { markdown } from "../../src/adapters/index.js";
 import { resolveConfigFromRaw, type SourceyConfig } from "../../src/config.js";
 import { buildSourceySite } from "../../src/site.js";
+import { formatSiteDiagnostics } from "../../src/core/site-diagnostics.js";
 
 async function fixture(run: (root: string) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), "sourcey-broken-links-"));
@@ -36,6 +37,10 @@ describe("broken links", () => {
     expect(site.siteDiagnostics.filter(diagnostic => diagnostic.code === "broken-link")).toEqual([
       { severity: "warning", code: "broken-link", page: "/start/", message: 'Link "/gone/" leads to /gone/, which the site does not publish.' },
       { severity: "warning", code: "broken-link", page: "/start/", message: 'Link "https://pets.example/lost/" leads to /lost/, which the site does not publish.' },
+    ]);
+    // The build's summary names the first and counts the rest.
+    expect(formatSiteDiagnostics(site.siteDiagnostics.filter(diagnostic => diagnostic.code === "broken-link"))).toEqual([
+      'WARNING broken-link: Link "/gone/" leads to /gone/, which the site does not publish. And 1 more like it. (1 page: /start/)',
     ]);
   }));
 

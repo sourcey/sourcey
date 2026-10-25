@@ -142,6 +142,8 @@ export function formatSiteDiagnostics(diagnostics: readonly SiteDiagnostic[]): s
   }
   return [...groups].map(([code, entries]) => {
     const pages = [...new Set(entries.flatMap(entry => entry.page ? [entry.page] : []))];
-    return `WARNING ${code}: ${entries[0].message}${pages.length ? ` (${pages.length} page${pages.length === 1 ? "" : "s"}: ${pages.slice(0, 5).join(", ")}${pages.length > 5 ? ", …" : ""})` : ""}`;
+    // Warnings of one kind that each name something of their own, as broken links do, say how many follow the first.
+    const others = new Set(entries.map(entry => entry.message)).size - 1;
+    return `WARNING ${code}: ${entries[0].message}${others ? ` And ${others} more like it.` : ""}${pages.length ? ` (${pages.length} page${pages.length === 1 ? "" : "s"}: ${pages.slice(0, 5).join(", ")}${pages.length > 5 ? ", …" : ""})` : ""}`;
   });
 }

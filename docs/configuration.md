@@ -402,7 +402,7 @@ A page's frontmatter `layout` says how it is drawn:
 | `layout` | Drawn with |
 | --- | --- |
 | `doc` | The documentation frame: header, sidebar, contents and footer. The default for documentation. |
-| `page` | The site's header and footer around the page's own body, full width, with no sidebar or contents. The default for site pages. |
+| `page` | The site's header and footer around the page's own body, with no sidebar or contents: its text at a reading measure, its HTML the page's full width. The default for site pages. |
 | `blank` | Nothing but the page's body. Sourcey keeps the page's `<head>`: its title, description, social card, theme colours and fonts. |
 | `changelog` | A changelog, as for `CHANGELOG.md`. |
 

@@ -132,6 +132,13 @@
   white-space: nowrap;
 }
 
+/* ── Site pages ───────────────────────────────────────────────────── */
+
+/* A page of the site's own keeps its text to a reading measure; what its author draws in HTML keeps the page's width. */
+#sourcey .sourcey-page > #content-area > :where(p, h1, h2, h3, h4, h5, h6, ul, ol, dl, blockquote, hr, .table-wrap, .prose-code-block, .callout) {
+  max-width: var(--content-max-width);
+}
+
 /* ── Footnotes ────────────────────────────────────────────────────── */
 
 /* A note's number rides above the line; the notes end the page under a rule, a step smaller than its text. */
@@ -313,6 +320,14 @@
 }
 #sourcey .sourcey-feedback-note p {
   margin: 0;
+}
+#sourcey .sourcey-feedback-note a {
+  color: rgb(var(--color-primary-ink));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dark #sourcey .sourcey-feedback-note a {
+  color: rgb(var(--color-primary-light));
 }
 
 /* ── Prose Video (::video directive) ──────────────────────────────── */
