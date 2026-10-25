@@ -10,6 +10,7 @@ import { joinHref } from "../../site-url.js";
 import { linkTarget } from "../../utils/html.js";
 import { ContextControls, hasContextChoices } from "./ContextControls.js";
 import { PagePart } from "./PagePart.js";
+import { RepositoryStats, repositoryLabel } from "../ui/RepositoryStats.js";
 
 function SearchIcon() {
   return (
@@ -166,10 +167,10 @@ export function Header() {
                           <a
                             href={link.href}
                             {...linkTarget(link.href, site.siteUrl)}
-                            aria-label={link.type === "link" ? undefined : linkLabel(link)}
-                            class={`sourcey-header-link flex items-center justify-center h-8 whitespace-nowrap ${link.type === "link" ? "px-2" : "w-8"} text-[rgb(var(--color-gray-500))] hover:text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-400))] dark:hover:text-[rgb(var(--color-gray-300))]`}
+                            aria-label={link.type === "link" ? undefined : link.repository ? repositoryLabel(linkLabel(link), link.repository, options.lang, messages) : linkLabel(link)}
+                            class={`sourcey-header-link flex items-center justify-center h-8 whitespace-nowrap ${link.type === "link" ? "px-2" : link.repository ? "gap-2 px-2" : "w-8"} text-[rgb(var(--color-gray-500))] hover:text-[rgb(var(--color-gray-700))] dark:text-[rgb(var(--color-gray-400))] dark:hover:text-[rgb(var(--color-gray-300))]`}
                           >
-                            {link.type === "link" ? linkLabel(link) : <SocialIcon type={link.type} />}
+                            {link.type === "link" ? linkLabel(link) : <><SocialIcon type={link.type} />{link.repository && <RepositoryStats stats={link.repository} />}</>}
                           </a>
                         </li>
                       ))}

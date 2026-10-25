@@ -274,8 +274,10 @@ describe("footnotes", () => {
     ].join(""));
     expect(page.html).not.toContain("Never cited");
     expect(page.html).not.toMatch(/[-]/);
-    // The page's Markdown copy keeps them as written.
+    // The page's Markdown copy keeps them as written, and links to them land.
     expect(page.markdown).toContain("[^lamp]: Linux, Apache, MySQL, PHP.");
+    expect(page.anchors).toEqual(expect.arrayContaining(["fn-lamp", "fnref-lamp", "fnref-lamp-2", "fn-php", "fnref-php"]));
+    expect(page.anchors).not.toContain("fn-unused");
   });
 });
 

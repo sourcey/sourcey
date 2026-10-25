@@ -163,6 +163,26 @@
   white-space: nowrap;
 }
 
+/* ── Repository numbers ───────────────────────────────────────────── */
+
+/* A GitHub link's release, stars and forks beside its mark, in small figures that keep their width. */
+#sourcey .sourcey-repository-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+#sourcey .sourcey-repository-stats > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+}
+#sourcey .sourcey-repository-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
 /* ── Breadcrumbs ──────────────────────────────────────────────────── */
 
 /* The way to the page above its title: the home mark, then each step, quiet and wrapping on a phone. */

@@ -7,6 +7,8 @@ import { stringifyShared } from "./core/shared-json.js";
 import type { SitePage } from "./core/site-model.js";
 import type { ArtifactBody } from "./core/source-file.js";
 import type { SiteConfig } from "./renderer/context.js";
+import type { SiteDiagnostic } from "./core/site-diagnostics.js";
+import { githubRepository, repositoryStats } from "./core/github-stats.js";
 import { consoleArtifactPath, consoleData } from "./renderer/try-it.js";
 import { tabPath, toPublicUrl } from "./site-url.js";
 
@@ -14,7 +16,7 @@ import { tabPath, toPublicUrl } from "./site-url.js";
  * The site as its pages draw it: its name, theme and links, with its logo,
  * favicon and theme stylesheets published as assets and named by their URLs.
  */
-export async function buildSiteConfig(config: ResolvedConfig, input: InputReader, assets: Map<string, ArtifactBody>): Promise<SiteConfig> {
+export async function buildSiteConfig(config: ResolvedConfig, input: InputReader, assets: Map<string, ArtifactBody>, warnings: SiteDiagnostic[] = []): Promise<SiteConfig> {
   async function assetUrl(source: string): Promise<string> {
     if (!source || /^(?:data:|https?:\/\/)/.test(source)) return source;
     const asset = await staticMediaAsset(source, input, "site");
@@ -45,6 +47,19 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
 
   const customCSS = await loadCustomCSS(config.theme.css, input, assetUrl);
 
+  // A GitHub link that asks for its repository's numbers shows them; when GitHub does not answer,
+  // the build says so and the link shows without them.
+  const links = await Promise.all(config.navbar.links.map(async (link) => {
+    const repository = link.type !== "menu" && link.stats ? githubRepository(link.href) : undefined;
+    if (link.type === "menu" || !repository) return link;
+    try {
+      return { ...link, repository: await repositoryStats(repository) };
+    } catch (error) {
+      warnings.push({ severity: "warning", code: "github-stats", message: `${link.href}: GitHub's release, stars and forks could not be read (${(error as Error).message}); the link shows without them` });
+      return link;
+    }
+  }));
+
   return {
     name: config.name,
     tryIt: config.tryIt,
@@ -59,7 +74,7 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
     editBranch: config.editBranch,
     editBasePath: config.editBasePath,
     codeSamples: config.codeSamples,
-    navbar: config.navbar,
+    navbar: { ...config.navbar, links },
     footer: config.footer,
     customCSS: customCSS || undefined,
     changelog: config.changelog,

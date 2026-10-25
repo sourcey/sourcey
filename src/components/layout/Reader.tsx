@@ -18,6 +18,7 @@ import { PagePart } from "./PagePart.js";
 import { LastUpdated } from "../ui/LastUpdated.js";
 import { Feedback } from "../ui/Feedback.js";
 import { Breadcrumbs } from "../ui/Breadcrumbs.js";
+import { RepositoryStats, repositoryLabel } from "../ui/RepositoryStats.js";
 import { navbarLinks, type ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
 import { joinHref } from "../../site-url.js";
@@ -88,7 +89,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
   const site = useContext(SiteContext);
   const nav = useContext(NavigationContext);
   const page = useContext(PageContext);
-  const { assetBase: base, messages = english, updated } = useContext(OptionsContext);
+  const { assetBase: base, messages = english, updated, lang } = useContext(OptionsContext);
   const settings = site.theme.reader ?? {};
   const document = settings.document;
   const { tab, group } = activeSection(nav);
@@ -211,11 +212,11 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
                 <a
                   key={link.href}
                   href={safeUrl(link.href) ?? undefined}
-                  class={link.type === "link" ? undefined : "desktop-nav-icon"}
-                  aria-label={link.type === "link" ? undefined : linkLabel(link)}
+                  class={link.type === "link" ? undefined : link.repository ? "desktop-nav-icon desktop-nav-repository" : "desktop-nav-icon"}
+                  aria-label={link.type === "link" ? undefined : link.repository ? repositoryLabel(linkLabel(link), link.repository, lang, messages) : linkLabel(link)}
                   aria-current={isCurrent(link.href) ? "page" : undefined}
                 >
-                  {link.type === "link" ? linkLabel(link) : <SocialIcon type={link.type} size={18} />}
+                  {link.type === "link" ? linkLabel(link) : <><SocialIcon type={link.type} size={18} />{link.repository && <RepositoryStats stats={link.repository} />}</>}
                 </a>
               ))}
             </nav>

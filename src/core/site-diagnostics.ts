@@ -8,7 +8,7 @@ import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
 
 export interface SiteDiagnostic {
   severity: "warning";
-  code: "missing-site-origin" | "missing-description" | "short-description" | "broken-fragment" | "canonical-target" | "hreflang-target";
+  code: "missing-site-origin" | "missing-description" | "short-description" | "broken-fragment" | "canonical-target" | "hreflang-target" | "github-stats";
   page?: string;
   message: string;
 }

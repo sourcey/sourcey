@@ -30,6 +30,7 @@ import { themeDefinitions, type ThemeName } from "./themes/registry.js";
 import { textShades } from "./utils/palette.js";
 import { slugify } from "./utils/slug.js";
 import { iconDrawing, iconSvg, nativeIcon } from "./utils/icons.js";
+import { githubRepository } from "./core/github-stats.js";
 
 export type { PrettyUrls } from "./site-url.js";
 
@@ -549,6 +550,11 @@ export interface NavbarLink {
   href: string;
   /** A text link's text; for a network, its icon's accessible name (the network's name by default). */
   label?: string;
+  /**
+   * A `github` link to a repository shows its latest release, stars and forks,
+   * read from GitHub when the site builds (with `GITHUB_TOKEN` when set).
+   */
+  stats?: boolean;
 }
 
 /** Links the header holds under one label, opening as a menu. */
@@ -568,6 +574,8 @@ export function navbarLinks(entries: readonly NavbarEntry[]): NavbarLink[] {
 /** A menu holds labelled links, and only links: one level, as a header's menu shows them. */
 function resolveNavbarEntries(entries: readonly NavbarEntry[]): NavbarEntry[] {
   for (const entry of entries) {
+    if (entry.type !== "menu" && entry.stats && (entry.type !== "github" || !githubRepository(entry.href)))
+      throw new Error(`Navbar link ${entry.href}: stats are a GitHub repository's, so the link is { type: "github", href: "https://github.com/owner/repo" }`);
     if (entry.type !== "menu") continue;
     if (typeof entry.label !== "string" || !entry.label.trim()) throw new Error("A navbar menu needs a label");
     if (!Array.isArray(entry.links) || !entry.links.length) throw new Error(`Navbar menu "${entry.label}" needs links`);

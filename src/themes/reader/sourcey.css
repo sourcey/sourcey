@@ -283,6 +283,12 @@ p {
   min-width: 36px;
   margin-inline: -9px;
 }
+/* A repository link holds its numbers beside its mark. */
+.desktop-nav-repository {
+  align-items: center;
+  gap: 8px;
+  margin-inline: 0;
+}
 .header-actions {
   display: flex;
   align-items: center;

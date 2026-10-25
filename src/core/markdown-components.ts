@@ -9,7 +9,7 @@ import { canonicalInputPath } from "./loader.js";
 import type { InputReader } from "./loader.js";
 import type { NormalizedSchema } from "./types.js";
 import { escapeAttr, escapeHtml, safeUrl, rewriteHtmlUrls, sanitizeRenderedHtml } from "../utils/html.js";
-import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, renderMarkdownInline, renderCodeBlock, parseCodeFenceInfo, type CodeFenceMetadata, type MarkdownRenderOptions, type PageHeading, lexMarkdown, headingInfo, pageLinkHref, PAGE_CONTENT, withFootnotes } from "../utils/markdown.js";
+import { escapeGeneratedMarkers, forEachToken, generatedMarker, renderMarkdown, renderMarkdownInline, renderCodeBlock, parseCodeFenceInfo, type CodeFenceMetadata, type MarkdownRenderOptions, type PageHeading, lexMarkdown, headingInfo, pageLinkHref, PAGE_CONTENT, withFootnotes, footnoteAnchors } from "../utils/markdown.js";
 import { iconDrawing, iconSource, iconSvg, isImageIcon, type IconPresentation } from "../utils/icons.js";
 import { ALERT, ALERT_TYPE, CALLOUTS, alertBody, alertCallout, isCallout, renderCallout, type CalloutKind } from "../utils/callouts.js";
 import type { IconSet } from "../config.js";
@@ -961,8 +961,16 @@ export function contentDiagnostics(nodes: readonly ContentNode[]): { severity: "
     return [...own, ...contentDiagnostics(node.resolved.content)];
   });
 }
+/** The anchors a page's content gives it: headings, fields, accordions and footnotes. */
 export function contentAnchors(nodes: readonly ContentNode[]): string[] {
-  return nodes.flatMap(node => forAgents(node) ? [] : node.kind === "heading" ? [node.id, ...(node.aliases ?? [])] : node.kind === "component" ? [...(isField(node) ? [(node.resolved.data as FieldData).id] : []), ...accordionAnchor(node), ...contentAnchors(node.resolved.content)] : []);
+  return [...nodeAnchors(nodes), ...footnoteAnchors(markdownOf(nodes))];
+}
+function nodeAnchors(nodes: readonly ContentNode[]): string[] {
+  return nodes.flatMap(node => forAgents(node) ? [] : node.kind === "heading" ? [node.id, ...(node.aliases ?? [])] : node.kind === "component" ? [...(isField(node) ? [(node.resolved.data as FieldData).id] : []), ...accordionAnchor(node), ...nodeAnchors(node.resolved.content)] : []);
+}
+/** The Markdown a page's content was written in, a component's included, apart from text for agents alone. */
+function markdownOf(nodes: readonly ContentNode[]): string[] {
+  return nodes.flatMap(node => forAgents(node) ? [] : node.kind === "markdown" ? [node.value] : node.kind === "component" ? markdownOf(node.resolved.content) : []);
 }
 /** An accordion's own anchor, as a list of none or one. */
 function accordionAnchor(node: ComponentNode): string[] {

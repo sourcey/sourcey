@@ -391,6 +391,25 @@ const footnoteExtension: import("marked").MarkedExtension = {
   ],
 };
 
+function footnoteId(label: string): string {
+  return slugify(label.toLowerCase());
+}
+
+/**
+ * The anchors a document's footnotes give its page, read from its Markdown as
+ * the notes are drawn from it: each cited note's, and each citation's.
+ */
+export function footnoteAnchors(markdown: readonly string[]): string[] {
+  const text = markdown.join("\n");
+  const notes = new Set([...text.matchAll(/^[ \t]*\[\^([^\]\s]+)\]:/gm)].map((match) => match[1].toLowerCase()));
+  const uses = new Map<string, number>();
+  for (const match of text.matchAll(/\[\^([^\]\s]+)\](?!:)/g)) {
+    const label = match[1].toLowerCase();
+    if (notes.has(label)) uses.set(label, (uses.get(label) ?? 0) + 1);
+  }
+  return [...uses].flatMap(([label, count]) => [`fn-${footnoteId(label)}`, ...Array.from({ length: count }, (_, index) => `fnref-${footnoteId(label)}${index ? `-${index + 1}` : ""}`)]);
+}
+
 /**
  * Draw a document whose footnotes, written `[^label]` and `[^label]: note`,
  * number in reading order across every piece `draw` renders, with their notes
@@ -419,17 +438,15 @@ export function withFootnotes(messages: { footnotes: string; footnoteBack: strin
     if (!numbers.has(label)) numbers.set(label, numbers.size + 1);
     const use = (uses.get(label) ?? 0) + 1;
     uses.set(label, use);
-    const id = slugify(label);
-    return `<sup class="footnote-ref"><a href="#fn-${id}" id="fnref-${id}${use > 1 ? `-${use}` : ""}" aria-describedby="footnotes-label">${numbers.get(label)}</a></sup>`;
+    return `<sup class="footnote-ref"><a href="#fn-${footnoteId(label)}" id="fnref-${footnoteId(label)}${use > 1 ? `-${use}` : ""}" aria-describedby="footnotes-label">${numbers.get(label)}</a></sup>`;
   });
   if (!numbers.size) return html;
   const items = [...numbers].map(([label, number]) => {
-    const id = slugify(label);
-    const back = ` <a href="#fnref-${id}" class="footnote-back" aria-label="${escapeAttr(`${messages.footnoteBack} ${number}`)}">\u21A9</a>`;
+    const back = ` <a href="#fnref-${footnoteId(label)}" class="footnote-back" aria-label="${escapeAttr(`${messages.footnoteBack} ${number}`)}">\u21A9</a>`;
     const note = notes.get(label)!;
     // The way back closes the note's last paragraph, or follows the note.
     const end = note.endsWith("</p>") ? note.lastIndexOf("</p>") : note.length;
-    return `<li id="fn-${id}">${note.slice(0, end)}${back}${note.slice(end)}</li>`;
+    return `<li id="fn-${footnoteId(label)}">${note.slice(0, end)}${back}${note.slice(end)}</li>`;
   });
   return `${html}\n<section class="footnotes"><h2 id="footnotes-label" class="footnotes-label">${escapeHtml(messages.footnotes)}</h2><ol>${items.join("")}</ol></section>\n`;
 }

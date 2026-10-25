@@ -62,6 +62,8 @@ export const english = {
   feedbackYes: "Yes",
   feedbackNo: "No",
   feedbackThanks: "Thanks for your feedback.",
+  githubStars: "stars",
+  githubForks: "forks",
 } as const;
 export type UiMessages = { [K in keyof typeof english]: string };
 export type UiMessageOverrides = Partial<UiMessages> & { navigation?: Record<string, string> };
@@ -131,6 +133,8 @@ const translations: Record<string, Partial<UiMessages>> = {
     feedbackYes: "Oui",
     feedbackNo: "Non",
     feedbackThanks: "Merci pour votre retour.",
+    githubStars: "étoiles",
+    githubForks: "forks",
   },
   es: {
     copyCode: "Copiar código",
@@ -196,6 +200,8 @@ const translations: Record<string, Partial<UiMessages>> = {
     feedbackYes: "Sí",
     feedbackNo: "No",
     feedbackThanks: "Gracias por tu opinión.",
+    githubStars: "estrellas",
+    githubForks: "bifurcaciones",
   },
   it: {
     copyCode: "Copia codice",
@@ -261,6 +267,8 @@ const translations: Record<string, Partial<UiMessages>> = {
     feedbackYes: "Sì",
     feedbackNo: "No",
     feedbackThanks: "Grazie per il tuo riscontro.",
+    githubStars: "stelle",
+    githubForks: "fork",
   },
 };
 

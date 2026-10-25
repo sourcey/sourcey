@@ -4,6 +4,7 @@ import { english, type UiMessages } from "../core/messages.js";
 import type { NormalizedSpec } from "../core/types.js";
 import type { SiteNavigation } from "../core/navigation.js";
 import type { PagePart, PagePartName } from "../core/site-components.js";
+import type { RepositoryStats } from "../core/github-stats.js";
 import type {
   NavbarEntry,
   NavbarLink,
@@ -124,7 +125,8 @@ export interface SiteConfig {
   editBranch?: string;
   editBasePath?: string;
   codeSamples: string[];
-  navbar: { links: NavbarEntry[]; primary?: { type: "button"; label: string; href: string } };
+  /** Its links, a GitHub link with its repository's numbers where it asked for them. */
+  navbar: { links: (NavbarEntry & { repository?: RepositoryStats })[]; primary?: { type: "button"; label: string; href: string } };
   footer: { text?: string; links: NavbarLink[] };
   customCSS?: string;
   changelog: ResolvedChangelogConfig;

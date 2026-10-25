@@ -43,6 +43,7 @@ const NATIVE = {
   helpful: { heroicons: "hand-thumb-up", lucide: "thumbs-up" },
   unhelpful: { heroicons: "hand-thumb-down", lucide: "thumbs-down" },
   home: { heroicons: "home", lucide: "house" },
+  star: { heroicons: "star", lucide: "star" },
 } as const satisfies Record<string, Record<IconSet, string>>;
 export type NativeIcon = keyof typeof NATIVE;
 

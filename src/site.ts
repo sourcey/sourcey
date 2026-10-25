@@ -93,7 +93,8 @@ export async function buildSourceySite(
   const assembled = await assembleSite(config, options.previous?.assembly.cache, options.changedPaths, options.signal, { copyFromSource: options.copyFromSource });
   // Diagrams are drawn as pages load; their renderer's memory goes with it.
   await closeDiagramRenderer();
-  const site = await buildSiteConfig(config, assembled.cache.reader, assembled.extraFiles);
+  const siteWarnings: SiteDiagnostic[] = [];
+  const site = await buildSiteConfig(config, assembled.cache.reader, assembled.extraFiles, siteWarnings);
   const root = config.baseUrl || "/";
   const home = assembled.routes.match(root);
   if (home && !home.aliasOf) site.home = root;
@@ -134,7 +135,7 @@ export async function buildSourceySite(
     referenceDiagnostics: assembled.referenceDiagnostics,
     contentDiagnostics: assembled.contentDiagnostics,
     anchorDiagnostics: assembled.anchorDiagnostics,
-    siteDiagnostics: collectSiteDiagnostics(pages, assembled.routes, config),
+    siteDiagnostics: [...siteWarnings, ...collectSiteDiagnostics(pages, assembled.routes, config)],
     references: assembled.references,
     assembly: assembled,
   };
