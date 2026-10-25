@@ -50,6 +50,7 @@ export default defineConfig({
   favicon: "./static/img/favicon.png",
   repo: "https://github.com/example/docs",
   editBranch: "main",
+  brokenLinks: "error",
   theme: {
     appearance: { default: "dark" },
     colors: { primary: "#2e8555", light: "#25c2a0", dark: "#205d3b" },

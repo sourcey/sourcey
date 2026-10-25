@@ -247,7 +247,8 @@ export class RouteTable {
   private readonly equivalentGroups = new Map<string, RouteRecord[]>();
   private readonly physical = new Map<string, string>();
   private readonly base: string;
-  private readonly hostOwned: boolean;
+  /** A host serves pages of its own beside these, which the table does not know. */
+  readonly hostOwned: boolean;
 
   constructor(
     pages: SitePage[],

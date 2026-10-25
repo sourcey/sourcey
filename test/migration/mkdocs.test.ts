@@ -405,10 +405,12 @@ describe("sourcey migrate mkdocs", () => {
     });
   });
 
-  it("dates pages by their last commit where a git revision date plugin did", async () => {
-    await withProject({ ...site, "mkdocs.yml": site["mkdocs.yml"].replace("  - search\n", "  - search\n  - git-revision-date-localized\n") }, async (root) => {
+  it("dates pages by their last commit where a git revision date plugin did, and stops on broken links where strict did", async () => {
+    await withProject({ ...site, "mkdocs.yml": `${site["mkdocs.yml"].replace("  - search\n", "  - search\n  - git-revision-date-localized\n")}\nstrict: true\n` }, async (root) => {
       const report = await migrateProject({ framework: "mkdocs", root, dryRun: true });
-      expect(report.changes.find((change) => change.path === "sourcey.config.ts")!.bytes!.toString()).toContain("  lastUpdated: true,\n");
+      const config = report.changes.find((change) => change.path === "sourcey.config.ts")!.bytes!.toString();
+      expect(config).toContain("  lastUpdated: true,\n");
+      expect(config).toContain('  brokenLinks: "error",\n');
       expect(report.diagnostics.map((item) => item.message).join("\n")).not.toContain("git-revision-date");
     });
   });

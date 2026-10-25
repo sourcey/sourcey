@@ -24,6 +24,7 @@ Docusaurus configuration and sidebar files are programs: they can read files, br
 | `i18n.locales`, `localeConfigs` | `i18n` with the same URL prefixes, labels, language and direction |
 | `editUrl` (a string) | `repo`, `editBranch`, `editBasePath` |
 | `showLastUpdateTime` | [`lastUpdated`](../configuration.md#last-updated) |
+| `onBrokenLinks: "throw"`, the default | [`brokenLinks: "error"`](../configuration.md#broken-links) |
 | docs `breadcrumbs`, on unless a docs instance turns them off | [`navigation.breadcrumbs`](../configuration.md#breadcrumbs) |
 | frontmatter `custom_edit_url` | frontmatter `editUrl` (`null` becomes `false`) |
 | `markdown.preprocessor` | run on each document as Docusaurus runs it; its result is written as the native page |

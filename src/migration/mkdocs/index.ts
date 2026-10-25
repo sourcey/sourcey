@@ -87,6 +87,8 @@ interface MkDocsTheme {
 interface MkDocsConfig {
   site_name?: string;
   site_author?: string;
+  /** `mkdocs build --strict` as the default: a warning, a broken link among them, stops the build. */
+  strict?: boolean;
   /** The footer's notice, HTML as written. */
   copyright?: string;
   site_url?: string | Environment | null;
@@ -202,6 +204,7 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
     ...(publishesFiles ? { publicDir: PUBLIC_DIR } : {}),
     ...linkOptions(config),
     ...(feedback ? { feedback } : {}),
+    ...(config.strict === true ? { brokenLinks: "error" } : {}),
     ...(plugins.some((plugin) => DATE_PLUGINS.includes(plugin)) ? { lastUpdated: true } : {}),
     // Material's navigation.path draws the trail above each page's title.
     navigation: { tabs: markdown.tabs, ...(theme.features?.includes("navigation.path") ? { breadcrumbs: true } : {}) },

@@ -135,7 +135,7 @@ export async function buildSourceySite(
     referenceDiagnostics: assembled.referenceDiagnostics,
     contentDiagnostics: assembled.contentDiagnostics,
     anchorDiagnostics: assembled.anchorDiagnostics,
-    siteDiagnostics: [...siteWarnings, ...collectSiteDiagnostics(pages, assembled.routes, config)],
+    siteDiagnostics: [...siteWarnings, ...collectSiteDiagnostics(pages, assembled.routes, config, new Set(extraFiles.keys()))],
     references: assembled.references,
     assembly: assembled,
   };

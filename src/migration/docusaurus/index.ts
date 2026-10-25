@@ -109,6 +109,8 @@ export async function prepareDocusaurus(project: ProjectFiles, diagnostics: Diag
     ...(await logoOptions(project, statics, publicDir, navbar, site.config.favicon, review)),
     ...editOptions(site.docs[0]?.editUrl, review),
     ...(site.docs.some((instance) => instance.lastUpdated) ? { lastUpdated: true } : {}),
+    // Docusaurus stops its build on a broken link unless the site says otherwise.
+    ...((site.config.onBrokenLinks ?? "throw") === "throw" ? { brokenLinks: "error" } : {}),
     ...(await themeOptions(project, site, review)),
     prettyUrls: pretty,
     ...(publicDir ? { publicDir } : {}),

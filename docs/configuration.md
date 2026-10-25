@@ -421,6 +421,10 @@ css: ./home.css
 </section>
 ```
 
+## Broken links
+
+Each build reports a link to a path on the site that no page, file or redirect answers, beside links to a heading a page does not have. Set `brokenLinks: "error"` to have `sourcey build` stop instead, naming each link and writing nothing, as Docusaurus does by default; the dev server reports them either way, so a page being written can link ahead. A site published inside a host, such as an Astro site with pages of its own, reports none, since the host may answer them.
+
 ## Root and missing pages
 
 A page that publishes at the site root, `pages/index.md` or a documentation page at `/`, is the home page, and the logo leads there. When nothing publishes there, a standalone build redirects the root to the first section's first page.

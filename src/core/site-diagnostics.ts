@@ -5,10 +5,11 @@ import { identityKey, type RouteTable, type SitePage } from "./site-model.js";
 import { referenceTag } from "./tag-utils.js";
 import type { ResolvedConfig } from "../config.js";
 import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
+import { outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
 
 export interface SiteDiagnostic {
   severity: "warning";
-  code: "missing-site-origin" | "missing-description" | "short-description" | "broken-fragment" | "canonical-target" | "hreflang-target" | "github-stats";
+  code: "missing-site-origin" | "missing-description" | "short-description" | "broken-link" | "broken-fragment" | "canonical-target" | "hreflang-target" | "github-stats";
   page?: string;
   message: string;
 }
@@ -25,7 +26,9 @@ const ANCHOR_HREF = /<a\s(?:[^>]*?\s)?href="([^"]+)"/g;
 export function collectSiteDiagnostics(
   pages: readonly SitePage[],
   routes: RouteTable,
-  config: Pick<ResolvedConfig, "name" | "titleSeparator" | "siteUrl">,
+  config: Pick<ResolvedConfig, "name" | "titleSeparator" | "siteUrl" | "baseUrl" | "prettyUrls">,
+  /** The files the site publishes beside its pages, by output path. */
+  files: ReadonlySet<string> = new Set(),
 ): SiteDiagnostic[] {
   const diagnostics: SiteDiagnostic[] = [];
   const origin = config.siteUrl ?? "https://sourcey.invalid";
@@ -33,6 +36,13 @@ export function collectSiteDiagnostics(
     severity: "warning", code: "missing-site-origin",
     message: "Set siteUrl to the public origin before publishing: without it, pages name no canonical URL or language alternates and the site has no sitemap.",
   });
+  // A path with no page is still the site's when a file or redirect answers it, and may be the host's
+  // when a host serves pages beside these, or lies outside the site's base.
+  const publishes = (pathname: string) => {
+    if (routes.hostOwned || !requestPathMatchesBase(pathname, config.baseUrl) || routes.redirectFor(pathname)) return true;
+    try { return outputPathCandidatesForRequest(pathname, config.baseUrl, config.prettyUrls).some(path => files.has(path)); }
+    catch { return false; }
+  };
   for (const page of pages) {
     const route = routes.byKey.get(identityKey(page));
     if (!route || page.status === 404) continue;
@@ -64,9 +74,13 @@ export function collectSiteDiagnostics(
     for (const href of sourceLinks(page)) {
       let destination: URL;
       try { destination = new URL(href, new URL(route.publicPath, origin)); } catch { continue; }
-      if (destination.origin !== origin || !destination.hash) continue;
+      if (destination.origin !== origin) continue;
       const target = routes.match(destination.pathname);
-      if (!target) continue; // Host-owned pages and ordinary files are not Sourcey routes.
+      if (!target) {
+        if (!publishes(destination.pathname)) warn("broken-link", `Link ${JSON.stringify(href)} leads to ${destination.pathname}, which the site does not publish.`);
+        continue;
+      }
+      if (!destination.hash) continue;
       let anchor: string;
       try { anchor = decodeURIComponent(destination.hash.slice(1)); } catch { continue; }
       if (anchor && !target.anchors.has(anchor)) warn("broken-fragment", `Link ${JSON.stringify(href)} points to a missing fragment on ${target.publicPath}.`);
@@ -106,6 +120,17 @@ function sourceLinks(page: SitePage): string[] {
   const result = [...links];
   documentLinks.set(source, result);
   return result;
+}
+
+/** A site that stops on broken links names each, and writes nothing, while one remains. */
+export function stopOnBrokenLinks(diagnostics: readonly SiteDiagnostic[]): void {
+  const broken = diagnostics.filter(diagnostic => diagnostic.code === "broken-link");
+  if (!broken.length) return;
+  throw new Error([
+    `brokenLinks is "error", and ${broken.length === 1 ? "1 link leads" : `${broken.length} links lead`} nowhere the site publishes:`,
+    ...broken.slice(0, 20).map(diagnostic => `  ${diagnostic.page}: ${diagnostic.message}`),
+    ...(broken.length > 20 ? [`  and ${broken.length - 20} more`] : []),
+  ].join("\n"));
 }
 
 /** Keep large imported references useful to inspect without printing thousands of lines. */

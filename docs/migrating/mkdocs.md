@@ -32,6 +32,7 @@ npx sourcey migrate mkdocs --dry-run
 | `extra_javascript` | `components/BodyEnd.html`, where Material loads them, at the end of every page; a local script moves to `public/` and keeps its address |
 | `mkdocs-redirects` `redirect_maps` | `redirects` |
 | `git-revision-date`, `git-revision-date-localized` | [`lastUpdated`](../configuration.md#last-updated) |
+| `strict: true` | [`brokenLinks: "error"`](../configuration.md#broken-links) |
 
 Pages keep their URLs, including file names with capitals or underscores (`markdown({ slugs: "file" })`), and a `README.md` stays its directory's index. Where MkDocs built two files to one URL, the one it built last stays published and the report names the other. Pages that `nav` leaves out stay published, beside their nearest listed sibling and out of the menu. Heading anchors keep MkDocs's spelling. A page with no title or heading keeps the title MkDocs gave it from its nav label or file name. A `CHANGELOG.md` stays an ordinary page; remove `changelog: false` from the configuration to get native changelog pages and feeds.
 

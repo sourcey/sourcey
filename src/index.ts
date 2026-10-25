@@ -1,6 +1,6 @@
 import { configFromSpec, loadConfig, type ResolvedConfig } from "./config.js";
 import type { BuildDiagnostics } from "./core/build-diagnostics.js";
-import type { SiteDiagnostic } from "./core/site-diagnostics.js";
+import { stopOnBrokenLinks, type SiteDiagnostic } from "./core/site-diagnostics.js";
 import type { ChangelogDiagnostic, NormalizedSpec } from "./core/types.js";
 import { buildSourceySite, writeSourceySite } from "./site.js";
 
@@ -68,6 +68,7 @@ export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<Sit
     copyFromSource: !options.skipWrite,
   });
 
+  if (config.brokenLinks === "error") stopOnBrokenLinks(sourceySite.siteDiagnostics);
   if (!options.skipWrite) {
     await writeSourceySite(sourceySite, { embeddable: options.embeddable });
   }

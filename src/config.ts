@@ -258,6 +258,13 @@ export interface SourceyConfig {
    */
   lastUpdated?: boolean;
   /**
+   * What a link to nowhere the site publishes does to `sourcey build`: it is
+   * reported (`"warn"`), or it stops the build (`"error"`) before anything is
+   * written. The dev server reports it either way.
+   * @default "warn"
+   */
+  brokenLinks?: "warn" | "error";
+  /**
    * Ask "Was this page helpful?" at the end of each documentation, reference
    * and changelog page. A rating shows its note and dispatches a
    * `sourcey:feedback` event, `{ value, page }`, which the site's own script
@@ -662,6 +669,7 @@ export interface ResolvedConfig {
   changelog: ResolvedChangelogConfig;
   markdown: { smartypants: boolean };
   lastUpdated: boolean;
+  brokenLinks: "warn" | "error";
   feedback?: ResolvedFeedback;
   breadcrumbs: boolean;
   search: { featured: string[] };
@@ -844,6 +852,11 @@ export function applySiteHostConfig(config: ResolvedConfig, host: Readonly<SiteH
   return { ...config, ...publicSettings(config.authoring, host) };
 }
 
+function resolveBrokenLinks(value: SourceyConfig["brokenLinks"]): "warn" | "error" {
+  if (value !== undefined && value !== "warn" && value !== "error") throw new Error(`brokenLinks is "warn" or "error", not ${JSON.stringify(value)}`);
+  return value ?? "warn";
+}
+
 /** The feedback question, each rating's icon drawn from the site's set; a name the set lacks stops the build. */
 function resolveFeedback(feedback: SourceyConfig["feedback"], icons: IconSet): ResolvedFeedback | undefined {
   if (!feedback) return undefined;
@@ -916,6 +929,7 @@ export async function resolveConfigFromRaw(
     changelog,
     markdown: { smartypants: raw.markdown?.smartypants === true },
     lastUpdated: raw.lastUpdated === true,
+    brokenLinks: resolveBrokenLinks(raw.brokenLinks),
     feedback: resolveFeedback(raw.feedback, theme.icons),
     breadcrumbs: raw.navigation.breadcrumbs === true,
     search: {
