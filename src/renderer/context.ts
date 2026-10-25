@@ -9,6 +9,7 @@ import type {
   NavbarLink,
   PrettyUrls,
   ResolvedChangelogConfig,
+  ResolvedFeedback,
   ResolvedTheme,
   TryItConfig,
 } from "../config.js";
@@ -133,6 +134,8 @@ export interface SiteConfig {
   home?: string;
   /** The site's own page parts, from its components folder. */
   pageParts?: Partial<Record<PagePartName, PagePart>>;
+  /** The feedback question each documentation, reference and changelog page ends with. */
+  feedback?: ResolvedFeedback;
 }
 
 export const SiteContext = createContext<SiteConfig>(null as never);

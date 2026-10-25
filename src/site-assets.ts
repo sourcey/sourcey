@@ -65,6 +65,7 @@ export async function buildSiteConfig(config: ResolvedConfig, input: InputReader
     changelog: config.changelog,
     ...(config.markdown.smartypants ? { smartypants: true } : {}),
     ...(Object.keys(config.pageParts).length > 0 ? { pageParts: config.pageParts } : {}),
+    ...(config.feedback ? { feedback: config.feedback } : {}),
   };
 }
 

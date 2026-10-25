@@ -16,6 +16,7 @@ import {
 import { SearchDialog } from "./SearchDialog.js";
 import { PagePart } from "./PagePart.js";
 import { LastUpdated } from "../ui/LastUpdated.js";
+import { Feedback } from "../ui/Feedback.js";
 import { navbarLinks, type ReaderLink } from "../../config.js";
 import { safeUrl } from "../../utils/html.js";
 import { joinHref } from "../../site-url.js";
@@ -388,6 +389,7 @@ export function ReaderPage({ children }: { children?: ComponentChildren }) {
               </>
             )}
             {paged && <PagePart name="ContentEnd" />}
+            {paged && <Feedback />}
             {paged && pagination}
             {paged && footer}
           </main>

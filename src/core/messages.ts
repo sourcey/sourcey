@@ -58,6 +58,10 @@ export const english = {
   footnotes: "Footnotes",
   footnoteBack: "Back to reference",
   lastUpdated: "Last updated",
+  feedbackTitle: "Was this page helpful?",
+  feedbackYes: "Yes",
+  feedbackNo: "No",
+  feedbackThanks: "Thanks for your feedback.",
 } as const;
 export type UiMessages = { [K in keyof typeof english]: string };
 export type UiMessageOverrides = Partial<UiMessages> & { navigation?: Record<string, string> };
@@ -123,6 +127,10 @@ const translations: Record<string, Partial<UiMessages>> = {
     footnotes: "Notes de bas de page",
     footnoteBack: "Retour à l’appel de note",
     lastUpdated: "Dernière mise à jour",
+    feedbackTitle: "Cette page vous a-t-elle été utile ?",
+    feedbackYes: "Oui",
+    feedbackNo: "Non",
+    feedbackThanks: "Merci pour votre retour.",
   },
   es: {
     copyCode: "Copiar código",
@@ -184,6 +192,10 @@ const translations: Record<string, Partial<UiMessages>> = {
     footnotes: "Notas al pie",
     footnoteBack: "Volver a la referencia",
     lastUpdated: "Última actualización",
+    feedbackTitle: "¿Te ha resultado útil esta página?",
+    feedbackYes: "Sí",
+    feedbackNo: "No",
+    feedbackThanks: "Gracias por tu opinión.",
   },
   it: {
     copyCode: "Copia codice",
@@ -245,6 +257,10 @@ const translations: Record<string, Partial<UiMessages>> = {
     footnotes: "Note a piè di pagina",
     footnoteBack: "Torna al rimando",
     lastUpdated: "Ultimo aggiornamento",
+    feedbackTitle: "Questa pagina ti è stata utile?",
+    feedbackYes: "Sì",
+    feedbackNo: "No",
+    feedbackThanks: "Grazie per il tuo riscontro.",
   },
 };
 

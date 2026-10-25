@@ -67,6 +67,12 @@ interface SocialLink {
   name?: string;
 }
 
+/** Material's "Was this page helpful?" question (`extra.analytics.feedback`). */
+interface MaterialFeedback {
+  title?: string;
+  ratings?: { icon?: string; name?: string; data?: string | number; note?: string }[];
+}
+
 interface MkDocsTheme {
   name?: string;
   logo?: string;
@@ -91,7 +97,7 @@ interface MkDocsConfig {
   nav?: unknown[];
   exclude_docs?: string;
   theme?: string | MkDocsTheme;
-  extra?: { social?: SocialLink[]; analytics?: { provider?: string; property?: string } };
+  extra?: { social?: SocialLink[]; analytics?: { provider?: string; property?: string; feedback?: MaterialFeedback } };
   extra_css?: string[];
   extra_javascript?: (string | { path?: string; type?: string; async?: boolean; defer?: boolean })[];
   markdown_extensions?: unknown[];
@@ -137,6 +143,7 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
   const pageOf = (file: string) => published.get(file.replace(/\.md$/, "").replace(/(^|\/)(index|README)$/, "") || "index")!;
   const pages = new Map(files.map((file) => [file, pageOf(file)]));
   const nav = convertNav(config.nav, files, pages, fail);
+  const feedback = materialFeedback(config.extra?.analytics?.feedback, review);
   // `theme: material` names the theme alone; without one, MkDocs uses its own.
   const theme = typeof config.theme === "string" ? { name: config.theme } : { name: "mkdocs", ...config.theme };
   const sidebar = theme.name === "material" ? materialSidebar(theme.features ?? []) : (groups: GroupConfig[]) => groups;
@@ -158,7 +165,7 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
     if (layout.dropped.length) diagnostics.review({ file: documentFile, code: "mkdocs-frontmatter", message: `Frontmatter ${layout.dropped.join("; ")}` });
     const route = `/${page.path === "index" ? "" : directoryUrls ? `${page.path}/` : `${page.path}.html`}`;
     const slug = markdown.slugs.get(page);
-    const set: Record<string, string> = { ...(slug ? { slug } : {}), ...(layout.page ? { layout: "page" } : {}) };
+    const set: Record<string, string | boolean> = { ...(slug ? { slug } : {}), ...(layout.page ? { layout: "page" } : {}), ...(feedback && layout.hidesFeedback ? { feedback: false } : {}) };
     // A page naming no title takes MkDocs's: its nav label, Home, or its file name.
     const heading = typeof frontmatter.title === "string" ? frontmatter.title : pageHeading(source.slice(bodyStart));
     const label = nav.labels.get(page.file);
@@ -194,6 +201,7 @@ export async function prepareMkDocs(project: ProjectFiles, diagnostics: Diagnost
     prettyUrls: directoryUrls ? "slash" : false,
     ...(publishesFiles ? { publicDir: PUBLIC_DIR } : {}),
     ...linkOptions(config),
+    ...(feedback ? { feedback } : {}),
     ...(plugins.some((plugin) => DATE_PLUGINS.includes(plugin)) ? { lastUpdated: true } : {}),
     navigation: { tabs: markdown.tabs },
     ...redirects(config.plugins, pages, directoryUrls, base),
@@ -476,18 +484,38 @@ function materialSidebar(features: readonly string[]): (groups: GroupConfig[]) =
  * native draws it as `page`, the site's header and footer around its body.
  * What has no native form is said, not silently lost.
  */
-function materialLayout(frontmatter: Record<string, unknown>): { page: boolean; dropped: string[] } {
+function materialLayout(frontmatter: Record<string, unknown>): { page: boolean; hidesFeedback: boolean; dropped: string[] } {
   const hide = Array.isArray(frontmatter.hide) ? frontmatter.hide.map(String) : [];
   const template = typeof frontmatter.template === "string" ? frontmatter.template : undefined;
   const page = hide.includes("navigation") || template !== undefined;
   const dropped = [
     ...(hide.includes("navigation") && !hide.includes("toc") ? ["hide: navigation keeps Material's contents list; the native page, drawn as page, has none"] : []),
     ...(!page && hide.includes("toc") ? ["hide: toc has no native equivalent; native lists a page's sections beside it"] : []),
-    ...hide.filter((key) => !["navigation", "toc"].includes(key)).map((key) => `hide: ${key} has no native equivalent`),
+    ...hide.filter((key) => !["navigation", "toc", "feedback"].includes(key)).map((key) => `hide: ${key} has no native equivalent`),
     ...(template ? [`template: ${template} is the theme's own; native draws the page's Markdown as page`] : []),
     ...(frontmatter.search !== undefined ? ["search has no native equivalent"] : []),
   ];
-  return { page, dropped };
+  return { page, hidesFeedback: hide.includes("feedback"), dropped };
+}
+
+/** Material's feedback icons as the native default set (Heroicons) names them. */
+const FEEDBACK_ICONS: Record<string, string> = {
+  "material/emoticon-happy-outline": "face-smile", "material/emoticon-happy": "face-smile",
+  "material/emoticon-sad-outline": "face-frown", "material/emoticon-sad": "face-frown",
+  "material/thumb-up-outline": "hand-thumb-up", "material/thumb-up": "hand-thumb-up",
+  "material/thumb-down-outline": "hand-thumb-down", "material/thumb-down": "hand-thumb-down",
+  "material/heart-outline": "heart", "material/heart": "heart",
+};
+
+/** Material's feedback question as native `feedback`: its title, and each rating's name, value, icon and note. */
+function materialFeedback(feedback: MaterialFeedback | undefined, review: (message: string) => void): ConfigValue | undefined {
+  if (!feedback?.ratings?.length) return undefined;
+  const ratings = feedback.ratings.map((rating) => {
+    const icon = rating.icon && FEEDBACK_ICONS[rating.icon];
+    if (rating.icon && !icon) review(`Feedback icon ${rating.icon} has no native match; the rating shows its name`);
+    return { label: rating.name ?? String(rating.data ?? ""), value: rating.data ?? rating.name ?? "", ...(icon ? { icon } : {}), ...(rating.note ? { note: rating.note } : {}) };
+  });
+  return { ...(feedback.title ? { title: feedback.title } : {}), ratings };
 }
 
 /** MkDocs's title for a page with no nav label, title or H1: Home, or its file name as words. */

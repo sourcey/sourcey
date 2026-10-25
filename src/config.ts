@@ -29,6 +29,7 @@ import { DEFAULT_CODE_SAMPLE_LANGS, SUPPORTED_CODE_SAMPLE_LANGS } from "./utils/
 import { themeDefinitions, type ThemeName } from "./themes/registry.js";
 import { textShades } from "./utils/palette.js";
 import { slugify } from "./utils/slug.js";
+import { iconDrawing, iconSvg, nativeIcon } from "./utils/icons.js";
 
 export type { PrettyUrls } from "./site-url.js";
 
@@ -121,6 +122,29 @@ export interface ChangelogConfig {
   permalinks?: boolean;
   /** Generate dedicated OG images for per-version changelog pages. */
   ogImages?: boolean;
+}
+
+/** One answer to the feedback question: what it says, the value it sends, and what it shows once chosen. */
+export interface FeedbackRating {
+  label: string;
+  value: string | number;
+  /** A glyph of the site's icon set; without one, the label is the button. */
+  icon?: string;
+  /** Markdown shown once the rating is chosen. */
+  note?: string;
+}
+export interface FeedbackConfig {
+  /** @default "Was this page helpful?", in the page's language */
+  title?: string;
+  /** @default Yes and No, valued 1 and 0, with the icon set's thumbs */
+  ratings?: FeedbackRating[];
+}
+/** Feedback as the pages draw it: the site's own wording, or the page language's where it has none. */
+export interface ResolvedFeedback {
+  title?: string;
+  ratings?: (Omit<FeedbackRating, "icon"> & { icon?: string })[];
+  /** The icon set's thumbs, drawn, for the default ratings. */
+  thumbs: { up: string; down: string };
 }
 
 export interface TryItConfig {
@@ -232,6 +256,15 @@ export interface SourceyConfig {
    * @default false
    */
   lastUpdated?: boolean;
+  /**
+   * Ask "Was this page helpful?" at the end of each documentation, reference
+   * and changelog page. A rating shows its note and dispatches a
+   * `sourcey:feedback` event, `{ value, page }`, which the site's own script
+   * sends where it keeps feedback; Sourcey sends nothing anywhere. Frontmatter
+   * `feedback: false` leaves it off a page.
+   * @default false
+   */
+  feedback?: boolean | FeedbackConfig;
   /** Base path prepended to source file paths in "Edit this page" URLs. Use when docs source lives in a subdirectory of the repo (e.g. "docs"). */
   editBasePath?: string;
   /**
@@ -615,6 +648,7 @@ export interface ResolvedConfig {
   changelog: ResolvedChangelogConfig;
   markdown: { smartypants: boolean };
   lastUpdated: boolean;
+  feedback?: ResolvedFeedback;
   search: { featured: string[] };
 }
 
@@ -795,6 +829,27 @@ export function applySiteHostConfig(config: ResolvedConfig, host: Readonly<SiteH
   return { ...config, ...publicSettings(config.authoring, host) };
 }
 
+/** The feedback question, each rating's icon drawn from the site's set; a name the set lacks stops the build. */
+function resolveFeedback(feedback: SourceyConfig["feedback"], icons: IconSet): ResolvedFeedback | undefined {
+  if (!feedback) return undefined;
+  const custom = feedback === true ? {} : feedback;
+  const ratings = custom.ratings?.map((rating, index) => {
+    const at = `feedback.ratings[${index}]`;
+    if (typeof rating.label !== "string" || !rating.label.trim()) throw new Error(`${at}: a rating names its label`);
+    if (typeof rating.value !== "string" && typeof rating.value !== "number") throw new Error(`${at}: a rating's value is a string or a number`);
+    if (rating.icon === undefined) return { ...rating, icon: undefined };
+    const drawing = iconDrawing(icons, rating.icon);
+    if (!drawing) throw new Error(`${at}: the ${icons} icon set has no "${rating.icon}" icon`);
+    return { ...rating, icon: iconSvg(drawing, { class: "sourcey-feedback-icon" }) };
+  });
+  if (ratings?.length === 0) throw new Error("feedback.ratings: the question needs at least one rating");
+  return {
+    ...(custom.title ? { title: custom.title } : {}),
+    ...(ratings ? { ratings } : {}),
+    thumbs: { up: iconSvg(nativeIcon(icons, "helpful"), { class: "sourcey-feedback-icon" }), down: iconSvg(nativeIcon(icons, "unhelpful"), { class: "sourcey-feedback-icon" }) },
+  };
+}
+
 export async function resolveConfigFromRaw(
   raw: SourceyConfig,
   configDir: string,
@@ -846,6 +901,7 @@ export async function resolveConfigFromRaw(
     changelog,
     markdown: { smartypants: raw.markdown?.smartypants === true },
     lastUpdated: raw.lastUpdated === true,
+    feedback: resolveFeedback(raw.feedback, theme.icons),
     search: {
       featured: raw.search?.featured ?? [],
     },

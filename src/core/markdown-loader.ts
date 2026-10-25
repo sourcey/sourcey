@@ -64,6 +64,8 @@ export interface MarkdownPage {
   editPath?: string | null;
   /** The page's own edit link (frontmatter `editUrl`), for a page edited somewhere other than the site's repository. */
   editUrl?: string;
+  /** Frontmatter `feedback: false`: the page asks no feedback where the site does. */
+  feedback?: false;
   /** Optional base path override for this page's edit link. Undefined uses the site default. */
   editBasePath?: string | null;
   /** Optional page-local entries that should be indexed in addition to headings. */
@@ -263,6 +265,7 @@ async function loadMarkdownSourceFromBody(
   const css = meta.css === undefined ? [] : Array.isArray(meta.css) ? meta.css : [meta.css];
   // A page names where it is edited, or that it has no edit link.
   if (meta.editUrl !== undefined && meta.editUrl !== false && !(typeof meta.editUrl === "string" && /^https?:\/\//.test(meta.editUrl))) throw new Error(`${sourcePath}: editUrl is an http(s) address, or false for no edit link`);
+  if (meta.feedback !== undefined && typeof meta.feedback !== "boolean") throw new Error(`${sourcePath}: feedback is true, or false to ask no feedback on this page`);
   if (css.some(path => typeof path !== "string" || !path || /^[a-z][a-z\d+.-]*:|^\//i.test(path))) throw new Error(`${sourcePath}: css names stylesheets beside the page, such as css: ./home.css`);
   return {
     kind: "markdown", title, description: description ?? stripMarkdownLinks(extractFirstParagraph(read().tokens, read().inline)).replace(/\s+/g, " ").trim(),
@@ -271,7 +274,7 @@ async function loadMarkdownSourceFromBody(
     id: typeof meta.id === "string" ? meta.id : undefined, draft: meta.draft === true, hideInMenu: meta.hideInMenu === true,
     ...(layout ? { layout } : {}), ...(css.length ? { css: css.map(path => resolve(dirname(filePath), path as string)) } : {}),
     assets, nodes, ...(Object.keys(definitions).length && { definitions }), messages: options.context.messages, explicitDescription: description !== undefined, ...(options.smartypants ? { smartypants: true } : {}),
-    sourcePath, editPath: meta.editUrl === false ? null : relative(options.editRoot ?? options.configDir ?? process.cwd(), filePath), ...(typeof meta.editUrl === "string" ? { editUrl: meta.editUrl } : {}), sourceRoot: options.sourceRoot ? relative(options.configDir ?? process.cwd(), options.sourceRoot) : undefined,
+    sourcePath, editPath: meta.editUrl === false ? null : relative(options.editRoot ?? options.configDir ?? process.cwd(), filePath), ...(typeof meta.editUrl === "string" ? { editUrl: meta.editUrl } : {}), ...(meta.feedback === false ? { feedback: false as const } : {}), sourceRoot: options.sourceRoot ? relative(options.configDir ?? process.cwd(), options.sourceRoot) : undefined,
   };
 }
 

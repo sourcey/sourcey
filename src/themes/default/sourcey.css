@@ -138,6 +138,11 @@
 #sourcey .footnote-ref a,
 #sourcey .footnote-back {
   text-decoration: none;
+  color: rgb(var(--color-primary-ink));
+}
+.dark #sourcey .footnote-ref a,
+.dark #sourcey .footnote-back {
+  color: rgb(var(--color-primary-light));
 }
 #sourcey .footnotes {
   margin-top: 3rem;
@@ -156,6 +161,83 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* ── Page feedback ────────────────────────────────────────────────── */
+
+/* The question and its answers share a line, wrapping on a phone; the chosen answer keeps the primary colour. */
+#sourcey .sourcey-feedback {
+  margin-bottom: 2rem;
+}
+#sourcey .sourcey-feedback-question {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+#sourcey .sourcey-feedback-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(var(--color-gray-900));
+}
+.dark #sourcey .sourcey-feedback-title {
+  color: rgb(var(--color-gray-200));
+}
+#sourcey .sourcey-feedback-ratings {
+  display: flex;
+  gap: 0.25rem;
+}
+#sourcey .sourcey-feedback-rating {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: var(--sourcey-control-radius);
+  font-size: 0.875rem;
+  color: rgb(var(--color-gray-500));
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.dark #sourcey .sourcey-feedback-rating {
+  color: rgb(var(--color-gray-400));
+}
+#sourcey .sourcey-feedback-rating:hover:not(:disabled) {
+  color: rgb(var(--color-primary-ink));
+  background: rgb(var(--color-gray-100));
+}
+.dark #sourcey .sourcey-feedback-rating:hover:not(:disabled) {
+  color: rgb(var(--color-primary-light));
+  background: rgb(var(--color-gray-800) / 0.5);
+}
+#sourcey .sourcey-feedback-rating[aria-pressed="true"] {
+  color: rgb(var(--color-primary-ink));
+}
+.dark #sourcey .sourcey-feedback-rating[aria-pressed="true"] {
+  color: rgb(var(--color-primary-light));
+}
+#sourcey .sourcey-feedback-rating:disabled {
+  cursor: default;
+}
+#sourcey .sourcey-feedback-rating:disabled:not([aria-pressed="true"]) {
+  opacity: 0.4;
+}
+#sourcey .sourcey-feedback-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+#sourcey .sourcey-feedback-note {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: rgb(var(--color-gray-600));
+}
+.dark #sourcey .sourcey-feedback-note {
+  color: rgb(var(--color-gray-400));
+}
+#sourcey .sourcey-feedback-note p {
+  margin: 0;
 }
 
 /* ── Prose Video (::video directive) ──────────────────────────────── */

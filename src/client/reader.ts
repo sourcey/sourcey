@@ -5,6 +5,7 @@ import "./schema-variants.js";
 import "./search.js";
 import "./reader-controls.js";
 import "./changelog.js";
+import "./feedback.js";
 import "./try-it-loader.js";
 
 import "./components.js";

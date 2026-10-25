@@ -375,6 +375,36 @@ describe("sourcey migrate mkdocs", () => {
     });
   });
 
+  it("asks Material's feedback question natively, and leaves it off the pages that hid it", async () => {
+    const feedback = [
+      "extra:",
+      "  analytics:",
+      "    provider: custom",
+      "    feedback:",
+      "      title: Was this page helpful?",
+      "      ratings:",
+      "        - icon: material/emoticon-happy-outline",
+      "          name: This page was helpful",
+      "          data: 1",
+      "          note: Thanks for your feedback!",
+      "        - icon: material/emoticon-sad-outline",
+      "          name: This page could be improved",
+      "          data: 0",
+      "          note: >-",
+      '            <p>Sorry to hear that. <a href="https://github.com/example/json/discussions">Tell us</a>.</p>',
+      "",
+    ].join("\n");
+    await withProject({ ...site, "mkdocs.yml": `${site["mkdocs.yml"]}\n${feedback}`, "content/guides/install.md": "---\nhide:\n  - feedback\n---\n\n# Install\n" }, async (root) => {
+      const report = await migrateProject({ framework: "mkdocs", root });
+      const config = await read(root, "sourcey.config.ts");
+      expect(config).toContain('title: "Was this page helpful?"');
+      expect(config).toContain(['        label: "This page was helpful",', "        value: 1,", '        icon: "face-smile",', '        note: "Thanks for your feedback!",'].join("\n"));
+      expect(config).toContain(['        label: "This page could be improved",', "        value: 0,", '        icon: "face-frown",'].join("\n"));
+      expect(await read(root, "content/guides/install.md")).toBe("---\nfeedback: false\n---\n\n# Install\n");
+      expect(report.diagnostics.map((item) => item.message).join("\n")).not.toMatch(/feedback/);
+    });
+  });
+
   it("dates pages by their last commit where a git revision date plugin did", async () => {
     await withProject({ ...site, "mkdocs.yml": site["mkdocs.yml"].replace("  - search\n", "  - search\n  - git-revision-date-localized\n") }, async (root) => {
       const report = await migrateProject({ framework: "mkdocs", root, dryRun: true });
@@ -435,7 +465,7 @@ describe("sourcey migrate mkdocs", () => {
       const notes = report.diagnostics.filter((item) => item.code === "mkdocs-frontmatter").map(({ file, message }) => ({ file, message }));
       expect(notes).toEqual([
         { file: "content/getting-started.md", message: "Frontmatter template: home.html is the theme's own; native draws the page's Markdown as page" },
-        { file: "content/guides/install.md", message: "Frontmatter hide: toc has no native equivalent; native lists a page's sections beside it; hide: feedback has no native equivalent" },
+        { file: "content/guides/install.md", message: "Frontmatter hide: toc has no native equivalent; native lists a page's sections beside it" },
         { file: "content/unlisted.md", message: "Frontmatter hide: navigation keeps Material's contents list; the native page, drawn as page, has none" },
       ]);
       expect(await read(root, "content/unlisted.md")).toBe("---\nlayout: page\n---\n\n# Unlisted\n");

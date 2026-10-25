@@ -168,6 +168,35 @@ The build reads the repository's history, so a CI checkout needs all of it. A sh
     fetch-depth: 0
 ```
 
+## Page feedback
+
+```ts
+feedback: true,
+```
+
+Each documentation, reference and changelog page then ends by asking "Was this page helpful?" in the page's language, answered with a thumbs up or a thumbs down from the site's icon set. Choosing an answer shows its note and dispatches a `sourcey:feedback` event from the question, with the answer's `value` and the page's path. Sourcey sends the answer nowhere itself; the site's own script, in its [`Head` component](./components.md#page-parts), sends it where the site keeps feedback. The question stays hidden until the page's script runs, so a reader without JavaScript sees no buttons that do nothing. Frontmatter `feedback: false` leaves it off a page. Off by default.
+
+```html
+<!-- components/Head.html -->
+<script>
+  document.addEventListener("sourcey:feedback", (event) => {
+    navigator.sendBeacon("https://example.com/feedback", JSON.stringify(event.detail));
+  });
+</script>
+```
+
+A site can ask its own question. Each rating has a `label`, the `value` it sends, an `icon` from the site's icon set (without one, the label is the button) and a `note`, in Markdown:
+
+```ts
+feedback: {
+  title: "Did this page help?",
+  ratings: [
+    { label: "It helped", value: 1, icon: "face-smile", note: "Thanks!" },
+    { label: "It could be better", value: 0, icon: "face-frown", note: "Tell us [on GitHub](https://github.com/example/docs/discussions)." },
+  ],
+},
+```
+
 ## Typography
 
 ```ts

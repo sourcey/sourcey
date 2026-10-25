@@ -20,6 +20,7 @@ import { linkTarget } from "../../utils/html.js";
 import { Header } from "./Header.js";
 import { PagePart } from "./PagePart.js";
 import { LastUpdated } from "../ui/LastUpdated.js";
+import { Feedback } from "../ui/Feedback.js";
 import { PageNotice } from "./ContextControls.js";
 import { Sidebar } from "./Sidebar.js";
 import { TableOfContents } from "./TableOfContents.js";
@@ -277,8 +278,9 @@ function useEditUrl(): string | undefined {
 }
 
 /**
- * A page's end: the site's own part there, a way to edit its source beside
- * when it last changed, then the pages before and after it.
+ * A page's end: the site's own part there, the feedback question, a way to
+ * edit its source beside when it last changed, then the pages before and
+ * after it.
  */
 function PageEnd({ navigation = true }: { navigation?: boolean }) {
   const editUrl = useEditUrl();
@@ -287,6 +289,7 @@ function PageEnd({ navigation = true }: { navigation?: boolean }) {
   return (
     <>
       <PagePart name="ContentEnd" />
+      <Feedback />
       {about && (
         <div class="sourcey-page-about flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 text-sm text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">
           {editUrl && <EditPageLink href={editUrl} />}
