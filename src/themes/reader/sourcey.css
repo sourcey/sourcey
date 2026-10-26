@@ -449,7 +449,8 @@ kbd {
   padding: 23px 12px 9px;
   font-weight: 600;
 }
-.docs-sidebar nav > a {
+.docs-sidebar nav > a,
+.docs-sidebar nav :is(.reader-nested-group, .sourcey-nav-group) a:not(.nav-section) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -459,13 +460,24 @@ kbd {
   color: var(--reader-muted);
   margin: 1px 0;
 }
-.docs-sidebar nav > a:hover {
+.docs-sidebar nav > a:hover,
+.docs-sidebar nav :is(.reader-nested-group, .sourcey-nav-group) a:not(.nav-section):hover {
   background: var(--mist);
 }
-.docs-sidebar nav > a[aria-current] {
+.docs-sidebar nav > a[aria-current],
+.docs-sidebar nav :is(.reader-nested-group, .sourcey-nav-group) a:not(.nav-section)[aria-current] {
   background: var(--reader-selected);
   color: var(--blue-ink);
   font-weight: 650;
+}
+/* A section within a section sits one step in, its pages beneath its label, styled as the sidebar's own. */
+.reader-nested-group {
+  margin-left: 12px;
+  border-left: 1px solid var(--line-light);
+}
+.reader-nested-group .nav-section {
+  display: block;
+  padding-top: 14px;
 }
 .active-nav-dot {
   height: 4px;
@@ -933,7 +945,8 @@ kbd {
 .reader-prose table {
   font-size: 12px;
 }
-.docs-sidebar nav > a {
+.docs-sidebar nav > a,
+.docs-sidebar nav :is(.reader-nested-group, .sourcey-nav-group) a:not(.nav-section) {
   font-size: 12px;
 }
 .nav-section {

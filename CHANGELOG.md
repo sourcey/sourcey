@@ -8,6 +8,7 @@
 - A link to a page by an address a host answers with that page, such as the page's address without its trailing slash, is no longer reported as broken, and its fragment is checked. A migrated site with `brokenLinks: "error"` had stopped on such links.
 - `documents.json` keeps each document's terms once, as it was designed to, rather than its whole text, which the document's Markdown file holds. A 2,000-page site's index falls from 26 MB to 15 MB; it had passed the 25 MiB a file may be on hosts such as Cloudflare Pages.
 - `sourcey migrate mkdocs` writes a block one to three columns in after a blank line at the margin, where Python-Markdown leaves the list above it. A callout or paragraph indented two spaces under a list item had moved into the item.
+- In the reader theme, a section within a section sits one step in, its label and each page on a line of their own, as a collapsible section's pages are styled as the sidebar's. Its pages had run together on the label's line.
 
 ## 3.9.2 - 2026-10-26
 
