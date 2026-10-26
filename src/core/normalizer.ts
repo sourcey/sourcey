@@ -287,10 +287,7 @@ function normalizeOperations(
           opRaw.callbacks as Record<string, Record<string, unknown>> | undefined,
         ),
         hidden: opRaw["x-sourcey-hide"] === true,
-        codeSamples: normalizeCodeSamples(
-          opRaw["x-sourcey-code-samples"] as Record<string, unknown>[] | undefined,
-          opRaw["x-code-samples"] as Record<string, unknown>[] | undefined,
-        ),
+        codeSamples: normalizeCodeSamples(opRaw),
       };
 
       operations.push(op);
@@ -483,12 +480,12 @@ function normalizeSecurityRequirements(
   return (opSecurity ?? globalSecurity ?? []) as Record<string, string[]>[];
 }
 
-function normalizeCodeSamples(
-  sourceySamples?: Record<string, unknown>[],
-  genericSamples?: Record<string, unknown>[],
-): CodeSample[] | undefined {
-  const samples = sourceySamples ?? genericSamples;
-  if (!samples?.length) return undefined;
+/** An operation's own request examples: Sourcey's extension, else Redoc's, under its current name or its first. */
+function normalizeCodeSamples(op: Record<string, unknown>): CodeSample[] | undefined {
+  const samples = (["x-sourcey-code-samples", "x-codeSamples", "x-code-samples"] as const)
+    .map((key) => op[key] as Record<string, unknown>[] | undefined)
+    .find((value) => value?.length);
+  if (!samples) return undefined;
   return samples.map((s) => ({
     lang: str(s.lang, "text"),
     label: optStr(s.label),

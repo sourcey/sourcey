@@ -50,6 +50,21 @@ describe("normalizeSpec", () => {
     expect(body(2).properties!.id.type).toBe("string");
   });
 
+  it("takes an operation's own request examples from Sourcey's extension, else Redoc's under either name", () => {
+    const sample = (source: string) => [{ lang: "shell", label: "CLI", source }];
+    const spec = normalizeSpec({
+      source: "inline.json",
+      document: { openapi: "3.0.3", info: { title: "Samples", version: "1" }, paths: {
+        "/a": { get: { "x-sourcey-code-samples": sample("a"), "x-codeSamples": sample("ignored"), responses: {} } },
+        "/b": { get: { "x-codeSamples": sample("b"), "x-code-samples": sample("ignored"), responses: {} } },
+        "/c": { get: { "x-code-samples": sample("c"), responses: {} } },
+        "/d": { get: { "x-codeSamples": [], responses: {} } },
+      } },
+    } as unknown as ParsedSpec);
+    expect(spec.operations.map((op) => op.codeSamples?.[0]?.source)).toEqual(["a", "b", "c", undefined]);
+    expect(spec.operations[1].codeSamples).toEqual([{ lang: "shell", label: "CLI", source: "b" }]);
+  });
+
   it("names a reference left in place by its own pointer, whatever the resolver marked on it", () => {
     // A resolver leaves a component that recurs as its reference, and need mark it no other way.
     const task = { type: "object", properties: { title: { type: "string" }, subtasks: { type: "array", items: { $ref: "#/components/schemas/Task" } } } };

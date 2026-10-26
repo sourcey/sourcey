@@ -119,8 +119,9 @@ function sourceLinks(page: SitePage): string[] {
   return result;
 }
 
-/** A site that stops on broken links names each, and writes nothing, while one remains. */
-export function stopOnBrokenLinks(diagnostics: readonly SiteDiagnostic[]): void {
+/** A site that stops on broken links names each, and is neither written nor passed, while one remains. */
+export function stopOnBrokenLinks(config: Pick<ResolvedConfig, "brokenLinks">, diagnostics: readonly SiteDiagnostic[]): void {
+  if (config.brokenLinks !== "error") return;
   const broken = diagnostics.filter(diagnostic => diagnostic.code === "broken-link");
   if (!broken.length) return;
   throw new Error([

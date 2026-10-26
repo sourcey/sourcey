@@ -12,7 +12,7 @@ import type { GodocSnapshot } from "./core/godoc-types.js";
 import { init } from "./init.js";
 import { formatBuildDiagnostics, formatChangelogDiagnostic } from "./core/build-diagnostics.js";
 import { findPlaceholderServerUrls } from "./utils/server-warnings.js";
-import { formatSiteDiagnostics } from "./core/site-diagnostics.js";
+import { formatSiteDiagnostics, stopOnBrokenLinks } from "./core/site-diagnostics.js";
 import pkg from "../package.json" with { type: "json" };
 
 const build = defineCommand({
@@ -189,9 +189,12 @@ const check = defineCommand({
   async run({ args }) {
     try {
       const { buildSourceySite, sourceyArtifacts } = await import("./site.js");
-      const site = await buildSourceySite({ config: await loadConfig(args.config), generateOgImages: false });
+      const config = await loadConfig(args.config);
+      const site = await buildSourceySite({ config, generateOgImages: false });
       const files = await sourceyArtifacts(site);
       for (const diagnostic of [...formatBuildDiagnostics(site), ...formatSiteDiagnostics(site.siteDiagnostics)]) console.warn(diagnostic);
+      // A check passes only what a build would publish.
+      stopOnBrokenLinks(config, site.siteDiagnostics);
       console.log(`Checked ${site.pageCount} pages, ${site.assembly.routes.redirects.size} redirects and ${files.size} output files.`);
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));

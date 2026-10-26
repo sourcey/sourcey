@@ -68,7 +68,7 @@ export async function buildSiteDocs(options: SiteBuildOptions = {}): Promise<Sit
     copyFromSource: !options.skipWrite,
   });
 
-  if (config.brokenLinks === "error") stopOnBrokenLinks(sourceySite.siteDiagnostics);
+  stopOnBrokenLinks(config, sourceySite.siteDiagnostics);
   if (!options.skipWrite) {
     await writeSourceySite(sourceySite, { embeddable: options.embeddable });
   }
