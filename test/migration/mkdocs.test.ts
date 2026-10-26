@@ -128,6 +128,40 @@ describe("MkDocs syntax", () => {
     );
   });
 
+  it("writes a block one to three columns in after a blank line at the margin, where Python-Markdown leaves the list", async () => {
+    const { text, diagnostics } = await convert(
+      [
+        "- Use the optimized resolver.",
+        "  It keeps one cache entry.",
+        "",
+        "  > [!WARNING]",
+        "  > Only where the server filters trees.",
+        "",
+        "  Read the guide.",
+        "",
+        "- Then restart it.",
+        "",
+        "    Four columns in, this stays in the item.",
+      ].join("\n"),
+    );
+    expect(diagnostics.errors).toEqual([]);
+    expect(text).toBe(
+      [
+        "- Use the optimized resolver.",
+        "  It keeps one cache entry.",
+        "",
+        "> [!WARNING]",
+        "> Only where the server filters trees.",
+        "",
+        "Read the guide.",
+        "",
+        "- Then restart it.",
+        "",
+        "    Four columns in, this stays in the item.",
+      ].join("\n"),
+    );
+  });
+
   it("keeps Python-Markdown headings written without an ASCII space", async () => {
     const { text } = await convert("#Install\n\n#\u00a0Prune\n\n## Kept as written\n\n```sh\n#comment\n```");
     expect(text).toBe("# Install\n\n# Prune\n\n## Kept as written\n\n```sh\n#comment\n```");

@@ -188,8 +188,26 @@ function indentedBody(lines: string[], start: number, indent: string): { body: s
   return { body, end: last };
 }
 
-async function convertBlock(lines: string[], context: SyntaxContext, line: number): Promise<string[]> {
+/**
+ * Python-Markdown nests a block in the list item above it only four columns in;
+ * one to three columns in after a blank line, the block stands where it would at
+ * the margin, and the list ends. Native Markdown, as GitHub, would read it into
+ * the list item, so each such block is written at the margin. Fenced code keeps
+ * its lines. Lines keep their number.
+ */
+function marginBlocks(lines: string[]): string[] {
+  const fenced = new Set(fences(lines).flatMap(([start, end]) => Array.from({ length: end - start + 1 }, (_, offset) => start + offset)));
+  let width = 0;
+  return lines.map((text, index) => {
+    if (!text.trim() || fenced.has(index)) { width = 0; return text; }
+    if (index === 0 || !lines[index - 1].trim()) width = /^ {1,3}\S/.test(text) ? text.length - text.trimStart().length : 0;
+    return width ? text.slice(Math.min(width, text.length - text.trimStart().length)) : text;
+  });
+}
+
+async function convertBlock(source: string[], context: SyntaxContext, line: number): Promise<string[]> {
   const { extensions, diagnostics, file } = context;
+  const lines = marginBlocks(source);
   const blocks = new Map(fences(lines));
   const output: string[] = [];
   const review = (offset: number, message: string) => diagnostics.review({ file, line: line + offset + 1, code: "mkdocs", message });
