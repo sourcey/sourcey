@@ -122,7 +122,6 @@ export function toPrettyLink(target: string, { prettyUrls, baseUrl }: LinkStyle)
   return target;
 }
 
-/** Resolve a link target against the linking page's base; public paths stand alone. */
 /**
  * A file in the site's repository, as GitHub shows it at a revision: a page
  * that answers anyone, signed in or not, and offers its editor to whoever can
@@ -134,8 +133,9 @@ export function repositoryFileUrl(repo: string, revision: string, basePath: stri
   return `${repo.replace(/\/+$/, "")}/blob/${revision}/${base ? `${base}/` : ""}${path}${anchor}`;
 }
 
+/** Resolve a link target against the linking page's base; public paths and other sites' addresses stand alone. */
 export function joinHref(base: string, target: string): string {
-  if (target.startsWith("/")) return target;
+  if (target.startsWith("/") || /^[a-z][a-z\d+.-]*:/i.test(target)) return target;
   return `${base}${target}` || "./";
 }
 

@@ -12,6 +12,7 @@ import {
   sectionBodies,
 } from "./reference-identity.js";
 import { toPublicPath, normalizeBaseUrl } from "../site-url.js";
+import { outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
 import { Parser } from "htmlparser2";
 
 export interface AlternateLink {
@@ -252,8 +253,8 @@ export class RouteTable {
 
   constructor(
     pages: SitePage[],
-    baseUrl: string,
-    prettyUrls: false | "slash" | "strip",
+    private readonly baseUrl: string,
+    private readonly prettyUrls: false | "slash" | "strip",
     landingPage = true,
     redirects: Readonly<Record<string, Redirect>> = {},
     hostOwned = false,
@@ -432,6 +433,16 @@ export class RouteTable {
     } catch {
       return undefined;
     }
+  }
+  /** The files a static host serves for a path within the site's base, such as a page's for its address without the trailing slash. */
+  served(pathname: string): string[] {
+    if (!requestPathMatchesBase(pathname, this.baseUrl)) return [];
+    try { return outputPathCandidatesForRequest(pathname, this.baseUrl, this.prettyUrls); }
+    catch { return []; }
+  }
+  /** The page a static host answers a path with: at its own address, or at another spelling of it. */
+  pageAt(pathname: string): RouteRecord | undefined {
+    return this.match(pathname) ?? this.served(pathname).map(path => this.byOutputPath.get(path)).find(Boolean);
   }
   redirectFor(pathname: string): RedirectRecord | undefined {
     try {

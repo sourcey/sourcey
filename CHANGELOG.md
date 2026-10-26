@@ -9,6 +9,8 @@
 - `documents.json` keeps each document's terms once, as it was designed to, rather than its whole text, which the document's Markdown file holds. A 2,000-page site's index falls from 26 MB to 15 MB; it had passed the 25 MiB a file may be on hosts such as Cloudflare Pages.
 - `sourcey migrate mkdocs` writes a block one to three columns in after a blank line at the margin, where Python-Markdown leaves the list above it. A callout or paragraph indented two spaces under a list item had moved into the item.
 - In the reader theme, a section within a section sits one step in, its label and each page on a line of their own, as a collapsible section's pages are styled as the sidebar's. Its pages had run together on the label's line.
+- A sidebar link to another site, `{ href: "https://blog.example.com", label }`, leads there. The site's base had been put in front of it, so it led to `/https://blog.example.com` on the site itself. Previous and next pass such links by, where the page above one had offered it as the next page.
+- A section's `href` finds its page by any address a host answers with that page, such as `install` for `install/index.md`, and the heading links the page at the address the site gives it. Only the exact address had counted, so a section named another way was not current on its own page or read before the pages it holds.
 
 ## 3.9.2 - 2026-10-26
 

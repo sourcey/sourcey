@@ -55,6 +55,8 @@ describe("site-url helpers", () => {
     expect(joinHref("../", "profile")).toBe("../profile");
     expect(joinHref("/specification/", "profile")).toBe("/specification/profile");
     expect(joinHref("../", "/specification")).toBe("/specification");
+    expect(joinHref("/docs/", "https://status.example.com")).toBe("https://status.example.com");
+    expect(joinHref("/docs/", "mailto:help@example.com")).toBe("mailto:help@example.com");
     expect(joinHref("../", "")).toBe("../");
     expect(joinHref("", "")).toBe("./");
   });

@@ -170,15 +170,16 @@ export default {theme:{fonts:{google:false}}, navigation:{tabs:[{id:'rest',tab:'
     await file(root, "api.json", JSON.stringify(api()));
     await file(root, "start/index.md", "# Getting started\n");
     await file(root, "start/install.md", "# Install\n");
-    const config = await resolveConfigFromRaw({ prettyUrls: "slash", theme: { fonts: { google: false } }, navigation: { tabs: [
-      { id: "docs", tab: "Docs", slug: "", groups: [{ group: "Getting started", href: "/start/", collapsed: true, pages: [{ page: "start", hidden: true }, "start/install"] }] },
+    // The section names its page by an address a host answers it at, not the one the site links.
+    const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation: { tabs: [
+      { id: "docs", tab: "Docs", slug: "", groups: [{ group: "Getting started", href: "start", collapsed: true, pages: [{ page: "start", hidden: true }, "start/install"] }] },
       { id: "rest", tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "operations" }, navigation: [{ group: "Pets", pages: [{ operation: "GET /pets" }] }] },
     ] } }, root);
     const site = await buildSourceySite({ config, generateOgImages: false });
-    expect(site.navigation.tabs.map(tab => tab.href)).toEqual(["/start/", "/api/"]);
+    expect(site.navigation.tabs.map(tab => tab.href)).toEqual(["/start.html", "/api.html"]);
     // On its own page, the section is open and its heading current.
-    const nav = (await sourceyArtifacts(site)).get("start/index.html")!.toString().match(/<nav id="nav"[\s\S]*?<\/nav>/)![0];
-    expect(nav).toMatch(/<div class="sourcey-nav-group-linked"><a href="[^"]*start\/" class="nav-group-label nav-group-link active">Getting started<\/a><details open class="sourcey-nav-group"><summary aria-label="Getting started"><\/summary>/);
+    const nav = (await sourceyArtifacts(site)).get("start.html")!.toString().match(/<nav id="nav"[\s\S]*?<\/nav>/)![0];
+    expect(nav).toMatch(/<div class="sourcey-nav-group-linked"><a href="\/start\.html" class="nav-group-label nav-group-link active">Getting started<\/a><details open class="sourcey-nav-group"><summary aria-label="Getting started"><\/summary>/);
   }));
 
   for (const prettyUrls of [false, "slash", "strip"] as const) it(`leads a generated reference's navigation to the pages the site writes, with prettyUrls ${prettyUrls}`, () => fixture(async root => {

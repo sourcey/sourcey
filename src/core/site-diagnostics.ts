@@ -5,7 +5,7 @@ import { identityKey, type RouteTable, type SitePage } from "./site-model.js";
 import { referenceTag } from "./tag-utils.js";
 import type { ResolvedConfig } from "../config.js";
 import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
-import { outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
+import { requestPathMatchesBase } from "../renderer/static-files.js";
 
 export interface SiteDiagnostic {
   severity: "warning";
@@ -36,17 +36,10 @@ export function collectSiteDiagnostics(
     severity: "warning", code: "missing-site-origin",
     message: "Set siteUrl to the public origin before publishing: without it, pages name no canonical URL or language alternates and the site has no sitemap.",
   });
-  // The files a static host serves for a path within the site's base, such as a page's for its address without the trailing slash.
-  const served = (pathname: string) => {
-    if (!requestPathMatchesBase(pathname, config.baseUrl)) return [];
-    try { return outputPathCandidatesForRequest(pathname, config.baseUrl, config.prettyUrls); }
-    catch { return []; }
-  };
-  const pageAt = (pathname: string) => routes.match(pathname) ?? served(pathname).map(path => routes.byOutputPath.get(path)).find(Boolean);
   // A path with no page is still the site's when a file or redirect answers it, and may be the host's
   // when a host serves pages beside these, or lies outside the site's base.
   const publishes = (pathname: string) =>
-    routes.hostOwned || !requestPathMatchesBase(pathname, config.baseUrl) || !!routes.redirectFor(pathname) || served(pathname).some(path => files.has(path));
+    routes.hostOwned || !requestPathMatchesBase(pathname, config.baseUrl) || !!routes.redirectFor(pathname) || routes.served(pathname).some(path => files.has(path));
   for (const page of pages) {
     const route = routes.byKey.get(identityKey(page));
     if (!route || page.status === 404) continue;
@@ -79,7 +72,7 @@ export function collectSiteDiagnostics(
       let destination: URL;
       try { destination = new URL(href, new URL(route.publicPath, origin)); } catch { continue; }
       if (destination.origin !== origin) continue;
-      const target = pageAt(destination.pathname);
+      const target = routes.pageAt(destination.pathname);
       if (!target) {
         if (!publishes(destination.pathname)) warn("broken-link", `Link ${JSON.stringify(href)} leads to ${destination.pathname}, which the site does not publish.`);
         continue;

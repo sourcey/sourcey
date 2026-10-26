@@ -105,10 +105,10 @@ describe("projectNavigation", () => {
 });
 
 describe("withActivePage", () => {
-  it("leads previous and next to other pages, past links to sections of a page already listed", () => {
+  it("leads previous and next to other pages, past links to sections of a page already listed and links the navigation names", () => {
     const tab = { label: "API", slug: "api", href: "/api/", kind: "spec" as const, groups: [
       { label: "", items: [{ label: "Introduction", href: "/api/", id: "introduction" }, { label: "Authentication", href: "/api/#authentication", id: "authentication" }] },
-      { label: "Cheese", href: "/api/#tag-cheese", id: "tag-cheese", items: [{ label: "List cheeses", href: "/api/list/", id: "list" }, { label: "Get a cheese", href: "/api/get/", id: "get" }] },
+      { label: "Cheese", href: "/api/#tag-cheese", id: "tag-cheese", items: [{ label: "List cheeses", href: "/api/list/", id: "list" }, { label: "Status", href: "https://status.example.com", id: "https://status.example.com", link: true as const }, { label: "Get a cheese", href: "/api/get/", id: "get" }] },
     ] };
     const nav = { tabs: [tab], activeTabSlug: "api", activePageSlug: "" };
     expect(withActivePage(nav, "api", "introduction").adjacentPages).toEqual({ previous: undefined, next: expect.objectContaining({ label: "List cheeses" }) });

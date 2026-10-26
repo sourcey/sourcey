@@ -37,11 +37,12 @@ export function navigationResolver(config: ResolvedConfig, routes: RouteTable, r
     }
     names.set(tab.slug, result); return result;
   }
-  // A source's generated navigation names output paths, which become links as pages are drawn.
-  function pageAt(href: string) {
+  // A source's generated navigation names output paths, which become links as pages are drawn, and
+  // an authored section names its page by any address a host answers it at.
+  function routeAt(href: string) {
     if (href.startsWith("//") || /^[a-z][a-z\d+.-]*:/i.test(href)) return undefined;
     const path = href.split(/[?#]/)[0];
-    return routes.match(path.startsWith("/") ? path : toPublicPath(path, config.baseUrl, config.prettyUrls))?.page;
+    return routes.pageAt(path.startsWith("/") ? path : toPublicPath(path, config.baseUrl, config.prettyUrls));
   }
   return (nav: SiteTab, tab: ResolvedTab, context: ResolvedSiteContext): void => {
     const members = config.contexts.filter(candidate => candidate.locale === context.locale && (candidate.scope === context.scope ? candidate.version.id === context.version.id : candidate.isDefaultVersion));
@@ -132,11 +133,11 @@ export function navigationResolver(config: ResolvedConfig, routes: RouteTable, r
       if (generatedHref) item.href = generatedHref;
       else if (item.documentId) item.href = documentHref(item.documentId, item.href);
     }
-    // A section that links a whole page of this tab is current on that page; one linking a
-    // section of a page (an API tag) is matched by its ID.
+    // A section that links a whole page of this tab is current on that page, and links it at the
+    // page's own address; one linking a section of a page (an API tag) is matched by its ID.
     for (const value of walkNavGroups(nav.groups)) {
-      const page = value.href && !value.href.includes("#") ? pageAt(value.href) : undefined;
-      if (page?.tabSlug === tab.slug) value.page = page.pageSlug;
+      const route = value.href && !value.href.includes("#") ? routeAt(value.href) : undefined;
+      if (route?.page.tabSlug === tab.slug) { value.page = route.page.pageSlug; value.href = route.publicPath; }
     }
     // A reference leads to its overview, and a tab whose navigation names the page it lands
     // on, such as Rust's workspace overview, to that page. Other tabs lead to their first destination, a
@@ -144,7 +145,7 @@ export function navigationResolver(config: ResolvedConfig, routes: RouteTable, r
     // build generated for a long section, never makes a header tab land elsewhere.
     const declared = nav.documentId ? documentHref(nav.documentId) : undefined;
     const first = [...readingOrder(nav.groups)].find(href => {
-      const page = pageAt(href);
+      const page = routeAt(href)?.page;
       return page?.tabSlug === tab.slug && !page.identity.document.startsWith("section");
     });
     nav.href = overview ? overview.publicPath : declared ?? first ?? (byOwner.get(tab.slug) ?? [])[0]?.publicPath ?? nav.href;

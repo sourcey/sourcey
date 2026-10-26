@@ -63,6 +63,8 @@ export interface SiteNavItem {
   id: string;
   /** HTTP method for OpenAPI operations (colored dot in sidebar) */
   method?: string;
+  /** A link the navigation names by its address, such as another site's: listed, never read through. */
+  link?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +160,7 @@ export function buildNavFromPages(
     const items: (SiteNavItem | SiteNavGroup)[] = [];
     for (const entry of input.items) {
       if (entry.kind === "group") { items.push(group(entry)); continue; }
-      if (entry.kind === "link") { items.push({ label: entry.label, href: entry.href, id: entry.href }); continue; }
+      if (entry.kind === "link") { items.push({ label: entry.label, href: entry.href, id: entry.href, link: true }); continue; }
       if (entry.kind === "target") { items.push(targetItem(entry.target)); continue; }
       const page = pagesByPath.get(entry.slug);
       if (!page || entry.hidden || page.kind === "markdown" && page.hideInMenu) continue;
@@ -196,7 +198,7 @@ export function buildAuthoredNavigation(tab: ResolvedTab, input: GroupConfig[]):
     const id = value.id ?? [parent, value.group].filter(Boolean).join("/");
     return { label: value.group, id, collapsed: value.collapsed, href: value.href, items: value.pages.flatMap<SiteNavItem | SiteNavGroup>(entry => {
       if (typeof entry === "object" && "group" in entry) return [group(entry, id)];
-      if (typeof entry === "object" && "href" in entry) return [{ label: entry.label, href: entry.href, id: entry.href }];
+      if (typeof entry === "object" && "href" in entry) return [{ label: entry.label, href: entry.href, id: entry.href, link: true }];
       if (typeof entry === "object" && "hidden" in entry && entry.hidden) return [];
       return [targetItem(typeof entry === "string" ? { page: entry } : entry)];
     }) };
@@ -351,13 +353,13 @@ function navigationIndex(tab: SiteTab): NavigationIndex {
   navigationIndexes.set(tab, index); return index;
 }
 
-/** A tab's pages in reading order: a section's own page, then the pages it holds. A page the build composed to list a section is not one to read through. */
+/** A tab's pages in reading order: a section's own page, then the pages it holds. A page the build composed to list a section, or a link the navigation names, is not one to read through. */
 function* readingPages(groups: readonly SiteNavGroup[]): Generator<SiteNavItem> {
   for (const group of groups) {
     if (group.page && group.href && !group.composed) yield { label: group.label, href: group.href, id: group.page };
     for (const item of group.items) {
       if (isNavGroup(item)) yield* readingPages([item]);
-      else yield item;
+      else if (!item.link) yield item;
     }
   }
 }
