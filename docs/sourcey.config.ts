@@ -35,6 +35,7 @@ export default defineConfig({
                 "guides/godoc-go",
                 "guides/doxygen-cpp",
                 "guides/embedding",
+                "guides/langchain-retriever",
               ],
             },
             { group: "Migrating", pages: ["migrating", "migrating/astro", "migrating/mkdocs", "migrating/docusaurus", "migrating/mintlify"] },
