@@ -2,6 +2,8 @@ import { defineCommand } from "citty";
 import consola from "consola";
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, basename, relative } from "node:path";
+import { themeDefinitions } from "./themes/registry.js";
+import manifest from "../package.json" with { type: "json" };
 
 // ---------------------------------------------------------------------------
 // Auto-detection helpers
@@ -115,7 +117,7 @@ export const init = defineCommand({
     // -- Theme --
     const theme = (await consola.prompt("Theme:", {
       type: "select",
-      options: ["default", "minimal", "api-first"],
+      options: Object.keys(themeDefinitions),
     })) as string;
 
     if (typeof theme === "symbol") process.exit(0);
@@ -292,7 +294,7 @@ import { myFunction } from "my-package";
             build: "sourcey build",
           },
           dependencies: {
-            sourcey: "^3.6.0",
+            sourcey: `^${manifest.version}`,
           },
         },
         null,
