@@ -6,6 +6,7 @@
 
 - A link to a file beside a page, such as a YAML manifest or a script, publishes the file with the page, as MkDocs and Docusaurus do. Only images and a fixed set of file types had been published, so links to others led nowhere.
 - A link to a page by an address a host answers with that page, such as the page's address without its trailing slash, is no longer reported as broken, and its fragment is checked. A migrated site with `brokenLinks: "error"` had stopped on such links.
+- `documents.json` keeps each document's terms once, as it was designed to, rather than its whole text, which the document's Markdown file holds. A 2,000-page site's index falls from 26 MB to 15 MB; it had passed the 25 MiB a file may be on hosts such as Cloudflare Pages.
 
 ## 3.9.2 - 2026-10-26
 

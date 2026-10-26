@@ -10,7 +10,7 @@ import { collectReadableDocuments, exportRoot, pageMarkdownPath } from "./docume
 import type { DiscoveryResource } from "./config.js";
 import { parseDocumentationIndex } from "./document-index.js";
 import { createHash } from "node:crypto";
-import { compactDescription } from "./markdown.js";
+import { compactDescription, searchTerms } from "./markdown.js";
 
 export interface GeneratedExports {
   files: Map<string, string | Buffer>;
@@ -72,7 +72,7 @@ export function generateExports(
       const index = parseDocumentationIndex({ version: 1, name: name || "Documentation", documents: selected.map(document => {
         const file = prefix ? document.entry.file.slice(prefix.length + 1) : document.entry.file;
         if (prefix && !document.entry.file.startsWith(`${prefix}/`)) throw new Error(`Document outside index root: ${document.entry.file}`);
-        return { ...document.entry, file, searchText: document.entry.searchText ?? document.content };
+        return { ...document.entry, file, searchText: searchTerms(document.entry.searchText ?? document.content) };
       }) });
       put(within("documents.json"), json(index), "application/json; charset=utf-8");
     }

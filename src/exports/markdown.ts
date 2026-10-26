@@ -6,6 +6,11 @@ export function fencedCode(source: string, language = ""): string {
   return `${fence}${language}\n${source.trimEnd()}\n${fence}`;
 }
 
+/** Each of a text's terms once, as the document index keeps them for keyword retrieval; a reader opens the document's Markdown for the text. */
+export function searchTerms(text: string): string {
+  return [...new Set(text.toLowerCase().match(/\S+/g) ?? [])].join(" ");
+}
+
 export function compactDescription(value: string, limit = 320): string {
   const paragraph = value
     .split(/\n\s*\n/, 1)[0]

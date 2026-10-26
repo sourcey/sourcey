@@ -158,7 +158,8 @@ describe("native compilation", () => {
     expect(document.markdown).toContain("AgentExclusiveToken");
     expect(first.extraFiles.get("guide/index.md")?.toString()).toContain("AgentExclusiveToken");
     expect(first.llmsFullTxt).toContain("AgentExclusiveToken");
-    expect(first.extraFiles.get("documents.json")?.toString()).toContain("AgentExclusiveToken");
+    // The document index keeps each term once, in lower case, for agents' keyword search.
+    expect(first.extraFiles.get("documents.json")?.toString()).toContain("agentexclusivetoken");
     await writeFile(guide, "# Human guide\n\nA useful description for the person reading.\n\n## Installation\n\nUpdated instructions.\n");
     const edited = await updateSourceySite(first, [guide]);
     const next = edited.pages.find(page => page.identity.document === "guide")!.currentPage;
