@@ -21,6 +21,7 @@ async function config(root: string, extra: Partial<SourceyConfig> = {}) {
     "",
     "[Feed them](./feed.md), [the old guide](/guides/old/), [a gone page](/gone/), [the manual](/files/manual.pdf),",
     "[this page as Markdown](/start.md), [mail us](mailto:pets@example.com), [elsewhere](https://example.com/missing/)",
+    "[the feed by its address without the slash](https://pets.example/feed), [a lost part of it](https://pets.example/feed#lost)",
     "and [the live site's own lost page](https://pets.example/lost/).",
     "",
   ].join("\n"));
@@ -37,6 +38,10 @@ describe("broken links", () => {
     expect(site.siteDiagnostics.filter(diagnostic => diagnostic.code === "broken-link")).toEqual([
       { severity: "warning", code: "broken-link", page: "/start/", message: 'Link "/gone/" leads to /gone/, which the site does not publish.' },
       { severity: "warning", code: "broken-link", page: "/start/", message: 'Link "https://pets.example/lost/" leads to /lost/, which the site does not publish.' },
+    ]);
+    // A host serves /feed/ for /feed, so the link reaches the page, whose anchors it is then checked against.
+    expect(site.siteDiagnostics.filter(diagnostic => diagnostic.code === "broken-fragment").map(diagnostic => diagnostic.message)).toEqual([
+      'Link "https://pets.example/feed#lost" points to a missing fragment on /feed/.',
     ]);
     // The build's summary names the first and counts the rest.
     expect(formatSiteDiagnostics(site.siteDiagnostics.filter(diagnostic => diagnostic.code === "broken-link"))).toEqual([
