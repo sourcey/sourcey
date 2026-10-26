@@ -86,7 +86,9 @@ export default defineConfig({
       {
         tab: "Guides",
         slug: "",
-        source: markdown({ groups: [{ group: "Getting Started", pages: ["introduction"] }] }),
+        source: markdown({
+          groups: [{ group: "Getting Started", pages: ["introduction"] }],
+        }),
       },
       { tab: "MCP Reference", slug: "mcp", source: mcp("./mcp.json") },
     ],

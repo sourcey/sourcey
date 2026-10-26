@@ -41,7 +41,11 @@ import { defineConfig, godoc } from "sourcey";
 export default defineConfig({
   navigation: {
     tabs: [
-      { tab: "Go API", slug: "go", source: godoc({ snapshot: "./godoc.json", mode: "snapshot" }) },
+      {
+        tab: "Go API",
+        slug: "go",
+        source: godoc({ snapshot: "./godoc.json", mode: "snapshot" }),
+      },
     ],
   },
 });

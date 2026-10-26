@@ -45,7 +45,9 @@ This takes about fifteen minutes. The [quickstart](../quickstart.md) covers the 
            tab: "Documentation",
            slug: "",
            source: markdown({
-             groups: [{ group: "Getting Started", pages: ["introduction", "quickstart"] }],
+             groups: [
+               { group: "Getting Started", pages: ["introduction", "quickstart"] },
+             ],
            }),
          },
          {
@@ -56,7 +58,9 @@ This takes about fifteen minutes. The [quickstart](../quickstart.md) covers the 
        ],
      },
      navbar: {
-       links: [{ type: "github", href: "https://github.com/your-org/tasks-api" }],
+       links: [
+         { type: "github", href: "https://github.com/your-org/tasks-api" },
+       ],
      },
    });
    ```

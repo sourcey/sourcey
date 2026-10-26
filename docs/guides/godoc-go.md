@@ -27,7 +27,11 @@ export default defineConfig({
       {
         tab: "Documentation",
         slug: "",
-        source: markdown({ groups: [{ group: "Getting Started", pages: ["introduction", "quickstart"] }] }),
+        source: markdown({
+          groups: [
+            { group: "Getting Started", pages: ["introduction", "quickstart"] },
+          ],
+        }),
       },
       {
         tab: "Go API",

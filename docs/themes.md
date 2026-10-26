@@ -175,7 +175,9 @@ export default defineConfig({
       {
         tab: "Specification",
         slug: "",
-        source: markdown({ groups: [{ group: "Start", pages: ["index", "authorization"] }] }),
+        source: markdown({
+          groups: [{ group: "Start", pages: ["index", "authorization"] }],
+        }),
       },
     ],
   },

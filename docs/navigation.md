@@ -26,15 +26,29 @@ export default defineConfig({
                 { page: "install/index", hidden: true },
                 "install/linux",
                 "install/macos",
-                { group: "Containers", pages: ["install/docker", "install/kubernetes"] },
+                {
+                  group: "Containers",
+                  pages: ["install/docker", "install/kubernetes"],
+                },
               ],
             },
             { group: "Recipes", pages: ["recipes/*"] },
-            { group: "Help", pages: ["faq", { href: "https://status.example.com", label: "Service status" }] },
+            {
+              group: "Help",
+              pages: [
+                "faq",
+                { href: "https://status.example.com", label: "Service status" },
+              ],
+            },
           ],
         }),
       },
-      { tab: "API Reference", id: "rest", slug: "api", source: openapi("./openapi.yaml") },
+      {
+        tab: "API Reference",
+        id: "rest",
+        slug: "api",
+        source: openapi("./openapi.yaml"),
+      },
     ],
   },
 });

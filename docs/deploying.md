@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The whole history, for lastUpdated: each page is dated by its file's last commit.
+          # The whole history, so lastUpdated dates each page by its last commit.
           fetch-depth: 0
       - uses: actions/setup-node@v6
         with:

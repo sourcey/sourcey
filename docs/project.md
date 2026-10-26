@@ -15,7 +15,7 @@ docs/
   openapi.yaml           a spec a tab reads
   components/            the site's own components (optional)
   pages/                 the site's own pages, with pages: "./pages" (optional)
-  public/                files served as they are, with publicDir: "./public" (optional)
+  public/                files served as they are, with publicDir (optional)
   brand/logo.svg
 ```
 
@@ -31,7 +31,13 @@ export default defineConfig({
   logo: "./brand/logo.svg",
   navigation: {
     tabs: [
-      { tab: "Guides", slug: "", source: markdown({ groups: [{ group: "Start", pages: ["introduction", "quickstart"] }] }) },
+      {
+        tab: "Guides",
+        slug: "",
+        source: markdown({
+          groups: [{ group: "Start", pages: ["introduction", "quickstart"] }],
+        }),
+      },
       { tab: "API", slug: "api", source: openapi("./openapi.yaml") },
     ],
   },
@@ -52,7 +58,7 @@ dist/
   guides/authentication.html
   api.html               a reference, one page or one per section or operation
   404.html
-  _assets/<hash>/        the theme's stylesheet and scripts, named by their content
+  _assets/<hash>/        the theme's stylesheet and scripts, by content
   _media/                images and files the pages use, named by their content
   _og/                   social cards
   _search/               the search index, in shards

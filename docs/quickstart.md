@@ -49,7 +49,9 @@ export default defineConfig({
         tab: "Documentation",
         slug: "",
         source: markdown({
-          groups: [{ group: "Getting Started", pages: ["introduction", "quickstart"] }],
+          groups: [
+            { group: "Getting Started", pages: ["introduction", "quickstart"] },
+          ],
         }),
       },
       {

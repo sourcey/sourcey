@@ -11,7 +11,13 @@ import { defineConfig, markdown, mcp } from "sourcey";
 export default defineConfig({
   navigation: {
     tabs: [
-      { tab: "Guides", slug: "", source: markdown({ groups: [{ group: "Start", pages: ["introduction"] }] }) },
+      {
+        tab: "Guides",
+        slug: "",
+        source: markdown({
+          groups: [{ group: "Start", pages: ["introduction"] }],
+        }),
+      },
       { tab: "MCP Reference", slug: "mcp", source: mcp("./mcp.json") },
     ],
   },

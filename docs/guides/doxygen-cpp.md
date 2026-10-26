@@ -40,7 +40,9 @@ A `doxygen()` tab draws a library's reference from Doxygen's XML: its classes, s
          {
            tab: "Documentation",
            slug: "",
-           source: markdown({ groups: [{ group: "Getting Started", pages: ["introduction"] }] }),
+           source: markdown({
+             groups: [{ group: "Getting Started", pages: ["introduction"] }],
+           }),
          },
          {
            tab: "C++ API",

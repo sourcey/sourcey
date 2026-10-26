@@ -38,14 +38,22 @@ export default defineConfig({
       {
         tab: "Guides",
         source: markdown({
-          groups: [{ group: "Tutorials", pages: ["guide-setup", "guide-deployment"] }],
+          groups: [
+            { group: "Tutorials", pages: ["guide-setup", "guide-deployment"] },
+          ],
         }),
       },
       { tab: "API Reference", slug: "api", source: openapi("./openapi.yaml") },
-      { tab: "Go API", slug: "go", source: godoc({ module: ".", packages: ["./..."] }) },
+      {
+        tab: "Go API",
+        slug: "go",
+        source: godoc({ module: ".", packages: ["./..."] }),
+      },
       {
         tab: "Changelog",
-        source: markdown({ groups: [{ group: "Releases", pages: ["CHANGELOG"] }] }),
+        source: markdown({
+          groups: [{ group: "Releases", pages: ["CHANGELOG"] }],
+        }),
       },
     ],
   },
