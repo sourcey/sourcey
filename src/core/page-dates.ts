@@ -27,7 +27,9 @@ function walk({ top, head }: Repository, folder: string): Promise<Map<string, st
       const dates = new Map<string, string>();
       for (const commit of log.split("\x1e")) {
         const [date, ...names] = commit.split("\n");
-        for (const name of names) if (name && !dates.has(name)) dates.set(name, date.trim());
+        // Older git writes UTC as +00:00 and newer git as Z; a site's dates are the same whichever built it.
+        const written = date.trim().replace(/\+00:00$/, "Z");
+        for (const name of names) if (name && !dates.has(name)) dates.set(name, written);
       }
       return dates;
     });
