@@ -67,7 +67,8 @@ describe("codeBlockString", () => {
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
-    });
+    // A toolchain's first compile on a fresh CI runner reads its standard library cold: rustc took 20 s on GitHub's.
+    }, 60_000);
 
   it("keeps a body's lines at the margin, and falls back where the raw form cannot carry it", () => {
     expect(codeBlockString(bodies.json, "go")).toBeUndefined();
