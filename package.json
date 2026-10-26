@@ -51,7 +51,7 @@
     "@babel/parser": "8.0.8",
     "@preact/preset-vite": "^2.10.6",
     "@resvg/resvg-js": "^2.6.2",
-    "@sourcey/beautiful-mermaid": "1.1.5",
+    "@sourcey/beautiful-mermaid": "1.1.6",
     "@swaggerexpert/jsonpath": "4.0.5",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.3",
