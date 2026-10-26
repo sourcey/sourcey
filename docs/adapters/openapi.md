@@ -1,5 +1,5 @@
 ---
-title: OpenAPI
+title: OpenAPI Integration
 description: An API reference from an OpenAPI or Swagger spec, with request examples, a request console and editorial overlays.
 ---
 
@@ -48,7 +48,7 @@ export default defineConfig({
 
 The languages are `curl`, `javascript`, `typescript`, `python`, `go`, `ruby`, `java`, `php`, `rust` and `csharp`. Each example is written at build time from the operation's method, server, path, parameters, headers, authentication and request body, with the language's usual client: `fetch` in JavaScript and TypeScript, `requests` in Python, `net/http` in Go and Ruby, `HttpClient` in Java and C#, cURL in PHP and `reqwest` in Rust.
 
-An operation's own examples take the place of the generated ones: Sourcey reads `x-sourcey-code-samples`, else Redoc's `x-codeSamples` or `x-code-samples`, each a list of `{ lang, label, source }`.
+An operation's own examples take the place of the generated ones: Sourcey reads `x-sourcey-code-samples`, else the `x-codeSamples` extension or its older spelling `x-code-samples`, each a list of `{ lang, label, source }`.
 
 ## Overlays
 

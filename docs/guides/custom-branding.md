@@ -1,5 +1,5 @@
 ---
-title: Custom branding
+title: Custom Branding
 description: Your colours, fonts and logo on any theme.
 ---
 

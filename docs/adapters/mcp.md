@@ -1,5 +1,5 @@
 ---
-title: MCP
+title: MCP Integration
 description: A reference for a Model Context Protocol server's tools, resources and prompts, from a snapshot of the server.
 ---
 

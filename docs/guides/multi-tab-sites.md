@@ -1,5 +1,5 @@
 ---
-title: Multi-tab sites
+title: Multi-Tab Sites
 description: Guides, API references and code references side by side in one site.
 ---
 

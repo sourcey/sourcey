@@ -1,5 +1,5 @@
 ---
-title: Rustdoc adapter
+title: Rustdoc Adapter
 description: Generate Rust API documentation from nightly rustdoc JSON. Doctests as a first-class extracted view. Snapshot mode for CI on stable Rust.
 ---
 

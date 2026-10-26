@@ -1,5 +1,5 @@
 ---
-title: Document your MCP server
+title: "Tutorial: Document Your MCP Server"
 description: Snapshot an MCP server, build its reference, and add guides beside it, in a few minutes.
 ---
 

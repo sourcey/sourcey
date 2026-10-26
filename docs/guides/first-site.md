@@ -1,5 +1,5 @@
 ---
-title: Your first docs site
+title: Your First Docs Site
 description: Build a documentation site from scratch, with Markdown guides and an API reference.
 ---
 

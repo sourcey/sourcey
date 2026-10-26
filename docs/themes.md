@@ -1,5 +1,5 @@
 ---
-title: Themes
+title: Themes & Layout
 description: Four themes, brand colours, fonts, layout widths, light and dark, custom CSS and icons.
 ---
 

@@ -50,7 +50,7 @@ describe("normalizeSpec", () => {
     expect(body(2).properties!.id.type).toBe("string");
   });
 
-  it("takes an operation's own request examples from Sourcey's extension, else Redoc's under either name", () => {
+  it("takes an operation's own request examples from Sourcey's extension, else x-codeSamples or its older spelling", () => {
     const sample = (source: string) => [{ lang: "shell", label: "CLI", source }];
     const spec = normalizeSpec({
       source: "inline.json",

@@ -1,5 +1,5 @@
 ---
-title: Project structure
+title: Project Structure
 description: Where Sourcey finds its config and content, and what a build writes.
 ---
 

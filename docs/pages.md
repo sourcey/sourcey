@@ -1,5 +1,5 @@
 ---
-title: Writing pages
+title: Writing Pages
 description: Markdown files with frontmatter, how a page is titled and summarised, and the Markdown every page can use.
 ---
 

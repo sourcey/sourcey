@@ -1,5 +1,5 @@
 ---
-title: Quickstart
+title: Quick Start
 description: From nothing to a running documentation site, with guides and an API reference, in a few minutes.
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Go docs with godoc
+title: Go / godoc Docs
 description: A Go module's reference from its package comments, exported symbols and examples.
 ---
 

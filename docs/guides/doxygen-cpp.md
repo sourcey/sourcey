@@ -1,5 +1,5 @@
 ---
-title: C and C++ docs with Doxygen
+title: Doxygen / C++ Docs
 description: A C or C++ library's reference from Doxygen's XML.
 ---
 

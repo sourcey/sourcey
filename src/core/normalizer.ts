@@ -480,7 +480,7 @@ function normalizeSecurityRequirements(
   return (opSecurity ?? globalSecurity ?? []) as Record<string, string[]>[];
 }
 
-/** An operation's own request examples: Sourcey's extension, else Redoc's, under its current name or its first. */
+/** An operation's own request examples: Sourcey's extension, else `x-codeSamples` or its older spelling. */
 function normalizeCodeSamples(op: Record<string, unknown>): CodeSample[] | undefined {
   const samples = (["x-sourcey-code-samples", "x-codeSamples", "x-code-samples"] as const)
     .map((key) => op[key] as Record<string, unknown>[] | undefined)

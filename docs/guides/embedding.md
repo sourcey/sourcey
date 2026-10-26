@@ -1,5 +1,5 @@
 ---
-title: Embedding in an existing site
+title: Embedding in Existing Sites
 description: Serve the documentation beneath a path of an existing website, inside Astro or beside any other framework.
 ---
 
