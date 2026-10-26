@@ -5,6 +5,10 @@ description: Recent Sourcey releases.
 
 # Changelog
 
+## 3.9.2
+
+A site's own components live in `components/`, each file named for the component it is, and `Head`, `Banner`, `Header`, `ContentEnd`, `Footer` and `BodyEnd` fill every page, for analytics and the like. A page can ask "Was this page helpful?" (`feedback`), show when its file last changed (`lastUpdated`) and open with breadcrumbs (`navigation.breadcrumbs`). Footnotes and git graphs are drawn, "Edit this page" opens the file on GitHub, a GitHub link can show its release, stars and forks, and every build reports broken links, with `brokenLinks: "error"` to stop on them. Migrations from MkDocs and Docusaurus carry analytics, scripts, feedback, dates and breadcrumbs. See the [complete release notes](https://github.com/sourcey/sourcey/blob/main/CHANGELOG.md#392---2026-10-26).
+
 ## 3.9.1
 
 Mermaid diagrams are read by Mermaid's own parser and laid out as Mermaid lays them out: flowcharts, state, class, ER, sequence, Gantt, pie and mindmap diagrams, each one drawing for both themes in the page's colours. The navbar takes menus, a page can name its own edit address with `editUrl`, and a code block names its language. `sourcey migrate docusaurus` carries several sidebars, navbar dropdowns, code blocks, themed images and pages drawn from static data. Text in search, descriptions and exports reads as a reader sees it, and social cards wrap a long name between its words. Sourcey runs on Node.js 22.22.2, 24.15 or 26. See the [complete release notes](https://github.com/sourcey/sourcey/blob/main/CHANGELOG.md#391---2026-10-25).

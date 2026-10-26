@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.9.2 - 2026-10-26
 
 ### Added
 
@@ -9,7 +9,7 @@
 - `feedback: true` ends each documentation, reference and changelog page by asking "Was this page helpful?" in the page's language. An answer shows its note and dispatches a `sourcey:feedback` event, `{ value, page }`, which the site's own script sends where it keeps feedback; Sourcey sends nothing. A site can name its own title, ratings, values, icons and notes, and frontmatter `feedback: false` leaves it off a page. `sourcey migrate mkdocs` carries Material's feedback question and `hide: [feedback]`.
 - Each build reports a link to a path on the site that no page, file or redirect answers, and `brokenLinks: "error"` has `sourcey build` stop on one before writing anything; the dev server reports them either way. Docusaurus's `onBrokenLinks: "throw"`, its default, and MkDocs's `strict: true` migrate to `"error"`.
 - A `github` navbar link with `stats: true` shows its repository's latest release, stars and forks, read from GitHub when the site builds, with `GITHUB_TOKEN` when set. When GitHub does not answer, the build warns and draws the plain link.
-- `navigation.breadcrumbs: true` opens each documentation and reference page with the way to it: the site's home, its tab and each section around it, linked where a section has a page of its own. The visible trail and the page's structured data come from one function. `sourcey migrate` turns it on where Material's `navigation.path` or Docusaurus's breadcrumbs drew one.
+- `navigation.breadcrumbs: true` opens each documentation and reference page with the way to it: the site's home, its tab and each section around it, linked where a section has a page of its own. `sourcey migrate` turns it on where Material's `navigation.path` or Docusaurus's breadcrumbs drew one.
 - `lastUpdated: true` dates each documentation page and changelog by its file's last commit, beside "Edit this page" in the page's language, and in the sitemap. A shallow checkout stops the build rather than dating every page by its one commit. `sourcey migrate` carries MkDocs's git revision date plugins, Docusaurus's `showLastUpdateTime` and Starlight's `lastUpdated`.
 - Git graphs (`gitGraph`) are drawn, as Mermaid reads and lays them out: a lane for each branch, merges, reverts, highlights, cherry-picks and tags, left to right, top to bottom or bottom to top. Sourcey had shown their source. They come with `@sourcey/beautiful-mermaid` 1.1.5.
 - Footnotes, written as GitHub writes them (`[^label]` and `[^label]: note`), are numbered in reading order across the page and drawn at its end with a link back. They had shown as text. `sourcey migrate mkdocs` writes Material's annotations as footnotes.
