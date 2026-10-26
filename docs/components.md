@@ -127,7 +127,7 @@ A footnote is written as GitHub writes one. Its reference is numbered in reading
 
 Figures generate responsive AVIF, WebP and PNG variants without upscaling. Set `densities` or `formats` when you need a different set. Without `quality`, each format uses its encoder's default (AVIF 50, WebP 80, PNG lossless); a `quality` applies to every format, so a high one is costly in AVIF. The chosen image follows the saved appearance preference; without JavaScript, the system preference selects its light or dark source. Video can declare a `sources` array for multiple formats and supports `muted`, `loop`, `autoplay` and `playsinline`.
 
-A fenced `mermaid` block renders to static SVG at build time. The page retains its source in a disclosure, and readable Markdown retains the original diagram text. The diagram renderer stays out of the browser bundle. An unsupported or malformed diagram fails the build rather than producing a blank image.
+A fenced `mermaid` block renders to static SVG at build time: flowcharts, sequence, class, state, ER, Gantt, pie, mindmap and git graph diagrams, read by Mermaid's own parser. The page retains its source in a disclosure, and readable Markdown retains the original diagram text. The diagram renderer stays out of the browser bundle. A diagram of another type, or one Mermaid cannot read, never becomes a blank image: the page shows its source with a note, and the build reports where it is.
 
 Ordinary relative Markdown images, titled images, linked thumbnails, HTML media and local downloads join the same asset closure. A Git LFS pointer is diagnosed as an unmaterialized asset; keep your project's LFS checkout step.
 

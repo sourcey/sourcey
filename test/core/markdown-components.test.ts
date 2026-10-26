@@ -142,6 +142,13 @@ describe("diagrams", () => {
     expect(page.html).toMatch(/<template shadowrootmode="open"><style>:host[^<]*<\/style><svg [^>]*viewBox="[^"]+"[^>]*>\s*<style>/);
   });
 
+  it("draws a git graph, its branches and commits as Mermaid reads them", async () => {
+    const svg = await diagramSvg('gitGraph\n  commit id: "Initial"\n  branch develop\n  commit id: "Feature"\n  checkout main\n  merge develop');
+    expect(svg).toContain('class="git-branch" data-branch="develop"');
+    expect(svg).toContain('class="git-commit git-commit-merge"');
+    expect(lines(svg)).toEqual(expect.arrayContaining(["main", "develop", "Initial", "Feature"]));
+  });
+
   it("titles a chart by its frontmatter, as Mermaid does", async () => {
     expect(lines(await diagramSvg('---\ntitle: Pets by kind\n---\npie\n  "Cats": 3\n  "Dogs": 2'))).toContain("Pets by kind");
   });
@@ -163,26 +170,26 @@ describe("diagrams", () => {
 });
 
 describe("diagrams the renderer cannot draw", () => {
-  const gitGraph = "# Workflow\n\n```mermaid\ngitGraph\n  commit\n  branch develop\n```\n";
+  const journey = "# Workflow\n\n```mermaid\njourney\n  title Adopting a pet\n  section Visit\n    Meet the cats: 5: Me\n```\n";
 
   it("keep their source in the page, explained, with no picture claiming to be it", async () => {
-    const page = await guide(gitGraph);
-    expect(page.html).toMatch(/<figure class="sourcey-diagram sourcey-diagram-unrendered"><figcaption>This diagram could not be drawn, so its source is shown\.<\/figcaption>[\s\S]*?gitGraph[\s\S]*?branch develop[\s\S]*?<\/figure>/);
+    const page = await guide(journey);
+    expect(page.html).toMatch(/<figure class="sourcey-diagram sourcey-diagram-unrendered"><figcaption>This diagram could not be drawn, so its source is shown\.<\/figcaption>[\s\S]*?journey[\s\S]*?Meet the cats[\s\S]*?<\/figure>/);
     expect(page.html).not.toContain("<img");
-    expect(page.markdown).toContain("```mermaid\ngitGraph");
+    expect(page.markdown).toContain("```mermaid\njourney");
   });
 
   it("are reported where they are written", async () => {
     const root = await mkdtemp(join(tmpdir(), "sourcey-diagram-"));
     try {
       const file = join(root, "guide.md");
-      await writeFile(file, gitGraph);
-      const nodes = await parseComponents(gitGraph, { source: file, root, input: new InputReader(), context: ENGLISH });
+      await writeFile(file, journey);
+      const nodes = await parseComponents(journey, { source: file, root, input: new InputReader(), context: ENGLISH });
       const context = { ...ENGLISH, locale: "fr", lang: "fr", contentLocale: "fr", messages: messagesFor("fr") };
-      const french = await parseComponents(gitGraph, { source: file, root, input: new InputReader(), context });
+      const french = await parseComponents(journey, { source: file, root, input: new InputReader(), context });
       expect(renderContent(french, context.messages)).toContain("<figcaption>Ce diagramme n’a pas pu être dessiné ; sa source est affichée.</figcaption>");
       expect(contentDiagnostics(nodes)).toEqual([
-        { severity: "warning", code: "diagram", file: await realpath(file), message: expect.stringMatching(/guide\.md at offset 12: the diagram could not be drawn \(Diagram type "gitGraph" is not supported\); the page shows its source instead$/) },
+        { severity: "warning", code: "diagram", file: await realpath(file), message: expect.stringMatching(/guide\.md at offset 12: the diagram could not be drawn \(Diagram type "journey" is not supported\); the page shows its source instead$/) },
       ]);
     } finally {
       await rm(root, { recursive: true, force: true });

@@ -193,17 +193,17 @@ describe("native compilation", () => {
   }));
 
   it("retains refused diagram source and exposes its warning through cold and incremental builds", () => fixture(async root => {
-    const source = "# Workflow\n\n```mermaid\ngitGraph\n  commit\n  branch develop\n```\n";
+    const source = "# Workflow\n\n```mermaid\njourney\n  title Adopting a pet\n  section Visit\n    Meet the cats: 5: Me\n```\n";
     const guide = await file(root, "workflow.md", source);
     const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Guides", pages: ["workflow"] }] }) }] } }, root);
     const cold = await buildSourceySite({ config, generateOgImages: false });
-    expect(cold.contentDiagnostics).toEqual([expect.objectContaining({ severity: "warning", code: "diagram", file: await realpath(guide), message: expect.stringContaining('Diagram type "gitGraph" is not supported') })]);
+    expect(cold.contentDiagnostics).toEqual([expect.objectContaining({ severity: "warning", code: "diagram", file: await realpath(guide), message: expect.stringContaining('Diagram type "journey" is not supported') })]);
     const page = cold.pages.find(page => page.identity.document === "workflow")!.currentPage;
     if (page.kind !== "markdown") throw new Error("Expected a Markdown page");
     expect(page.markdown.html).toContain('class="sourcey-diagram sourcey-diagram-unrendered"');
     expect(page.markdown.html).not.toContain("<picture");
-    expect(JSON.stringify(cold.searchRows)).toContain("branch develop");
-    expect(cold.extraFiles.get("workflow.md")?.toString()).toContain("```mermaid\ngitGraph");
+    expect(JSON.stringify(cold.searchRows)).toContain("Meet the cats");
+    expect(cold.extraFiles.get("workflow.md")?.toString()).toContain("```mermaid\njourney");
     const unchanged = await updateSourceySite(cold, []);
     expect(unchanged.contentDiagnostics).toEqual(cold.contentDiagnostics);
     await writeFile(guide, "# Workflow\n\nThe diagram was replaced by a description.\n");
