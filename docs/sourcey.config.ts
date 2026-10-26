@@ -20,7 +20,7 @@ export default defineConfig({
           groups: [
             {
               group: "Start Here",
-              pages: ["introduction", "install", "configuration", "versions", "languages", "components", "try-it", "machine-readable"],
+              pages: ["introduction", "install", "configuration", "versions", "languages", "components", "try-it", "machine-readable", "adapters/rustdoc"],
             },
             {
               group: "Migrating",
