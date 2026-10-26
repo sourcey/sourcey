@@ -165,7 +165,7 @@ navbar: {
 },
 ```
 
-`navbar.links` sit at the header's end: a network's icon (`github`, `discord`, `discourse`, ...), a text link with its `label`, or a `menu`, links under one label that open below it, one menu at a time. A menu holds links only, one level deep; the mobile drawer lists them under its label. `navbar.primary` is the call to action, a button after the links and at the foot of the drawer.
+`navbar.links` sit at the header's end: a network's icon (`github`, `npm`, `twitter` for X, `discord`, `discourse`, `slack`, `linkedin`, `youtube`, `mastodon`, `bluesky` or `reddit`, its `label` the icon's accessible name, the network's own name by default), a text link (`link`) with its `label`, or a `menu`, links under one label that open below it, one menu at a time. A menu holds links only, one level deep; the mobile drawer lists them under its label. `navbar.primary` is the call to action, a button after the links and at the foot of the drawer.
 
 A `github` link to a repository can show its latest release, stars and forks beside its mark: `{ type: "github", href: "https://github.com/example/docs", stats: true }`. The build reads them from GitHub's API, two requests per build, so they are as fresh as the site's last build and no reader's browser calls GitHub. Give the build `GITHUB_TOKEN` (in GitHub Actions, `env: { GITHUB_TOKEN: ${{ github.token }} }`) for GitHub's higher limit. The build reads them while the pages load; when GitHub does not answer within three seconds, the build warns and the link shows without them.
 
