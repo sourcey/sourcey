@@ -23,7 +23,7 @@ export default defineConfig({
 });
 ```
 
-`navigation.tabs` is the one setting a site needs. `name` is shown beside the logo and ends each page's title, after the page's own title and `titleSeparator` (` - ` by default). `siteUrl` is the site's public origin, which its canonical URLs, social cards, language alternates and sitemap name; `baseUrl` is the path it is served under when that is not the origin's root, such as `/docs`. `prettyUrls` chooses how pages are written and linked: `false`, the default, writes `guide.html` and links it as written; `"slash"` writes `guide/index.html` and links `/guide/`; `"strip"` writes `guide.html` and links `/guide`, for a host that serves a page without its extension.
+`navigation.tabs` is the one setting a site needs; [Navigation](./navigation.md) describes its tabs, groups and pages. `name` is shown beside the logo and ends each page's title, after the page's own title and `titleSeparator` (` - ` by default). `siteUrl` is the site's public origin, which its canonical URLs, social cards, language alternates and sitemap name; `baseUrl` is the path it is served under when that is not the origin's root, such as `/docs`. `prettyUrls` chooses how pages are written and linked: `false`, the default, writes `guide.html` and links it as written; `"slash"` writes `guide/index.html` and links `/guide/`; `"strip"` writes `guide.html` and links `/guide`, for a host that serves a page without its extension.
 
 `repo`, `editBranch` and `editBasePath` give each page its "Edit this page" link: the repository's address on GitHub, its branch, and the folder within it that holds the config, when that is not the repository's root.
 
