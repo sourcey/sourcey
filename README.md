@@ -25,7 +25,7 @@ npx sourcey init
 - **API reference from OpenAPI**: endpoints, parameters, request/response schemas, and auto-generated code samples across 10 supported languages. The default set is cURL, JavaScript, and Python; configure TypeScript, Go, Ruby, Java, PHP, Rust, and C# when you want them
 - **MCP server documentation**: tools, resources, prompts rendered as browsable reference with JSON-RPC, TypeScript, and Python code samples. Color-coded method types, annotation badges, connection config cards
 - **Rich guides**: markdown pages with steps, cards, accordions, syntax-highlighted code blocks, and prose alongside your API reference
-- **One-time migration**: convert an existing Astro or MkDocs documentation project to native Sourcey Markdown and configuration, with a dry-run diff and checks for routes, fragments, content and media. [Migration guide](docs/migrating.md)
+- **One-time migration**: convert an existing Astro, MkDocs, Docusaurus or Mintlify documentation project to native Sourcey Markdown and configuration, with a dry-run diff and checks for routes, fragments, content and media. [Migration guide](docs/migrating.md)
 - **Product story pages**: changelog, roadmap pages, examples, reference material, search, and portable context exports in one source-owned site
 - **C++ and Doxygen**: feed Doxygen XML output, get modern searchable API docs with exact member search, source links, templates, qualifiers, examples, inherited members, and relationship sections. No new parser, no four-tool Breathe/Exhale/Sphinx pipeline
 - **Go and godoc**: native package documentation extracted from Go source via the toolchain. Render Go modules as Sourcey tabs, generate standalone static Go docs sites, or commit `godoc.json` snapshots for JS-only docs hosts. No Doxygen detour
@@ -36,8 +36,8 @@ npx sourcey init
 - **TypeScript config**: `sourcey.config.ts` with `defineConfig()` autocomplete; theme, navbar, CTA buttons, footer
 - **Themes**: default (sidebar + TOC), minimal (single column), api-first (full width, with examples beside each API operation), and reader (editorial specification); colors, fonts, layout dimensions, and custom CSS on top
 - **Vite dev server**: SSR hot reload on every component and CSS change; spec and markdown changes trigger instant refresh
-- **Dark mode**: semantic design tokens, light/dark logo variants, localStorage persistence
-- **Client-side search**: instant fuzzy search across all pages and API operations; Cmd+K
+- **Light and dark**: semantic design tokens, light and dark logo variants, the reader's choice saved and applied before the page draws
+- **Search in the browser**: full-text and typo-tolerant across every page, operation and symbol, loaded in shards as it is needed; Cmd+K
 - **Static HTML output**: no framework runtime, no vendor lock-in. Deploy to GitHub Pages, Vercel, Netlify, S3, anywhere
 - **Open source**: AGPL-3.0. Self-host, fork, extend. Your docs, your infrastructure
 
@@ -45,7 +45,7 @@ npx sourcey init
 
 ### Sourcey CLI
 
-The full Sourcey binary handles OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown sources. Existing Astro and MkDocs projects have one-time converters.
+The full Sourcey binary handles OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown sources. Existing Astro, MkDocs, Docusaurus and Mintlify projects have one-time converters.
 
 | Path     | Command                                        | Requires                     |
 | -------- | ---------------------------------------------- | ---------------------------- |
@@ -92,7 +92,7 @@ sourcey build
 sourcey build api.yaml -o dist/
 ```
 
-In CI, the [`sourcey/build-docs`](https://github.com/sourcey/build-docs) GitHub Action runs the build and deploys to GitHub Pages; see [deploying](https://sourcey.com/docs/deploying).
+In CI, install the project's dependencies and run `npx sourcey build`; see [deploying](docs/deploying.md) for GitHub Pages, Netlify, Vercel and Cloudflare Pages.
 
 ### Astro integration
 
@@ -144,7 +144,7 @@ export default defineConfig({
 });
 ```
 
-Each tab has one `source`, usually created with `markdown()`, `openapi()`, `mcp()`, `doxygen()`, `godoc()`, or `rustdoc()`. Pages are referenced by slug (e.g. `"quickstart"` resolves to `quickstart.md`). See [docs/configuration.md](docs/configuration.md) for theme, navbar, footer, logo, and full tab options.
+Each tab has one `source`, usually created with `markdown()`, `openapi()`, `mcp()`, `doxygen()`, `godoc()`, or `rustdoc()`. Pages are referenced by slug (e.g. `"quickstart"` resolves to `quickstart.md`). See [configuration](docs/configuration.md) for the site's settings, [navigation](docs/navigation.md) for tabs, groups and pages, and [themes](docs/themes.md) for colours, fonts and layout.
 
 ### Go documentation (godoc)
 
@@ -156,7 +156,7 @@ Render Go package docs as a tab inside your Sourcey site, branded and styled wit
 { tab: "Go API", source: godoc(".") }
 ```
 
-The shorthand expands to `{ module: ".", packages: ["./..."], mode: "auto", includeTests: true }`. Live mode uses the host Go toolchain; snapshot mode reads a committed `godoc.json` and needs no Go on the build host. See [docs/configuration.md](docs/configuration.md) for `packages`, `mode`, `goEnv`, `sourceBasePath`, and `includeUnexported`.
+The shorthand expands to `{ module: ".", packages: ["./..."], mode: "auto", includeTests: true }`. Live mode uses the host Go toolchain; snapshot mode reads a committed `godoc.json` and needs no Go on the build host. See the [Go guide](docs/guides/godoc-go.md) for `packages`, `mode`, `goEnv`, `sourceBasePath`, and `includeUnexported`.
 
 ### Markdown components
 
@@ -170,7 +170,7 @@ Guides support rich components in standard markdown:
 </Steps>
 
 <CardGroup cols={2}>
-  <Card title="API Reference" icon="book" href="/api">Full endpoint docs</Card>
+  <Card title="API Reference" icon="book-open" href="/api">Full endpoint docs</Card>
   <Card title="Guides" icon="map" href="/docs">Step-by-step tutorials</Card>
 </CardGroup>
 
@@ -187,26 +187,29 @@ All visual configuration lives under `theme`. `theme.name` selects the complete 
 theme: {
   name: "api-first",
   colors: { primary: "#f59e0b", light: "#fbbf24", dark: "#d97706" },
-  fonts: { sans: "'Lexend', sans-serif", mono: "'Fira Code', monospace" },
+  fonts: { sans: "Lexend", mono: "Fira Code" },
   layout: { sidebar: "16rem", content: "48rem" },
   css: ["./brand.css"],
 }
 ```
 
-Themes control the complete layout structure: `"default"` (sidebar + TOC), `"minimal"` (single centered column), `"api-first"` (full width, with each API and MCP operation's examples beside it), and `"reader"` (editorial specification reader). Shared brand settings apply on top. Theme-specific options are only interpreted by the selected theme.
+Themes control the complete layout structure: `"default"` (sidebar + TOC), `"minimal"` (single centered column), `"api-first"` (full width, with each API and MCP operation's examples beside it), and `"reader"` (editorial specification reader). Shared brand settings apply on top; a named font loads from Google Fonts. Theme-specific options are only interpreted by the selected theme. See [themes](docs/themes.md).
 
 ## CLI
 
 ```bash
+sourcey init                      Start a project (detects OpenAPI specs and Doxyfiles)
 sourcey dev                       Dev server (reads sourcey.config.ts)
 sourcey build                     Build site (reads sourcey.config.ts)
 sourcey build api.yaml            Quick build from a single spec
+sourcey check                     Check sources, routes and links without writing
 sourcey validate api.yaml         Validate a spec file
+sourcey migrate mkdocs            Convert an Astro, MkDocs, Docusaurus or Mintlify project
 sourcey godoc --out godoc.json    Snapshot a Go module's docs to JSON
 sourcey-godoc generate --out site Standalone Go CLI for static godoc sites
 ```
 
-Run `sourcey <command> --help` for flags.
+Run `sourcey <command> --help` for flags, or see [the CLI reference](docs/cli/build.md).
 
 ## Agent skill
 

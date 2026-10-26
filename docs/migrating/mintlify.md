@@ -39,7 +39,7 @@ Mintlify's API pages, each an MDX file naming one operation (`openapi: "GET /key
 
 | Mintlify | Native Sourcey |
 | --- | --- |
-| The page's `title` and its notes (`<Note>`, `<Warning>`, Markdown) | The operation's summary, and its notes ahead of its description, in an [OpenAPI Overlay](../configuration.md#openapi-overlays) (`api.overlay.yaml`); callouts become GitHub alerts, which render as native callouts |
+| The page's `title` and its notes (`<Note>`, `<Warning>`, Markdown) | The operation's summary, and its notes ahead of its description, in an [OpenAPI Overlay](../adapters/openapi.md#overlays) (`api.overlay.yaml`); callouts become GitHub alerts, which render as native callouts |
 | The page's URL | A page per operation at the same URL (`reference: { split: "operations" }`, with `api.routes.json`) |
 | The page's place in the navigation | The reference's navigation (`api.navigation.json`), groups and order as Mintlify had them; guides in the same section stay guides, linked from it |
 | Links to a parameter, field or the credentials on the page (`#parameter-secret-name`, `#body-permissions-items-one-of-0-subject`, `#authorization-authorization`) | Fragment aliases of the native field or authentication section (`api.anchors.json`), so a link opens the field, inside its parent's disclosure |

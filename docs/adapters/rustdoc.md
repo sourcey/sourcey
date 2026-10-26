@@ -1,13 +1,9 @@
 ---
-title: Rustdoc Adapter
+title: Rustdoc adapter
 description: Generate Rust API documentation from nightly rustdoc JSON. Doctests as a first-class extracted view. Snapshot mode for CI on stable Rust.
 ---
 
-# Rustdoc adapter
-
 > Rust crates: [`sourcey`](https://crates.io/crates/sourcey) (library entrypoint) · [`sourcey-rustdoc`](https://crates.io/crates/sourcey-rustdoc) (snapshot pipeline). The snapshot schema is identical to the one this adapter consumes; the crates exist for tools that want to drive the same pipeline from Rust.
-
-
 
 `rustdoc()` is sourcey's native source for Rust API documentation. It consumes
 nightly rustdoc JSON, ships a bundled Rust helper that converts it into a
@@ -56,6 +52,20 @@ export default defineConfig({
 });
 ```
 
+## Options
+
+- `manifest`: the path to `Cargo.toml`, or the folder holding it.
+- `crates`: the crates to document; defaults to the manifest's own package.
+- `snapshot`: a committed `RustdocSpec` v1 snapshot. Required for `mode: "snapshot"`.
+- `mode`: `"auto"` (the default), `"live"` or `"snapshot"`, described below.
+- `features`: `{ default?: boolean; list?: string[]; all?: boolean }`. Defaults to `{ default: true }`.
+- `includePrivate`: include `pub(crate)` and private items. Default `false`.
+- `includeHidden`: include `#[doc(hidden)]` items. Default `false`.
+- `target`: the target triple to build docs for.
+- `toolchain`: the rustup toolchain name. Default `"nightly"`.
+- `sourceBasePath`: the repository-relative base for Rust source links.
+- `doctestsIndex`: render a workspace-wide doctests index page. Default `true`.
+
 ## Modes
 
 Three modes control how the snapshot is produced:
@@ -72,10 +82,8 @@ with the exact `rustup toolchain install` and snapshot-config commands.
 
 ## Snapshot lifecycle
 
-Generate a snapshot from your workspace by running the helper directly. The
-runx project ships a working example at
-[runx/cloud/docs/scripts/snapshot-rustdoc.mjs](https://github.com/runxhq/runx/blob/main/cloud/docs/scripts/snapshot-rustdoc.mjs).
-A minimal script:
+Generate a snapshot from your workspace by running the helper directly, as
+this script does:
 
 ```js
 // scripts/snapshot-rustdoc.mjs

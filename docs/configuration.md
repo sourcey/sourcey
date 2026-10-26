@@ -104,26 +104,20 @@ export default defineConfig({
 });
 ```
 
-## rustdoc()
+## Sources
 
-Native Rust API documentation generated from nightly rustdoc JSON.
+Each tab reads one source:
 
-- `manifest` — path to `Cargo.toml` (file or directory).
-- `crates` — array of crate names to document; defaults to the manifest's own package.
-- `snapshot` — optional committed `RustdocSpec` v1 snapshot. Required for `mode: "snapshot"`.
-- `mode` — `"auto"` (default), `"live"`, or `"snapshot"`. Auto uses nightly when available, otherwise reads the snapshot.
-- `features` — `{ default?: boolean; list?: string[]; all?: boolean }`. Defaults to `{ default: true }`.
-- `includePrivate` — include `pub(crate)` and private items. Default `false`.
-- `includeHidden` — include `#[doc(hidden)]` items. Default `false`.
-- `target` — target triple to build docs for.
-- `toolchain` — rustup toolchain name. Default `"nightly"`.
-- `sourceBasePath` — repository-relative base for Rust source links.
-- `doctestsIndex` — render a workspace-wide doctests index page. Default `true`.
+| Source | Reads | See |
+| --- | --- | --- |
+| `markdown({ groups })` | Markdown pages | [Navigation](./navigation.md) |
+| `openapi(spec)` | An OpenAPI 3.x or Swagger 2.0 spec, a file or a URL | [OpenAPI](./adapters/openapi.md) |
+| `mcp(spec)` | An MCP server snapshot | [MCP](./adapters/mcp.md) |
+| `doxygen(config)` | Doxygen XML for C, C++ or Java | [Doxygen guide](./guides/doxygen-cpp.md) |
+| `godoc(config)` | A Go module, live or from a snapshot | [Go guide](./guides/godoc-go.md) |
+| `rustdoc(config)` | Rust crates, live or from a snapshot | [Rustdoc adapter](./adapters/rustdoc.md) |
 
-Snapshot mode lets CI build documentation on stable Rust toolchains. Commit
-a generated `rustdoc.json` alongside your config and CI never needs nightly.
-See the [rustdoc adapter guide](./adapters/rustdoc.md) for the full snapshot
-lifecycle and rendering details.
+### doxygen()
 
 `doxygen().sourceUrl` accepts a base URL string, a resolver function, or a
 route map. Route maps use longest-prefix matching. `{path}` expands to the path
@@ -246,115 +240,7 @@ markdown: { smartypants: true },
 
 ## Themes
 
-Sourcey ships `default`, `minimal`, `api-first`, and `reader` themes. Select the complete renderer with `theme.name`; shared theme settings let you set brand colours, fonts, layout, and extra CSS without giving up a deterministic static build.
-
-Use `theme.fonts: { sans: "system", mono: "system" }` for the reader's platform fonts with no font download. A named `sans` or `mono` family loads from Google Fonts, one stylesheet each, at the weights the theme uses (a family without one of them shows its nearest); `google: false` lets your own stylesheet supply them.
-
-### API first
-
-`api-first` is the full-width theme. The header and tab row run edge to edge, the sidebar is pinned to the left edge, and guide and API pages share the same left and right edges. Guide pages keep "On this page" on the right. Each API and MCP operation splits into two columns: parameters and responses on the left, and the request and response examples on the right, in view while you read the operation.
-
-Its greys, header band, borders and code cards are shaded from `theme.colors.primary`. A vivid primary gives the neutrals a hint of its hue, and a grey primary leaves them grey. Links and the active page use the primary itself.
-
-```ts
-export default defineConfig({
-  name: "Example API",
-  theme: {
-    name: "api-first",
-    colors: { primary: "#0d9488" },
-    layout: { sidebar: "17.5rem", toc: "13.5rem", content: "52rem" },
-  },
-  // ...
-});
-```
-
-The layout values above are the theme's defaults; `content` caps the reading column of guide pages. The shades are CSS custom properties, `--color-gray-50` to `--color-gray-950` and `--color-background-dark`, written as space-separated RGB channels before your custom CSS. A stylesheet in `theme.css` can override any of them:
-
-```css
-:root {
-  --color-gray-50: 248 250 252;
-  --color-background-dark: 10 12 16;
-}
-```
-
-### Reader
-
-`reader` is a three-column editorial theme for specifications and long-form documentation, with light and dark reading modes. It has a dark masthead, grouped chapter navigation, a page table of contents, previous/next links, and a compact chapter selector on mobile. The theme toggle shares Sourcey's saved preference and sits after search in the masthead. Its configuration contains project content; the theme contains no project names or protocol assumptions.
-
-```ts
-export default defineConfig({
-  name: "Example standards",
-  theme: {
-    name: "reader",
-    fonts: { sans: "Your Local Font", google: false },
-    css: ["./fonts.css", "./brand.css"],
-    reader: {
-      document: {
-        label: "Protocol",
-        title: "Interaction specification",
-        version: "Draft",
-        status: "Working draft",
-        badge: "Draft",
-        updated: "22 September 2026",
-      },
-      sidebar: {
-        links: [{ label: "Examples", href: "/examples/", icon: "code" }],
-        note: "A shared interaction contract.",
-      },
-      aside: {
-        links: [
-          {
-            label: "Try the example",
-            description: "See the interaction in action.",
-            href: "/examples/",
-            icon: "code",
-          },
-        ],
-      },
-      pagination: {
-        after: { label: "Contribute", href: "/contribute/" },
-      },
-      footer: {
-        text: "Example standards",
-        links: [{ label: "Edit this specification", href: "/contribute/" }],
-      },
-      searchHref: "/search/",
-    },
-  },
-  navigation: {
-    tabs: [
-      {
-        tab: "Specification",
-        slug: "",
-        groups: [{ group: "Start", pages: ["index", "authorization"] }],
-      },
-    ],
-  },
-});
-```
-
-All `reader` settings are optional. A mark-only logo is `logo.mark`. `document.updated` is authored publication metadata, never the build date. `sidebar.links`, `sidebar.note`, `aside.links`, and `footer.links` are host-authored arrays; the theme does not supply project content for those areas. `pagination.before` and `pagination.after` provide destinations at the beginning and end of a chapter sequence. Omit `searchHref` to use Sourcey's built-in search. The reader footer includes Sourcey's standard “Docs by Sourcey” attribution. Without JavaScript, ordinary chapter and site links remain available.
-
-Set `navTitle` in Markdown frontmatter when the sidebar needs a shorter label than the article title. This works with every theme. Use `index.md` for the landing page and `prettyUrls: "slash"` for directory URLs.
-
-With `fonts.google: false`, define your own `@font-face` in the configured CSS. A relative `url()` there (a font file, an image) resolves from the stylesheet's folder; Sourcey publishes the file beside the site's other media and rewrites the reference, and a missing file fails the build. Remote and `data:` URLs stay as written. Reader layout widths use `theme.layout.sidebar`, `toc`, and `content`; brand CSS can adjust `--ink`, `--paper`, `--lime`, `--blue`, `--blue-ink`, and `--font`. Reader brand CSS loads after theme styles. Existing themes retain their styling and cascade.
-
-The CLI, development server and `sourcey/astro` select assets through the same built-in theme registry. Theme layouts share Sourcey's Markdown, navigation, content widgets, search index and URL logic. Reader's own browser entry supplies its navigation and copy controls; it does not load the default theme's dark-mode or drawer behaviour.
-
-For Astro, mount the same config using `sourcey/astro`; no separate docs prebuild or committed `public/docs` directory is needed. Sourcey registers its compiled pages and assets before Astro packages the site, then checks the emitted files. Host pages keep their routes. With `prettyUrls: "strip"`, every page links the landing page by its public path, such as `/docs`, without a trailing slash. Set `landingPage: false` when an Astro page owns the mount root: Sourcey omits the automatic root copy. An authored index is still a real route, so give it a different slug if the host owns that address.
-
-### Icons
-
-Card and inline icons (`<Card icon="...">`, `<Icon icon="..." />`), callouts and the built-in language and contents icons come from one outline set. [Heroicons](https://heroicons.com) is the default. Set `theme.icons: "lucide"` to draw them from [Lucide](https://lucide.dev) instead, and install its `lucide-static` package beside Sourcey:
-
-```ts
-export default defineConfig({
-  theme: { icons: "lucide" },
-  // ...
-});
-```
-
-Icons are named as the set names them (`key` in Heroicons, `key-round` in Lucide) and are written into the page as inline SVG at build time; no icon library or extra request reaches the browser. A name the set lacks stops the build at the component that uses it. A card or inline icon can instead be an image, by path (`./icons/go.svg`) or URL, which keeps its own colours, or a brand mark: `brand:aws` draws [Font Awesome Free](https://fontawesome.com)'s mark in the text colour, from its `@fortawesome/fontawesome-free` package installed beside Sourcey. Font Awesome's icons are licensed CC BY 4.0, so each brand mark carries Font Awesome's attribution notice in its `data-sourcey-attribution` attribute; the marks stay their owners' trademarks. Brand marks on navbar and footer links (`github`, `discord`, `discourse`, ...) are separate and do not change with `theme.icons`.
+`theme` chooses one of four themes and sets its colours, fonts, layout widths, light and dark appearance, stylesheets and icons. See [Themes](./themes.md).
 
 ## Interactive requests
 
@@ -362,48 +248,17 @@ OpenAPI references include an inline request console by default. Set `tryIt: fal
 
 See [Try it](./try-it.md) for authentication, local drafts, browser requirements, and global CSS overrides.
 
-## Code Samples
+## Code samples
 
-OpenAPI tabs generate cURL, JavaScript, and Python examples by default. Set `codeSamples` when you want a different picker order or more languages:
+`codeSamples` chooses the languages of each operation's request examples, in the order its picker shows them. See [Code samples](./adapters/openapi.md#code-samples).
 
-```ts
-export default defineConfig({
-  codeSamples: [
-    "curl",
-    "go",
-    "javascript",
-    "typescript",
-    "python",
-    "ruby",
-    "java",
-    "php",
-    "rust",
-    "csharp",
-  ],
-  navigation: {
-    tabs: [{ tab: "API Reference", source: openapi("./openapi.yaml") }],
-  },
-});
-```
+## Search
 
-Supported values are `curl`, `javascript`, `typescript`, `python`, `go`, `ruby`, `java`, `php`, `rust`, and `csharp`.
+`search.featured` names the pages search offers before anything is typed. See [Search](./search.md).
 
-## Build flow
+## Publishing checks
 
-```bash
-sourcey build
-sourcey dev
-```
-
-`build` produces the static site. `dev` runs the Vite-backed preview server with config and content reloads.
-
-The engine's stylesheet and scripts are published under `_assets/<hash>/`, named by their content, so a host can cache them for good: a new release or theme publishes new names. The stylesheet, component and theme styles included, is minified as one file.
-
-`build` and `check` report what publishing needs: a `siteUrl`, without which pages name no canonical URL or language alternates and the site has no sitemap, as each needs absolute URLs; pages with no summary of their own, or a one-word one (their metadata falls back to the title); canonical or language links to no published page; and links to a fragment the target page does not have. Each kind is reported once, with the pages it affects. With a `siteUrl`, every page carries its place in the navigation as schema.org `BreadcrumbList` data, and its description is plain text drawn from its own summary.
-
-Search loads when a reader first searches. A large index is split: the first search downloads the list of documents and the shards of the index its words can match, and later searches fetch only the shards they need.
-
-Before anything is typed, search shows where each part of the site starts, under each tab's name: the pages `search.featured` names (`featured: ["quickstart"]`), then each tab's sections in turn, their first pages, or a reference's overview and the first operation of each tag, five to a tab.
+`sourcey build` and `sourcey check` report what publishing needs: a `siteUrl`, without which pages name no canonical URL or language alternates and the site has no sitemap, as each needs absolute URLs; pages with no summary of their own, or a one-word one (their metadata falls back to the title); canonical or language links to no published page; and links to a fragment the target page does not have. Each kind is reported once, with the pages it affects. With a `siteUrl`, every page carries its place in the navigation as schema.org `BreadcrumbList` data, and its description is plain text drawn from its own summary.
 
 ## Documentation releases and languages
 
@@ -488,20 +343,7 @@ Unset, Sourcey chooses by size and says which it chose when it builds. A page ho
 
 A split reference also publishes a page for each model, beside an overview: split by section, it lists the sections, each with its description or the operations it holds; split by operation, it lists every operation under its section. Every shape uses the same reference components, examples and schema links, and OpenAPI operations keep their request console. On a split reference's overview, each operation and model keeps the anchor its section has on the single page, so a link from before the split lands on its entry, and an operation's own address leads wherever its shape puts it, so a reference can grow from one shape to another without breaking a link. Each theme frames those pages as it frames a guide: the section's name over an operation's title, previous and next in navigation order, and an overview at reading width whose "On this page" lists its introduction's headings, as the sidebar lists the sections. A reference split by section with only one section to split by stays one page, and the build says so; one held on one page with more than 100 operations builds with a warning, as it is slow to open and to search.
 
-An MCP server's sections are its kinds, Tools, Resources and Prompts, unless its groups say otherwise. Name them as the server's authors divide it, each with the tools, resources and prompts it lists, in order:
-
-```ts
-source: mcp({
-  spec: "./mcp.json",
-  groups: {
-    Authentication: ["login", "logout"],
-    Timer: ["timer_status", "start_timer", "stop_timer"],
-  },
-}),
-reference: { split: "sections" },
-```
-
-The snapshot stays as captured, so it can be refreshed from the server without losing its sections. A name the server lacks, or one listed twice, fails the build. Anything no group names is listed by kind after the groups, and the build names it. An entry's kind shows beside it only in a section that mixes kinds.
+An MCP server's sections are its kinds, Tools, Resources and Prompts, unless its `groups` divide it as its authors do; see [Sections](./adapters/mcp.md#sections).
 
 Schema alternatives use a native picker, labelled from their titles, reference names or discriminator values. Without JavaScript every alternative remains available. A field link opens the matching alternative and its parent disclosures; readable Markdown retains all alternatives. Typed map values use the same field rows as named properties, including descriptions, constraints and nested values.
 
@@ -545,34 +387,3 @@ Operation entries use `METHOD /path`, exactly as the spec defines it. Their labe
 Markdown groups can also link to a reference owned by another tab with `{ operation: "GET /keys", reference: "rest" }`. Use a stable tab `id` for `reference`. A page in another source uses `{ page: "installation", tab: "guides" }`; the page can be named by its source reference or stable document ID. Cross-source links select the matching language and content version. Readers follow the canonical document in its owning tab.
 
 The source controls which operations are published. Navigation controls their order and grouping. An operation can appear in several groups while keeping one URL. The sidebar lists every section, with the one around the current page open; a section of more than 80 entries without a page of its own gets a generated page listing them, which its link leads to where it is folded. Navigation data can live in a separate TypeScript file, typed with `GroupConfig[]`, and be imported by the config.
-
-## OpenAPI overlays
-
-Keep editorial titles and explanations in a separate file when your OpenAPI spec is generated from code:
-
-```ts
-source: openapi({
-  spec: "./openapi.json",
-  overlays: ["./reference.overlay.yaml"],
-}),
-```
-
-```yaml
-overlay: 1.0.0
-info:
-  title: Reference copy
-  version: "initial"
-actions:
-  - target: $.paths['/keys'].get
-    update:
-      summary: List your keys
-      description: Returns the keys you can access in this workspace.
-  - target: $.paths['/internal/diagnostics']
-    remove: true
-```
-
-Sourcey applies the files in order before resolving `$ref`s. The resulting spec supplies the reference, search, readable documents, exported OpenAPI and request console. The original input files stay untouched. Local paths are relative to `sourcey.config.ts`; spec and overlay inputs can also be URLs. Relative `$ref`s keep the original spec as their base.
-
-The supported standard is [OpenAPI Overlay 1.0](https://spec.openapis.org/overlay/v1.0.0.html), with [RFC 9535 JSONPath](https://www.rfc-editor.org/rfc/rfc9535.html). Target the containing object to replace a string such as `description`. In this version, an array target appends one entry; an object update can replace an array-valued property. Unsupported Overlay feature sets fail with a version error.
-
-An action that matches nothing fails Sourcey's drift check by default. For an intentionally optional action, set `overlayUnmatched: "warn"` or `"ignore"` on the source. The underlying standard treats an empty match as a successful no-op. Local overlay edits participate in development reloads, including when the spec itself is remote.

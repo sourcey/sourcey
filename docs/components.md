@@ -144,7 +144,7 @@ A directive opens with two or more colons and its name, `note`, `warning`, `tip`
 Open the <Icon icon="ellipsis-horizontal" /> menu, then select <Icon icon="clipboard" label="Copy" />.
 ```
 
-A card's `icon` and an inline `Icon` name a glyph of the site's [icon set](./configuration.md#icons), a brand mark as `brand:` and its Font Awesome name, or an image by path or URL, which keeps its own colours. An inline icon is sized to the text around it. Give it a `label` when it stands for something, such as a control to select: the label is its name for assistive technology and its text in readable Markdown. Without one it is decorative, and readable Markdown leaves it out.
+A card's `icon` and an inline `Icon` name a glyph of the site's [icon set](./themes.md#icons), a brand mark as `brand:` and its Font Awesome name, or an image by path or URL, which keeps its own colours. An inline icon is sized to the text around it. Give it a `label` when it stands for something, such as a control to select: the label is its name for assistive technology and its text in readable Markdown. Without one it is decorative, and readable Markdown leaves it out.
 
 ## Fields
 
