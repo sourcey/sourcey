@@ -5,7 +5,7 @@ description: Every supported install path for Sourcey. npm, Homebrew, Docker, an
 
 # Install
 
-Sourcey ships through every channel JavaScript, native, and container ecosystems use. Pick the one your project already lives in.
+Install Sourcey with npm, Homebrew, Docker or Nix. Pick the one your project already uses.
 
 ## Sourcey CLI
 
@@ -13,7 +13,7 @@ The full Sourcey binary handles OpenAPI, MCP, Doxygen, godoc, rustdoc, MkDocs, a
 
 ### npm
 
-Requires Node 20 or later.
+Requires Node.js 22.22.2 or later, 24.15 or later, or 26.
 
 ```bash
 npm install -g sourcey
@@ -24,7 +24,11 @@ For one-shot use without a global install:
 
 ```bash
 npx sourcey init
+npm install
+npm run dev
 ```
+
+Stop the development server with Ctrl+C, then run `npm run build` to write the static site to `dist/`.
 
 ### Homebrew
 
@@ -34,6 +38,8 @@ Works on macOS and Linuxbrew.
 brew tap sourcey/tap
 brew install sourcey
 sourcey init
+npm install
+sourcey dev
 ```
 
 The formula installs Sourcey through Node under the hood, so it depends on `node`. If you already have Node, the npm path is a smaller install.
@@ -46,6 +52,12 @@ Initialize a new project (interactive):
 
 ```bash
 docker run --rm -it -v "$PWD":/docs sourcey/sourcey init
+```
+
+Install the generated project's dependencies inside the container:
+
+```bash
+docker run --rm -v "$PWD":/docs --entrypoint npm sourcey/sourcey install
 ```
 
 Build:
@@ -66,7 +78,7 @@ On Windows PowerShell, use `${PWD}` instead of `"$PWD"`.
 
 ### Nix
 
-Requires a Nix install with flakes enabled.
+Requires a Nix install with flakes enabled. The generated project also needs Node.js 22.22.2 or later, 24.15 or later, or 26, and npm for its local dependencies.
 
 One-shot run:
 
@@ -79,6 +91,8 @@ Persistent install:
 ```bash
 nix profile install github:sourcey/sourcey
 sourcey init
+npm install
+sourcey dev
 ```
 
 ## Standalone Go docs generator
