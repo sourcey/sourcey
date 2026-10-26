@@ -1,7 +1,6 @@
 import { useContext } from "preact/hooks";
 import { OptionsContext, SiteContext } from "../../renderer/context.js";
 import type { RepositoryStats as Stats } from "../../core/github-stats.js";
-import type { UiMessages } from "../../core/messages.js";
 import { iconSvg, nativeIcon } from "../../utils/icons.js";
 
 /** A fork, drawn in the outline the icon sets draw in; Heroicons has none. */
@@ -15,23 +14,25 @@ function counts(lang: string): Intl.NumberFormat {
   return format;
 }
 
-/** The link's name with its repository's numbers, as assistive technology reads it. */
-export function repositoryLabel(label: string, stats: Stats, lang: string, messages: UiMessages): string {
-  const count = counts(lang);
-  return [label, stats.release, `${count.format(stats.stars)} ${messages.githubStars}`, `${count.format(stats.forks)} ${messages.githubForks}`].filter(Boolean).join(", ");
-}
-
-/** A repository's latest release, stars and forks, the counts in the page's language. */
-export function RepositoryStats({ stats }: { stats: Stats }) {
+/**
+ * A repository's latest release, stars and forks, the counts in the page's
+ * language, as the whole name of the link they sit in: "GitHub, v6.7.9, 25K
+ * stars, 2.4K forks", where the words the marks stand for are read and not
+ * shown, so every figure a reader sees is part of the name they can say.
+ */
+export function RepositoryStats({ label, stats }: { label: string; stats: Stats }) {
   const site = useContext(SiteContext);
-  const { lang } = useContext(OptionsContext);
+  const { lang, messages } = useContext(OptionsContext);
   const count = counts(lang);
   const star = iconSvg(nativeIcon(site.theme.icons, "star"), { class: "sourcey-repository-icon" });
   return (
-    <span class="sourcey-repository-stats" aria-hidden="true">
-      {stats.release && <span>{stats.release}</span>}
+    <span class="sourcey-repository-stats">
+      <span class="sr-only">{label}, </span>
+      {stats.release && <><span>{stats.release}</span><span class="sr-only">, </span></>}
       <span dangerouslySetInnerHTML={{ __html: `${star}${count.format(stats.stars)}` }} />
+      <span class="sr-only"> {messages.githubStars}, </span>
       <span dangerouslySetInnerHTML={{ __html: `${FORK}${count.format(stats.forks)}` }} />
+      <span class="sr-only"> {messages.githubForks}</span>
     </span>
   );
 }

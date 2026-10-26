@@ -160,6 +160,7 @@ html:not(.sourcey-tabs-ready) [data-sourcey-tabs] .directive-tab-panel { display
 .sourcey-diagram-source { margin-top:.6rem; font-size:.8rem; }
 .sourcey-diagram-source summary { cursor:pointer; color:rgb(var(--color-gray-500)); }
 .sourcey-diagram-unrendered figcaption { margin-block-end:.5rem; font-size:.8rem; color:rgb(var(--color-gray-500)); }
+.dark .sourcey-diagram-source summary,.dark .sourcey-diagram-unrendered figcaption { color:rgb(var(--color-gray-400)); }
 .directive-tab:focus-visible { outline:1px solid rgb(var(--color-primary)/.6); outline-offset:-3px; border-radius:4px; }
 
 /* A site name longer than the header has room for, as on a phone, stays on one line and ends in an ellipsis. */

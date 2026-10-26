@@ -20,6 +20,16 @@ async function site(href: string, theme: "default" | "reader" = "default") {
     await rm(root, { recursive: true, force: true });
   }
 }
+/**
+ * The GitHub link as a reader meets it: whether it carries a label of its own,
+ * the name its text gives it, and the figures it shows, the words they stand
+ * for being read and not shown.
+ */
+function repositoryLink(html: string) {
+  const link = /<a [^>]*>(?:(?!<\/a>)[\s\S])*sourcey-repository-stats(?:(?!<\/a>)[\s\S])*<\/a>/.exec(html)![0];
+  const text = (markup: string) => markup.replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, "");
+  return { labelled: /^<a [^>]*aria-label=/.test(link), name: text(link), shown: text(link.replace(/<span class="sr-only">[^<]*<\/span>/g, " ")).trim().split(/\s+/) };
+}
 /** GitHub's API as a repository with these numbers answers it. */
 function github(answers: Record<string, { status?: number; body?: object }>) {
   const asked: { url: string; authorization?: string }[] = [];
@@ -41,8 +51,9 @@ describe("a GitHub link's numbers", () => {
       [`https://api.github.com/repos/${repository}/releases/latest`]: { body: { tag_name: "v6.7.9" } },
     });
     const { start } = await site(`https://github.com/${repository}`, theme);
-    expect(start).toContain('aria-label="GitHub, v6.7.9, 25.1K stars, 2.4K forks"');
-    expect(start).toMatch(/<span class="sourcey-repository-stats" aria-hidden="true"><span>v6\.7\.9<\/span><span><svg class="sourcey-repository-icon"[^>]*>.*?<\/svg>25\.1K<\/span><span><svg class="sourcey-repository-icon"[^>]*>.*?<\/svg>2\.4K<\/span><\/span>/);
+    // Every figure shown is part of the link's name, so a reader can say what they see.
+    expect(repositoryLink(start)).toEqual({ labelled: false, name: "GitHub, v6.7.9, 25.1K stars, 2.4K forks", shown: ["v6.7.9", "25.1K", "2.4K"] });
+    expect(start).toMatch(/<span><svg class="sourcey-repository-icon"[^>]*>.*?<\/svg>25\.1K<\/span>/);
     expect(asked).toEqual([
       { url: `https://api.github.com/repos/${repository}`, authorization: "Bearer token-1" },
       { url: `https://api.github.com/repos/${repository}/releases/latest`, authorization: "Bearer token-1" },
@@ -55,7 +66,7 @@ describe("a GitHub link's numbers", () => {
   it("leave out a release the repository has not made", async () => {
     github({ "https://api.github.com/repos/pets/unreleased": { body: { stargazers_count: 12, forks_count: 3 } } });
     const { start } = await site("https://github.com/pets/unreleased");
-    expect(start).toContain('aria-label="GitHub, 12 stars, 3 forks"');
+    expect(repositoryLink(start)).toEqual({ labelled: false, name: "GitHub, 12 stars, 3 forks", shown: ["12", "3"] });
   });
 
   it("draw the plain link, and say so, when GitHub does not answer", async () => {
