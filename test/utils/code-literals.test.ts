@@ -6,20 +6,31 @@ import { join } from "node:path";
 import { codeBlockString, codeString } from "../../src/utils/code-literals.js";
 import { generateCodeSamples } from "../../src/utils/code-samples.js";
 
-/** The value a language reads from a literal, by running it; undefined where the toolchain is absent. */
-const readers: Record<string, (literal: string, dir: string) => string> = {
-  javascript: (literal) => new Function(`return ${literal};`)(),
-  python: (literal, dir) => run("python3", [file(dir, "body.py", `import sys\nsys.stdout.write(${literal})\n`)]),
-  ruby: (literal, dir) => run("ruby", [file(dir, "body.rb", `body = ${literal}\nprint(body)\n`)]),
-  go: (literal, dir) => run("go", ["run", file(dir, "body.go", `package main\n\nimport "fmt"\n\nfunc main() {\n  fmt.Print(${literal})\n}\n`)]),
-  rust: (literal, dir) => {
-    run("rustc", ["-o", join(dir, "body"), file(dir, "body.rs", `fn main() {\n    print!("{}", ${literal});\n}\n`)]);
-    return run(join(dir, "body"), []);
+/**
+ * The values a language reads from literals, by running one program that
+ * prints each with a NUL after it, so a compiled language compiles once.
+ */
+const readers: Record<string, (literals: string[], dir: string) => string[]> = {
+  javascript: (literals) => literals.map((literal) => new Function(`return ${literal};`)()),
+  python: (literals, dir) => values(run("python3", [file(dir, "body.py", `import sys\n${each(literals, (body, literal) => `${body} = ${literal}\nsys.stdout.write(${body} + "\\0")`)}\n`)])),
+  ruby: (literals, dir) => values(run("ruby", [file(dir, "body.rb", `${each(literals, (body, literal) => `${body} = ${literal}\nprint(${body}, "\\0")`)}\n`)])),
+  go: (literals, dir) => values(run("go", ["run", file(dir, "body.go", `package main\n\nimport "fmt"\n\nfunc main() {\n${each(literals, (body, literal) => `  ${body} := ${literal}\n  fmt.Print(${body}, "\\x00")`)}\n}\n`)])),
+  rust: (literals, dir) => {
+    run("rustc", ["-o", join(dir, "body"), file(dir, "body.rs", `fn main() {\n${each(literals, (body, literal) => `    let ${body} = ${literal};\n    print!("{}\\0", ${body});`)}\n}\n`)]);
+    return values(run(join(dir, "body"), []));
   },
-  php: (literal, dir) => run("php", [file(dir, "body.php", `<?php\n$body = ${literal};\necho $body;\n`)]),
-  java: (literal, dir) => run("java", [file(dir, "Main.java", `public class Main {\n  public static void main(String[] args) {\n    String body = ${literal};\n    System.out.print(body);\n  }\n}\n`)]),
+  php: (literals, dir) => values(run("php", [file(dir, "body.php", `<?php\n${each(literals, (body, literal) => `$${body} = ${literal};\necho $${body}, "\\0";`)}\n`)])),
+  java: (literals, dir) => values(run("java", [file(dir, "Main.java", `public class Main {\n  public static void main(String[] args) {\n${each(literals, (body, literal) => `    String ${body} = ${literal};\n    System.out.print(${body} + "\\0");`)}\n  }\n}\n`)])),
 };
 
+/** A program's lines for each literal, its variable named `body0`, `body1` and on. */
+function each(literals: string[], lines: (body: string, literal: string) => string): string {
+  return literals.map((literal, index) => lines(`body${index}`, literal)).join("\n");
+}
+/** The values a program printed, each ended by a NUL. */
+function values(output: string): string[] {
+  return output.split("\0").slice(0, -1);
+}
 function file(dir: string, name: string, content: string): string {
   writeFileSync(join(dir, name), content);
   return join(dir, name);
@@ -49,10 +60,10 @@ describe("codeBlockString", () => {
     it.skipIf(!available(language))(`writes ${language} that reads back every body exactly`, () => {
       const dir = mkdtempSync(join(tmpdir(), "sourcey-literal-"));
       try {
-        for (const [name, body] of Object.entries(bodies)) {
-          const literal = codeBlockString(body, language) ?? codeString(body, language);
-          expect(readers[language](literal, dir), `${language} ${name}: ${literal}`).toBe(body);
-        }
+        const written = Object.entries(bodies).map(([name, body]) => ({ name, body, literal: codeBlockString(body, language) ?? codeString(body, language) }));
+        const read = readers[language](written.map(({ literal }) => literal), dir);
+        expect(read).toHaveLength(written.length);
+        written.forEach(({ name, body, literal }, index) => expect(read[index], `${language} ${name}: ${literal}`).toBe(body));
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
