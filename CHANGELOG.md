@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A link to a file beside a page, such as a YAML manifest or a script, publishes the file with the page, as MkDocs and Docusaurus do. Only images and a fixed set of file types had been published, so links to others led nowhere.
+
 ## 3.9.2 - 2026-10-26
 
 ### Added

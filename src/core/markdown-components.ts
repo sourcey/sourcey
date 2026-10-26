@@ -3,6 +3,7 @@ import { isNavGroup, walkNavGroups, type SiteTab, type SiteNavGroup } from "./na
 import { rewriteMarkdownDestinations, rewriteMarkdownHtml } from "../utils/markdown-links.js";
 import type { Links, Token, Tokens, TokensList } from "marked";
 import { resolve, dirname, relative, isAbsolute, extname } from "node:path";
+import { stat } from "node:fs/promises";
 import { isAbsoluteHttpUrl, toPublicPath } from "../site-url.js";
 import { createHash } from "node:crypto";
 import { canonicalInputPath } from "./loader.js";
@@ -114,6 +115,8 @@ const pictureSources = (light: string, dark: string, type?: string, sizes?: stri
 
 /** An authored anchor: a fragment of letters, digits, underscores and hyphens. */
 const FRAGMENT = /^[A-Za-z0-9][\w-]*$/;
+/** The files a page is written in, which a link reaches as that page rather than as a file. */
+const PAGE_SOURCE_EXTENSIONS = new Set([".md", ".mdx"]);
 
 type ComponentNode = Extract<ContentNode, { kind: "component" }>;
 /** The built-in component of that name; a site's own component of the name is not it. */
@@ -673,6 +676,16 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
     if (rel.startsWith("..") || isAbsolute(rel)) throw new Error(`Component input outside allowed root: ${file}`);
     return target;
   }
+  /**
+   * Whether a link names a file beside the page, such as a YAML manifest or a script, which is
+   * published with the page as its images are. A link to a page's source, a folder, a file outside
+   * the root or none at all is left for the page's own links to resolve.
+   */
+  async function linkedFile(path: string): Promise<boolean> {
+    if (PAGE_SOURCE_EXTENSIONS.has(extname(path).toLowerCase())) return false;
+    try { return (await stat(await local(decodeURIComponent(path)))).isFile(); }
+    catch { return false; }
+  }
   /** An included file's content, whole or one region of it: code in the language named, or Markdown parsed as part of this page. */
   async function included(attrs: StaticAttributes): Promise<ContentNode[]> {
     const file = await local(text(attrs.src));
@@ -814,6 +827,7 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
       if (node.kind === "component") { result.push({ ...node, resolved: { ...node.resolved, content: await assets(node.resolved.content) } }); continue; }
       if (node.kind !== "markdown") { result.push(node); continue; }
       const images = new Set<string>();
+      const links = new Set<string>();
       let html = false;
       const tokens = lexMarkdown(node.value);
       // The first definition of a name is the page's, as one lexing of the page reads it.
@@ -823,18 +837,21 @@ export async function parseComponents(markdown: string, options: ParseOptions): 
         if (token.type !== "image" && token.type !== "link") return;
         const href = (token as Tokens.Image | Tokens.Link).href;
         if (/^(?:[a-z][\w+.-]*:|\/|#)/i.test(href)) return;
-        if (token.type === "image" || STATIC_ASSET_EXTENSIONS.has(extname(href.split(/[?#]/)[0]).toLowerCase())) images.add(href);
+        const extension = extname(href.split(/[?#]/)[0]).toLowerCase();
+        if (token.type === "image" || STATIC_ASSET_EXTENSIONS.has(extension)) images.add(href);
+        else if (extension && !PAGE_SOURCE_EXTENSIONS.has(extension)) links.add(href);
       });
       // Most Markdown names no local file and holds no HTML, and is kept as written.
-      if (!images.size && !html) { lexed?.set(node, tokens); result.push(node); continue; }
+      if (!images.size && !links.size && !html) { lexed?.set(node, tokens); result.push(node); continue; }
       async function mediaUrl(href: string, link: boolean): Promise<string> {
         if (/^(?:[a-z][\w+.-]*:|\/|#)/i.test(href)) return href;
         const [, path, suffix] = href.match(/^([^?#]*)(.*)$/s)!;
-        if (link && !STATIC_ASSET_EXTENSIONS.has(extname(path).toLowerCase())) return href;
+        if (link && !STATIC_ASSET_EXTENSIONS.has(extname(path).toLowerCase()) && !(await linkedFile(path))) return href;
         return await context.asset(decodeURIComponent(path)) + (suffix ?? "");
       }
       const urls = new Map<string, string>();
       for (const image of images) urls.set(image, await mediaUrl(image, false));
+      for (const link of links) urls.set(link, await mediaUrl(link, true));
       const linked = urls.size ? rewriteMarkdownDestinations(node.value, href => urls.get(href) ?? href) : node.value;
       const value = html ? await rewriteMarkdownHtml(linked, html => rewriteHtmlUrls(html, (href, tag) => mediaUrl(href, tag === "a"))) : linked;
       result.push({ ...node, value });

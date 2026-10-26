@@ -863,6 +863,26 @@ describe("native compilation", () => {
     expect(site.llmsFullTxt).toContain("Download the diagram");
   }));
 
+  it("publishes any file beside a page that its links name, and leaves a link to no file as written", () => fixture(async root => {
+    await file(root, "guides/application.yaml", "apiVersion: argoproj.io/v1alpha1\nkind: Application\n");
+    await file(root, "guides/discovery.lua", "return {}\n");
+    await file(root, "guides/setup.md", "# Setup\n\nApply [application.yaml](application.yaml), run <a href=\"discovery.lua\">the script</a>, read [the start](start.md), and see [the old file](gone.yaml).\n");
+    await file(root, "guides/start.md", "# Start\n");
+    const config = await resolveConfigFromRaw({ navigation: { tabs: [{ tab: "Docs", slug: "", source: markdown({ groups: [{ group: "Docs", pages: ["guides/setup", "guides/start"] }] }) }] } }, root);
+    const site = await buildSourceySite({ config, generateOgImages: false });
+    const page = site.pages.find(page => page.currentPage.kind === "markdown" && page.currentPage.markdown.html.includes("Apply"))!.currentPage;
+    if (page.kind !== "markdown") throw new Error("Expected markdown");
+    const yaml = [...site.extraFiles.keys()].find(path => path.endsWith(".yaml"))!;
+    const lua = [...site.extraFiles.keys()].find(path => path.endsWith(".lua"))!;
+    expect(yaml).toMatch(/^_media\/[0-9a-f]{20}\.yaml$/);
+    expect(String(site.extraFiles.get(yaml))).toContain("kind: Application");
+    expect(page.markdown.html).toContain(`href="/${yaml}"`);
+    expect(page.markdown.html).toContain(`href="/${lua}"`);
+    expect(page.markdown.html).toContain('href="gone.yaml"');
+    expect(page.markdown.html).not.toContain('href="start.md"');
+    expect(site.siteDiagnostics.filter(diagnostic => diagnostic.code === "broken-link").map(diagnostic => diagnostic.message)).toEqual(['Link "gone.yaml" leads to /guides/gone.yaml, which the site does not publish.']);
+  }));
+
   it("refuses unowned or symlinked outputs before promoting any changed file", () => fixture(async root => {
     const output = join(root, "output");
     await writeArtifacts(output, new Map([["guide/index.html", "Original"], ["other.html", "Other original"]]));
