@@ -27,6 +27,8 @@ export default defineConfig({
 
 `repo`, `editBranch` and `editBasePath` give each page its "Edit this page" link: the repository's address on GitHub, its branch, and the folder within it that holds the config, when that is not the repository's root.
 
+### Social cards
+
 Each page gets a social card drawn when the site builds, with its title, its description and the site's logo and colours. `ogImage: "./social.png"` uses one image for every page instead: a local path is published with the site, relative to the config, and an address is used as given.
 
 ## Documentation exports and discovery
