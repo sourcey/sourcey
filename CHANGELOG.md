@@ -26,6 +26,7 @@
 - A component written in a sentence draws what it holds as part of the sentence, where a site's component had drawn it as a paragraph inside the sentence.
 - A site's component named for a built-in, such as `Note` or `Card`, is drawn and exported as the site's own wherever it appears. A page's Markdown copy had read it as the built-in it replaced, and stopped the build.
 - In the dark theme, a diagram's "Diagram source" and the note under a diagram that could not be drawn are lighter, and keep AA contrast on the darkest backgrounds a site sets.
+- The Nix flake reads its dependencies from `package-lock.json`, so it builds at every commit. It had pinned their hash by hand, which broke whenever a dependency moved.
 
 ## 3.9.1 - 2026-10-25
 

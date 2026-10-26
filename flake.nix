@@ -17,8 +17,9 @@
           inherit version;
           src = self;
 
-          npmDepsFetcherVersion = 2;
-          npmDepsHash = "sha256-yBc6guOTTDVm3cnzH/vN+v1E/yjOXGEX6BhEMMcELCY=";
+          # Each dependency is fetched by the integrity package-lock.json records, so the lockfile is their only record.
+          npmDeps = pkgs.importNpmLock { npmRoot = ./.; };
+          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
           makeCacheWritable = true;
           npmFlags = [ "--legacy-peer-deps" ];
           dontNpmPrune = true;
