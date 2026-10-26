@@ -28,7 +28,112 @@ Use the cursor returned by the server. Do not construct one yourself.
 
 `Note`, `Warning`, `Tip`, `Info`, `Caution` and `Danger` support an authored title. Default titles follow the active UI language. GitHub alerts such as `> [!WARNING]` use the same native callouts. Tabs use ordinary buttons with arrow-key, Home and End navigation; their contents remain present in readable exports.
 
-`Badge` can appear in a sentence or table cell. `Steps`/`Step`, `CardGroup`/`Card`, `AccordionGroup`/`Accordion`, `Expandable`, `FileTree` and `CodeGroup` cover the corresponding guide structures. An `Accordion` can have its own `anchor="..."` for links to it; it shares the page's anchors with its headings, and two explicit anchors that collide stop the build. A component name Sourcey does not know fails with its source location.
+## Steps, cards and accordions
+
+```md
+<Steps>
+  <Step title="Install">Run `npm install sourcey`.</Step>
+  <Step title="Build">Run `npx sourcey build`.</Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket-launch" href="/quickstart">A site in a minute.</Card>
+  <Card title="API reference" icon="code-bracket" href="/api">Every operation, with requests to try.</Card>
+</CardGroup>
+
+<AccordionGroup>
+  <Accordion title="Does the site need a server?">No. Sourcey writes static files that any host can serve.</Accordion>
+  <Accordion title="Can I link to an answer?" anchor="linking">Yes, by the accordion's own anchor.</Accordion>
+</AccordionGroup>
+```
+
+Drawn:
+
+<Steps>
+  <Step title="Install">Run `npm install sourcey`.</Step>
+  <Step title="Build">Run `npx sourcey build`.</Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket-launch" href="./install.md">A site in a minute.</Card>
+  <Card title="Configuration" icon="code-bracket" href="./configuration.md">Every setting a site can take.</Card>
+</CardGroup>
+
+<AccordionGroup>
+  <Accordion title="Does the site need a server?">No. Sourcey writes static files that any host can serve.</Accordion>
+  <Accordion title="Can I link to an answer?" anchor="linking">Yes, by the accordion's own anchor.</Accordion>
+</AccordionGroup>
+
+`Steps` numbers its `Step`s, or the items of an ordered list written inside it, with a line joining them. `CardGroup` sets its `Card`s side by side, `cols` of them (two by default) on a wide screen and one beneath another on a phone; a card's `href` makes it a link, and its `icon` is drawn as [Icons](#icons) describes. An `Accordion` opens in place, and `AccordionGroup` sets several together. An `Accordion` can have its own `anchor="..."` for links to it; it shares the page's anchors with its headings, and two explicit anchors that collide stop the build. `Expandable` is a disclosure inside other content, such as a field's child attributes.
+
+`CodeGroup` shows the fenced code blocks it holds as tabs, each named by its block's `title`, as the same request written in several languages. `FileTree` draws the nested list inside it as a tree of folders and files. `Badge` can appear in a sentence or a table cell. A component name Sourcey does not know fails with its source location.
+
+## Directives
+
+Each block component can also be written as a directive, which reads as plain text where Markdown is shown without Sourcey:
+
+````md
+:::warning[Rotate the key]
+A key shown once is shown only once.
+:::
+
+:::steps
+1. Install
+   Run `npm install sourcey`.
+2. Build
+   Run `npx sourcey build`.
+:::
+
+:::tabs
+::tab{title="Request"}
+Send the request with your API key.
+::
+::tab{title="Response"}
+Keep the returned cursor for the next page.
+::
+:::
+
+:::code-group
+```js title="Node.js"
+const page = await fetch("https://api.example.com/items");
+```
+```bash title="cURL"
+curl -s https://api.example.com/items
+```
+:::
+
+:::card-group{cols="3"}
+::card{title="With a link" icon="book-open" href="/quickstart"}
+A card with an `href` leads to that page.
+::
+:::
+````
+
+Drawn:
+
+:::warning[Rotate the key]
+A key shown once is shown only once.
+:::
+
+:::tabs
+::tab{title="Request"}
+Send the request with your API key.
+::
+::tab{title="Response"}
+Keep the returned cursor for the next page.
+::
+:::
+
+:::code-group
+```js title="Node.js"
+const page = await fetch("https://api.example.com/items");
+```
+```bash title="cURL"
+curl -s https://api.example.com/items
+```
+:::
+
+A directive opens with two or more colons and its name, `note`, `warning`, `tip`, `info`, `caution`, `danger`, `tabs`, `tab`, `steps`, `code-group`, `card-group`, `card`, `accordion` or `expandable`, and closes with the same colons on a line of their own. A directive inside another opens with fewer colons, as `::tab` inside `:::tabs`. Its attributes follow in braces, `{title="Request"}`, and any other text after the name is its title, with or without brackets: `:::note Keep the cursor` and `:::note[Keep the cursor]` both title the callout. A name Sourcey does not know stops the build at the directive.
 
 ## Icons
 
@@ -125,7 +230,13 @@ A footnote is written as GitHub writes one. Its reference is numbered in reading
 <Video src="./walkthrough.webm" poster="./walkthrough.png" title="Create a project" />
 ```
 
-Figures generate responsive AVIF, WebP and PNG variants without upscaling. Set `densities` or `formats` when you need a different set. Without `quality`, each format uses its encoder's default (AVIF 50, WebP 80, PNG lossless); a `quality` applies to every format, so a high one is costly in AVIF. The chosen image follows the saved appearance preference; without JavaScript, the system preference selects its light or dark source. Video can declare a `sources` array for multiple formats and supports `muted`, `loop`, `autoplay` and `playsinline`.
+Figures generate responsive AVIF, WebP and PNG variants without upscaling. Set `densities` or `formats` when you need a different set. Without `quality`, each format uses its encoder's default (AVIF 50, WebP 80, PNG lossless); a `quality` applies to every format, so a high one is costly in AVIF. The chosen image follows the saved appearance preference; without JavaScript, the system preference selects its light or dark source. Video can declare a `sources` array for multiple formats and supports `muted`, `loop`, `autoplay` and `playsinline`. A `src` on YouTube or Vimeo embeds that service's player, YouTube's through youtube-nocookie.com; `::video[https://www.youtube.com/watch?v=ID]{title="Walkthrough"}` writes the same on one line.
+
+```md
+<Iframe src="https://status.example.com" title="Service status" height={480} />
+```
+
+`Iframe` shows a page from the web in the page, 400 pixels high unless `height` says otherwise; only `http:` and `https:` addresses load, and `::iframe[https://status.example.com]{title="Service status"}` is the same on one line.
 
 A fenced `mermaid` block renders to static SVG at build time: flowcharts, sequence, class, state, ER, Gantt, pie, mindmap and git graph diagrams, read by Mermaid's own parser. The page retains its source in a disclosure, and readable Markdown retains the original diagram text. The diagram renderer stays out of the browser bundle. A diagram of another type, or one Mermaid cannot read, never becomes a blank image: the page shows its source with a note, and the build reports where it is.
 
