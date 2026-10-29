@@ -150,7 +150,7 @@ Each tab has one `source`, usually created with `markdown()`, `openapi()`, `mcp(
 
 Render Go package docs as a tab inside your Sourcey site, branded and styled with the rest of your documentation. Native toolchain extraction (`go list` + `go/parser` + `go/doc`) feeds the same renderer as your OpenAPI, MCP, and Markdown tabs, so signatures, examples from `*_test.go`, and source links sit alongside your guides instead of bouncing readers to pkg.go.dev.
 
-**[Live: scafld's Go API reference →](https://0state.com/scafld/docs/go-api)**
+**[Live: scafld's Go API reference →](https://auscaster.com/scafld/docs/go-api)**
 
 ```typescript
 { tab: "Go API", source: godoc(".") }

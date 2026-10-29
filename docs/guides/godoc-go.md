@@ -5,7 +5,7 @@ description: A Go module's reference from its package comments, exported symbols
 
 A `godoc()` tab draws a Go module's documentation from its source: package comments, exported constants, variables, functions, types, methods and fields, and examples. It sits beside your guides and other references, and is searched and exported with them.
 
-The [Scafld Go API](https://0state.com/scafld/docs/go-api) is one, built this way.
+The [Scafld Go API](https://auscaster.com/scafld/docs/go-api) is one, built this way.
 
 ## When to use it
 

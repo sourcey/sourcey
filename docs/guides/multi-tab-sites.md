@@ -97,4 +97,4 @@ Groups head the sidebar's sections, in the order you list them, and each lists i
 
 ## In the wild
 
-The [Cheese Store demo](https://github.com/cheesestore/docs) has guides, an OpenAPI reference, an MCP reference and a changelog. The [Scafld Go API](https://0state.com/scafld/docs/go-api) is a Go tab built from package comments and exported symbols.
+The [Cheese Store demo](https://github.com/cheesestore/docs) has guides, an OpenAPI reference, an MCP reference and a changelog. The [Scafld Go API](https://auscaster.com/scafld/docs/go-api) is a Go tab built from package comments and exported symbols.
