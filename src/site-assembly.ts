@@ -157,7 +157,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
         reference = { key, spec: shareReferenceSnapshot(normalizeSpec(await convertToOpenApi3(parsed)), prior?.spec), publicDocument: parsed.publicDocument, diagnostics };
       } else {
         const { parseString } = await import("mcp-parser");
-        const normalized = normalizeMcpSpec(parseString(input.body.toString("utf8")), source.groups);
+        const normalized = await normalizeMcpSpec(parseString(input.body.toString("utf8"), { dereference: false }), source.groups);
         reference = { key, spec: shareReferenceSnapshot(normalized.spec, prior?.spec), ungrouped: normalized.ungrouped };
       }
     }

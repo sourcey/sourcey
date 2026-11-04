@@ -6,7 +6,8 @@ import { resolveConfigFromRaw } from "../src/config.js";
 import { buildSourceySite } from "../src/site.js";
 import { loadDocsPage } from "../src/core/markdown-loader.js";
 import { contentTypeForPath } from "../src/renderer/static-files.js";
-import { collectReadableDocuments, type DocumentationIndex } from "../src/exports/documents.js";
+import { collectReadableDocuments, schemaMarkdown, type DocumentationIndex } from "../src/exports/documents.js";
+import type { NormalizedSchema } from "../src/core/types.js";
 import { marked } from "marked";
 import { openDocumentation } from "../src/exports/document-index.js";
 import { writeSourceySite } from "../src/site.js";
@@ -30,6 +31,16 @@ const config = (overrides = {}) =>
   );
 
 describe("static documentation exports", () => {
+  it("bounds readable expansion of named references without a published target", () => {
+    let schema: NormalizedSchema = { refName: "Leaf", type: "object", properties: { leaf: { type: "string" } } };
+    for (let level = 0; level < 12; level++) schema = { refName: `Level${level}`, type: "object", properties: { left: schema, right: schema } };
+    for (const reference of [undefined, () => undefined]) {
+      const markdown = schemaMarkdown(schema, new Set(), reference);
+      expect(markdown.match(/`leaf`/g)).toHaveLength(1);
+      expect(markdown.length).toBeLessThan(20_000);
+    }
+  });
+
   it("links direct reference views to their readable documents without inventing readable section fragments", async () => {
     const root = await mkdtemp(join(tmpdir(), "sourcey-readable-reference-"));
     try {

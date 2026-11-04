@@ -11,6 +11,7 @@ import { generateCodeSamples } from "../utils/code-samples.js";
 import { toPublicUrl } from "../site-url.js";
 import { fencedCode } from "./markdown.js";
 import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
+import { formatSchemaType } from "../core/schema.js";
 
 import type { DocumentationEntry } from "./document-index.js";
 export type { DocumentationEntry, DocumentationIndex } from "./document-index.js";
@@ -353,9 +354,7 @@ function securityMarkdown(spec: NormalizedSpec, operation?: NormalizedOperation)
 function schemaType(schema?: NormalizedSchema): string {
   if (!schema) return "unknown";
   return [
-    Array.isArray(schema.type)
-      ? schema.type.join(" | ")
-      : schema.type || schema.refName || (schema.properties ? "object" : "unknown"),
+    formatSchemaType(schema),
     schema.format,
   ]
     .filter(Boolean)
@@ -373,12 +372,19 @@ export function schemaMarkdown(
   schema: NormalizedSchema,
   ancestors = new Set<NormalizedSchema>(),
   reference?: (name: string) => string | undefined,
+  defined = new Set<NormalizedSchema>(),
 ): string {
   const refName = schema.refName || schema.name;
-  const href = refName ? reference?.(refName) : undefined;
+  const href = schema.refName ? reference?.(schema.refName) : undefined;
   const ref = href ? `[${refName}](${href})` : refName;
   if (ancestors.has(schema)) return `Recursive reference: ${ref || schemaType(schema)}.`;
-  const namedReference = ancestors.size > 0 && !!schema.refName;
+  // When a named type has no linked document, define its fields at the first
+  // use, then name that same shared object rather than copying its tree.
+  if (!href && (schema.name || schema.refName)) {
+    if (defined.has(schema)) return `Type: ${schemaType(schema)} (defined above).`;
+    defined.add(schema);
+  }
+  const namedReference = ancestors.size > 0 && !!href;
   const seen = new Set(ancestors).add(schema);
   const parts = [
     `${namedReference ? `Reference: ${ref}; ` : ""}Type: ${schemaType(schema)}${schema.nullable ? "; nullable" : ""}`,
@@ -418,7 +424,7 @@ export function schemaMarkdown(
   if (namedReference) return parts.filter(Boolean).join("\n\n");
   for (const [name, property] of Object.entries(schema.properties ?? {}))
     parts.push(
-      `- \`${name}\` (${schema.required?.includes(name) ? "required" : "optional"})\n${indent(schemaMarkdown(property, seen, reference))}`,
+      `- \`${name}\` (${schema.required?.includes(name) ? "required" : "optional"})\n${indent(schemaMarkdown(property, seen, reference, defined))}`,
     );
   if (schema.examples?.length)
     parts.push(`Examples:\n\n${fencedCode(JSON.stringify(schema.examples, null, 2), "json")}`);
@@ -427,16 +433,16 @@ export function schemaMarkdown(
       `Discriminator:\n\n${fencedCode(JSON.stringify(schema.discriminator, null, 2), "json")}`,
     );
   if (schema.not)
-    parts.push(`Must not match:\n${indent(schemaMarkdown(schema.not, seen, reference))}`);
-  if (schema.items) parts.push(`Items:\n${indent(schemaMarkdown(schema.items, seen, reference))}`);
+    parts.push(`Must not match:\n${indent(schemaMarkdown(schema.not, seen, reference, defined))}`);
+  if (schema.items) parts.push(`Items:\n${indent(schemaMarkdown(schema.items, seen, reference, defined))}`);
   for (const key of ["oneOf", "anyOf", "allOf"] as const)
     if (schema[key])
       parts.push(
-        `${key}:\n${schema[key].map((variant) => indent(schemaMarkdown(variant, seen, reference))).join("\n\n")}`,
+        `${key}:\n${schema[key].map((variant) => indent(schemaMarkdown(variant, seen, reference, defined))).join("\n\n")}`,
       );
   if (schema.additionalProperties !== undefined)
     parts.push(
-      `Additional properties: ${typeof schema.additionalProperties === "boolean" ? schema.additionalProperties : `\n${indent(schemaMarkdown(schema.additionalProperties, seen, reference))}`}`,
+      `Additional properties: ${typeof schema.additionalProperties === "boolean" ? schema.additionalProperties : `\n${indent(schemaMarkdown(schema.additionalProperties, seen, reference, defined))}`}`,
     );
   return parts.filter(Boolean).join("\n\n");
 }

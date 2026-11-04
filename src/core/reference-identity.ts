@@ -305,7 +305,7 @@ function walkPlan(schema: NormalizedSchema, usage: SchemaUsage | undefined, once
       const label = view.label ? `${view.label}.${row.name}` : row.name;
       const type = namedType(row.inner);
       // A type that recurs is a named stub without fields of its own (the normalizer stops it there); it links to the drawing it is inside.
-      const home = type ? view.ancestors.get(type) ?? (once && row.opens ? homes.get(type) : undefined) : undefined;
+      const home = type ? view.ancestors.get(type) ?? (once || !row.opens ? homes.get(type) : undefined) : undefined;
       if (!row.opens && !home) continue;
       if (home) {
         links.set(row.at, home);
