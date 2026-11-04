@@ -245,11 +245,13 @@ export function validateValue(
 
 /** The reference and editable alternatives describe the same normalized type. */
 export function formatSchemaType(schema: NormalizedSchema, ancestors: ReadonlySet<NormalizedSchema> = new Set()): string {
+  if (schema.not && Object.keys(schema.not).length === 0) return "never";
   if (ancestors.has(schema)) return schema.refName ?? schema.name ?? "recursive";
   const branch = new Set([...ancestors, schema]);
   const parts = schema.allOf?.length ? schema.allOf : schema.oneOf?.length ? schema.oneOf : schema.anyOf;
   if (parts?.length) return [...new Set(parts.map(sub => formatSchemaType(sub, branch)))].join(schema.allOf?.length ? " & " : " | ");
   if (schema.type === "array" && schema.items) return `Array<${schema.items.refName ?? formatSchemaType(schema.items, branch)}>`;
   if (schema.refName) return schema.refName;
+  if (schema.name && (schema.type === "object" || schema.properties)) return schema.name;
   return (Array.isArray(schema.type) ? schema.type.join(" | ") : schema.type) ?? "any";
 }

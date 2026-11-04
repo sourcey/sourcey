@@ -27,6 +27,7 @@ import type {
 } from "./types.js";
 import type { McpGroups } from "../adapters/types.js";
 import { generateExample } from "../utils/example-generator.js";
+import { schemaReferencePath } from "./schema-reference.js";
 
 // ── Public API ────────────────────────────────────────────────────────
 
@@ -35,7 +36,45 @@ import { generateExample } from "../utils/example-generator.js";
  * and then, for anything no group names, one per kind: Tools, Resources and
  * Prompts. `ungrouped` names what the groups left out; without groups it is empty.
  */
-export function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): { spec: NormalizedSpec; ungrouped: string[] } {
+export async function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): Promise<{ spec: NormalizedSpec; ungrouped: string[] }> {
+  const { $RefParser } = await import("@apidevtools/json-schema-ref-parser");
+  // Resolve each document in its own scope, without filesystem or network reads.
+  const resolveSchema = async (schema: JsonSchema, named: (name: string, keyword: "$defs" | "definitions") => string = name => name): Promise<JsonSchema> => {
+    const document = structuredClone(schema);
+    return await new $RefParser().dereference(document, {
+      resolve: { file: false, http: false },
+      dereference: {
+        circular: true,
+        onDereference(ref: string, value: unknown) {
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            const target = value as JsonSchema;
+            const path = schemaReferencePath(ref);
+            if (path.length === 2 && (path[0] === "$defs" || path[0] === "definitions")) target["x-ref-name"] ??= named(path[1], path[0]);
+            else if (ref === "#") target["x-ref-name"] ??= target.title ?? "root";
+          }
+        },
+      },
+    }) as JsonSchema;
+  };
+  // Close shared models once in the snapshot's scope, before a tool can shadow
+  // one of their names. Their internal references must keep that original meaning.
+  const shared = spec.$defs ? (await resolveSchema({ $defs: spec.$defs })).$defs : undefined;
+  for (const [name, schema] of Object.entries(shared ?? {})) {
+    if (schema && typeof schema === "object") schema["x-ref-name"] ??= name;
+  }
+  const resolveToolSchema = (schema: JsonSchema & { definitions?: Record<string, JsonSchema> }, scope: string) => resolveSchema(
+    { ...schema, $defs: { ...shared, ...schema.$defs } },
+    (name, keyword) => {
+      const other = keyword === "$defs" ? "definitions" : "$defs";
+      if (Object.hasOwn(schema[other] ?? {}, name)) return `${scope}.${keyword}.${name}`;
+      return Object.hasOwn(schema[keyword] ?? {}, name) && Object.hasOwn(shared ?? {}, name) ? `${scope}.${name}` : name;
+    },
+  );
+  const tools = await Promise.all((spec.tools ?? []).map(async (tool) => ({
+    ...tool,
+    inputSchema: await resolveToolSchema(tool.inputSchema, `${tool.name}.input`) as McpTool["inputSchema"],
+    outputSchema: tool.outputSchema ? await resolveToolSchema(tool.outputSchema, `${tool.name}.output`) : undefined,
+  })));
   const connectionInfo: McpConnectionInfo = {
     transport: spec.transport
       ? {
@@ -54,7 +93,7 @@ export function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): { spec:
 
   // Each entry by its name, the one a group lists it by.
   const named: [string, NormalizedOperation][] = [
-    ...(spec.tools ?? []).map((t: McpTool) => [t.name, toolToOperation(t, connectionInfo)] as [string, NormalizedOperation]),
+    ...tools.map((t: McpTool) => [t.name, toolToOperation(t, connectionInfo)] as [string, NormalizedOperation]),
     ...(spec.resources ?? []).map((r: McpResource) => [r.name, resourceToOperation(r, connectionInfo)] as [string, NormalizedOperation]),
     ...(spec.resourceTemplates ?? []).map((t: McpResourceTemplate) => [t.name, resourceTemplateToOperation(t, connectionInfo)] as [string, NormalizedOperation]),
     ...(spec.prompts ?? []).map((p: McpPrompt) => [p.name, promptToOperation(p, connectionInfo)] as [string, NormalizedOperation]),
@@ -90,8 +129,8 @@ export function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): { spec:
 
   // Shared schema definitions from $defs
   const schemas: Record<string, NormalizedSchema> = {};
-  if (spec.$defs) {
-    for (const [name, schema] of Object.entries(spec.$defs)) {
+  if (shared) {
+    for (const [name, schema] of Object.entries(shared)) {
       schemas[name] = convertSchema(schema, name);
     }
   }
@@ -120,8 +159,8 @@ function toolToOperation(tool: McpTool, connection: McpConnectionInfo): Normaliz
   const inputSchema = convertSchema(tool.inputSchema);
   const outputSchema = tool.outputSchema ? convertSchema(tool.outputSchema) : undefined;
 
-  const emitsRequestBody = hasNestedProperties(tool.inputSchema);
-  const parameters = emitsRequestBody ? [] : flattenInputSchema(tool.inputSchema);
+  const emitsRequestBody = hasNestedProperties(inputSchema);
+  const parameters = emitsRequestBody ? [] : flattenInputSchema(inputSchema);
   const requestBody = emitsRequestBody
     ? ({
         required: true,
@@ -241,10 +280,20 @@ function promptToOperation(prompt: McpPrompt, connection: McpConnectionInfo): No
 
 // ── Schema conversion ─────────────────────────────────────────────────
 
-function convertSchema(schema: JsonSchema, name?: string): NormalizedSchema {
+function convertSchema(schema: JsonSchema | boolean, name?: string, converted = new WeakMap<JsonSchema, NormalizedSchema>(), active = new Set<JsonSchema>()): NormalizedSchema {
+  if (!schema || typeof schema !== "object") return schema === false ? { not: {} } : {};
+  const refName = typeof schema["x-ref-name"] === "string" ? schema["x-ref-name"] : undefined;
+  if (active.has(schema)) return { name: refName, type: schema.type as string | string[] | undefined };
+  const prior = converted.get(schema);
+  if (prior) return name ? { ...prior, name } : prior;
   const result: NormalizedSchema = {};
+  converted.set(schema, result);
+  active.add(schema);
+  const child = (value: JsonSchema | boolean) => convertSchema(value, undefined, converted, active);
 
-  if (name) result.name = name;
+  // Embedded schemas own their type names. A same-named snapshot model or
+  // another tool's type is not a link target for a schema-local definition.
+  if (refName) result.name = refName;
   if (schema.type) result.type = schema.type as string | string[];
   if (schema.format) result.format = schema.format;
   if (schema.title) result.title = schema.title;
@@ -257,26 +306,26 @@ function convertSchema(schema: JsonSchema, name?: string): NormalizedSchema {
   if (schema.properties) {
     result.properties = {};
     for (const [key, prop] of Object.entries(schema.properties)) {
-      result.properties[key] = convertSchema(prop, key);
+      result.properties[key] = child(prop);
     }
   }
   if (schema.additionalProperties !== undefined) {
     result.additionalProperties =
       typeof schema.additionalProperties === "boolean"
         ? schema.additionalProperties
-        : convertSchema(schema.additionalProperties);
+        : child(schema.additionalProperties);
   }
   if (schema.required) result.required = schema.required;
 
   // Array — handle JsonSchema.items being JsonSchema | JsonSchema[]
-  if (schema.items) {
+  if (schema.items !== undefined) {
     if (Array.isArray(schema.items)) {
       result.items =
         schema.items.length === 1
-          ? convertSchema(schema.items[0])
-          : { oneOf: schema.items.map((s) => convertSchema(s)) };
+          ? child(schema.items[0])
+          : { oneOf: schema.items.map((s) => child(s)) };
     } else {
-      result.items = convertSchema(schema.items);
+      result.items = child(schema.items);
     }
   }
   if (schema.minItems !== undefined) result.minItems = schema.minItems;
@@ -296,15 +345,16 @@ function convertSchema(schema: JsonSchema, name?: string): NormalizedSchema {
   if (schema.pattern) result.pattern = schema.pattern;
 
   // Composition
-  if (schema.allOf) result.allOf = schema.allOf.map((s: JsonSchema) => convertSchema(s));
-  if (schema.anyOf) result.anyOf = schema.anyOf.map((s: JsonSchema) => convertSchema(s));
-  if (schema.oneOf) result.oneOf = schema.oneOf.map((s: JsonSchema) => convertSchema(s));
-  if (schema.not) result.not = convertSchema(schema.not);
+  if (schema.allOf) result.allOf = schema.allOf.map((s: JsonSchema) => child(s));
+  if (schema.anyOf) result.anyOf = schema.anyOf.map((s: JsonSchema) => child(s));
+  if (schema.oneOf) result.oneOf = schema.oneOf.map((s: JsonSchema) => child(s));
+  if (schema.not !== undefined) result.not = child(schema.not);
 
   // Examples
   if (schema.examples) result.examples = schema.examples;
 
-  return result;
+  active.delete(schema);
+  return name ? { ...result, name } : result;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -321,30 +371,29 @@ function transportHeaders(transport: NonNullable<McpSpec["transport"]>): Record<
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
-function flattenInputSchema(schema: JsonSchema & { type: "object" }): NormalizedParameter[] {
+function flattenInputSchema(schema: NormalizedSchema): NormalizedParameter[] {
   if (!schema.properties) return [];
   const required = new Set(schema.required ?? []);
 
-  return Object.entries(schema.properties).map(([name, prop]: [string, JsonSchema]) => ({
+  return Object.entries(schema.properties).map(([name, prop]) => ({
     name,
     in: "argument" as const,
     description: prop.description,
     required: required.has(name),
     deprecated: false,
-    schema: convertSchema(prop),
+    schema: prop,
     example: prop.default,
   }));
 }
 
-function hasNestedProperties(schema: JsonSchema): boolean {
+function hasNestedProperties(schema: NormalizedSchema): boolean {
   if (!schema.properties) return false;
-  return Object.values(schema.properties).some((prop: JsonSchema) => {
-    if (prop.type === "object" && prop.properties) return true;
+  return Object.values(schema.properties).some((prop) => {
+    if (prop.type === "object" && (prop.properties || prop.name)) return true;
     if (
       prop.type === "array" &&
       prop.items &&
-      !Array.isArray(prop.items) &&
-      (prop.items as JsonSchema).type === "object"
+      prop.items.type === "object"
     )
       return true;
     if (prop.allOf || prop.anyOf || prop.oneOf) return true;

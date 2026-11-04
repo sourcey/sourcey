@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { convertSwagger } from "./converter.js";
 import { InputReader } from "./loader.js";
 import type { LoadedSpec, OpenApiDocument, ParsedSpec } from "./types.js";
+import { schemaReferencePath } from "./schema-reference.js";
 
 /**
  * A loaded spec as OpenAPI 3, with every $ref resolved (local, remote,
@@ -60,7 +61,7 @@ async function dereferenceSpec(
         dereference: {
           circular: "ignore",
           onDereference(ref: string, value: unknown) {
-            const refName = refNameFromRef(ref);
+            const refName = schemaReferencePath(ref).at(-1);
             if (refName && isRecord(value) && typeof value["x-ref-name"] !== "string") {
               value["x-ref-name"] = refName;
             }
@@ -177,14 +178,6 @@ function filePathFromRef(refUrl: string): string | null {
 function isWithinRoot(root: string, target: string): boolean {
   const rel = relative(root, target);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
-}
-
-function refNameFromRef(ref: string): string | null {
-  const pointer = ref.includes("#") ? ref.slice(ref.indexOf("#") + 1) : ref;
-  const segments = pointer.split("/").filter(Boolean);
-  const raw = segments.at(-1);
-  if (!raw) return null;
-  return raw.replace(/~1/g, "/").replace(/~0/g, "~");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
