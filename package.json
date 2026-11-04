@@ -1,6 +1,6 @@
 {
   "name": "sourcey",
-  "version": "3.9.3",
+  "version": "3.9.4",
   "description": "Precision documentation from OpenAPI, MCP, Doxygen, godoc, rustdoc, and Markdown. Static HTML you own.",
   "type": "module",
   "engines": {
@@ -77,7 +77,7 @@
     "moxygen": "^2.2.2",
     "parse-srcset": "1.0.2",
     "preact": "^11.0.2",
-    "preact-render-to-string": "^6.8.1",
+    "preact-render-to-string": "^6.8.2",
     "remark-directive": "4.0.0",
     "remark-gfm": "4.0.1",
     "remark-mdx": "3.1.1",
