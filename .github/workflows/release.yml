@@ -45,11 +45,18 @@ jobs:
           ' "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - run: npm ci
+      - run: npm ci --no-audit
+      - run: npm audit --audit-level=moderate
       - run: npm run build
+      - name: Read the release notes from the canonical changelog
+        run: |
+          mkdir -p .stage/release
+          node scripts/release-notes.mjs "${{ steps.version.outputs.version }}" > .stage/release/release-notes.md
+
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      # The explicit build above already supplies the pretest artifact.
+      - run: npm --ignore-scripts test
       - run: npm run test:docs-mcp
       - run: npm run godoc:go:test
       - run: npm run godoc:go:vet
@@ -63,7 +70,9 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: sourcey-npm-package
-          path: .stage/release/sourcey-*.tgz
+          path: |
+            .stage/release/sourcey-*.tgz
+            .stage/release/release-notes.md
 
   github-release:
     needs: validate
@@ -80,7 +89,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body_path: .stage/release/release-notes.md
           files: .stage/release/sourcey-*.tgz
 
   publish-npm:
