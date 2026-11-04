@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 3.9.4 - 2026-11-05
+
+### Fixed
+
+- Dev previews initialize search, dropdowns, mobile navigation and scroll tracking even when client modules arrive after the page has loaded. Browsers without idle callbacks could miss initialization entirely.
+- Fresh installs require a renderer compatible with supported Preact versions. A previously permitted renderer could silently produce empty HTML.
+
 ## 3.9.3 - 2026-11-05
 
 ### Fixed

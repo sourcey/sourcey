@@ -1,4 +1,5 @@
 // Code sample language dropdown + response code tabs + copy button.
+import { deferEnhancement } from "./ready.js";
 //
 // Handles three interaction patterns:
 // 1. Language dropdown — toggles .code-lang-menu, switches .code-lang-panel
@@ -307,9 +308,5 @@
     });
   }
 
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(init, { timeout: 250 });
-  } else {
-    window.addEventListener("load", init, { once: true });
-  }
+  deferEnhancement(init);
 })();

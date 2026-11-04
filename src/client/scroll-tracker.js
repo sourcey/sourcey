@@ -1,4 +1,5 @@
 // Scroll tracker — highlights the active sidebar nav link as user scrolls.
+import { deferEnhancement } from "./ready.js";
 //
 // Observes [data-traverse-target] section anchors and toggles .active
 // on the matching #nav fragment link. All visual styling is in sourcey.css;
@@ -224,9 +225,7 @@
     || new URLSearchParams(window.location.search).get('target');
   if (target) {
     requestAnimationFrame(init);
-  } else if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(init, { timeout: 250 });
   } else {
-    window.addEventListener('load', init, { once: true });
+    deferEnhancement(init);
   }
 })();

@@ -1,4 +1,5 @@
 // Search — client-side search dialog with keyboard navigation
+import { deferEnhancement } from "./ready.js";
 (function () {
   function init() {
     var dialog = document.getElementById("search-dialog");
@@ -341,9 +342,5 @@
     }
   }
 
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(init, { timeout: 250 });
-  } else {
-    window.addEventListener("load", init, { once: true });
-  }
+  deferEnhancement(init);
 })();

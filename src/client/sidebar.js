@@ -1,4 +1,5 @@
 // Mobile navigation drawer using native <dialog>.
+import { deferEnhancement } from "./ready.js";
 //
 // Opens as a modal dialog with backdrop. Closes on:
 // backdrop click, nav link click, Escape (native dialog behavior).
@@ -225,9 +226,5 @@
     });
   }
 
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(init, { timeout: 250 });
-  } else {
-    window.addEventListener('load', init, { once: true });
-  }
+  deferEnhancement(init);
 })();
