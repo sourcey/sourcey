@@ -1,6 +1,16 @@
 # Changelog
 
+Sourcey release notes.
+
 ## Unreleased
+
+### Fixed
+
+- Sourcey's documentation and GitHub release notes read the root changelog instead of maintaining separate release summaries. The documentation keeps its existing changelog address.
+
+### Security
+
+- The development lint toolchain resolves the minimatch implementation fixed for [CVE-2026-118764](https://github.com/advisories/GHSA-g3hv-75wg-m249) rather than the vulnerable 10.x release. Published runtime dependencies are unchanged.
 
 ## 3.9.4 - 2026-11-05
 

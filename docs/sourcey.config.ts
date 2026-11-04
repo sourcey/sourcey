@@ -1,9 +1,12 @@
 import { defineConfig, markdown } from "sourcey";
 
+const repo = "https://github.com/sourcey/sourcey";
+
 export default defineConfig({
   name: "Sourcey",
   siteUrl: "https://sourcey.com",
   baseUrl: "/docs",
+  repo,
   discovery: { ard: true },
   brokenLinks: "error",
   theme: {
@@ -39,14 +42,20 @@ export default defineConfig({
               ],
             },
             { group: "Migrating", pages: ["migrating", "migrating/astro", "migrating/mkdocs", "migrating/docusaurus", "migrating/mintlify"] },
-            { group: "Project", pages: ["roadmap", "changelog"] },
+            { group: "Project", pages: ["roadmap"] },
           ],
         }),
+      },
+      {
+        tab: "Changelog",
+        slug: "changelog",
+        routes: { changelog: "index" },
+        source: markdown({ root: "..", groups: [{ group: "Releases", pages: ["CHANGELOG"] }] }),
       },
     ],
   },
   navbar: {
-    links: [{ type: "github", href: "https://github.com/sourcey/sourcey" }],
+    links: [{ type: "github", href: repo }],
     primary: {
       type: "button",
       label: "Documentation",
@@ -54,6 +63,6 @@ export default defineConfig({
     },
   },
   footer: {
-    links: [{ type: "github", href: "https://github.com/sourcey/sourcey" }],
+    links: [{ type: "github", href: repo }],
   },
 });

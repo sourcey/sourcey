@@ -27,10 +27,15 @@ jobs:
         with:
           go-version-file: go/sourcey-godoc/go.mod
           cache: false
-      - run: npm ci
+      - run: npm ci --no-audit
       - run: npm run build
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run lint
+        if: matrix.node-version == 24
+      - run: npm audit --audit-level=moderate
+        if: matrix.node-version == 24
+      # The explicit build above already supplies the pretest artifact.
+      - run: npm --ignore-scripts test
       - run: npm run test:docs-mcp
         if: matrix.node-version == 24
       - run: npm run godoc:go:test

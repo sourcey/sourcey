@@ -12,6 +12,7 @@ import { toPublicUrl } from "../site-url.js";
 import { fencedCode } from "./markdown.js";
 import { rewriteMarkdownDestinations } from "../utils/markdown-links.js";
 import { formatSchemaType } from "../core/schema.js";
+import { changelogVersionMarkdown } from "./changelog.js";
 
 import type { DocumentationEntry } from "./document-index.js";
 export type { DocumentationEntry, DocumentationIndex } from "./document-index.js";
@@ -91,20 +92,7 @@ export function collectReadableDocuments(pages: SitePage[], site: SiteConfig): R
       const versions = doc.permalinkVersionId
         ? doc.changelog.versions.filter((version) => version.id === doc.permalinkVersionId)
         : doc.changelog.versions;
-      body = versions
-        .map((version) =>
-          [
-            `## ${version.version ?? "Unreleased"}${version.date ? ` (${version.date})` : ""}`,
-            version.summary,
-            ...version.sections.map(
-              (section) =>
-                `### ${section.label}\n\n${section.entries.map((entry) => `- ${entry.markdown}`).join("\n")}`,
-            ),
-          ]
-            .filter(Boolean)
-            .join("\n\n"),
-        )
-        .join("\n\n");
+      body = versions.map(changelogVersionMarkdown).join("\n\n");
     } else {
       const spec = page.currentPage.spec;
       const view = page.currentPage.view;

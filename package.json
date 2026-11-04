@@ -143,6 +143,7 @@
   "homepage": "https://sourcey.com",
   "overrides": {
     "fflate": "^0.7.5",
+    "minimatch@10": "^11.0.4",
     "postcss-selector-parser": "^7.1.6"
   },
   "peerDependencies": {
