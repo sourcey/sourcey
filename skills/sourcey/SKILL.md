@@ -106,9 +106,32 @@ source: mcp({
 }),
 ```
 
-Never invent groups from name patterns: if the source has no grouping, leave the kinds.
+A group whose value names groups of its own is a heading over them, for a server of many sections, such as one split into the toolsets it turns on by default and those it makes opt-in:
+
+```ts
+groups: {
+  "On by default": { Search: ["search", "filter_topics"], Topics: ["read_topic", "create_topic"] },
+  "Administration (opt-in)": { Webhooks: ["list_webhooks", "create_webhook"] },
+},
+```
 
 **OpenAPI.** Sections are the spec's tags, in its order. Keep editorial copy (summaries, descriptions, tag text) in an OpenAPI Overlay beside a generated spec rather than editing the spec: `openapi({ spec: "./openapi.json", overlays: ["./reference.overlay.yaml"] })`. Give every operation a `summary`: it is the operation's name in the sidebar, its page and search.
+
+**Group a large reference.** A sidebar is read, not searched: past about a dozen sections at one level it needs a few headings, each over its sections, never one long run of equal entries. Take the grouping from the source first (the spec's `x-tagGroups` or OpenAPI 3.2 tag parents, the modules or toolsets the MCP server registers from, the product's own console or navigation). Where the source has none, group by what each section works on, in the overlay with the reason in a comment:
+
+```yaml
+actions:
+  # Forty-six sections side by side; grouped by what they work on. Sections and addresses are unchanged.
+  - target: $
+    update:
+      x-tagGroups:
+        - name: Library
+          tags: [Library, Playlist, Collection]
+        - name: Playback
+          tags: [Audio, Video, SyncPlay]
+```
+
+A group heads its sections, even one named like a section it holds. Never group by name patterns alone, and never reorder or rename what the project arranged.
 
 ## Writing the content
 
@@ -125,7 +148,8 @@ Every element must tell the reader something. Before shipping, hold the site to 
 - **Nothing said twice.** A label on every row that the section heading already states, a line under a title that repeats the title, a footer link to a page the sidebar lists: remove them. Sourcey's defaults follow this; config you write can still break it.
 - **No navigation that says nothing.** No sidebar group holding only the current page, no list of one section, no tab that leads nowhere new.
 - **Names fit their place.** `name` is what the header shows beside the logo: the product's name ("Argo CD"), never a site title with a tagline. A logo set as a wordmark should not also carry the name (`logo.mark: true` only for a mark without the name).
-- **Structure from the source.** Navigation follows the project's own structure. Do not reorder or regroup what the project already arranged.
+- **Structure from the source, and grouped.** Navigation follows the project's own structure; do not reorder or regroup what the project already arranged. A long run of equal sidebar entries is not structure: group it under a few headings, from the source where it has a grouping (see Group a large reference).
+- **Tabs carry content kinds.** At most Documentation, Guides, API Reference and MCP Reference, each where the site has that content. Sections, and a project's several APIs, belong in a tab's sidebar, not in more tabs.
 - **The footer is for identity and outward links:** a copyright line, then places the header and sidebar do not already lead to (community, website, demo). Social networks are typed links (`github`, `discord`, `twitter`, `mastodon`, `bluesky`, ...) and draw as icons.
 - **Assets render as their owner designed them.** An SVG logo that sets its text in a web font cannot load that font as an image and falls back to another face, which can cut the word off. Check the logo at 3x in light and dark; if it does, draw the text as outlines in its own font.
 

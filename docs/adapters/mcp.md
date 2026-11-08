@@ -67,6 +67,15 @@ source: mcp({
 reference: { split: "sections" },
 ```
 
+A group whose value names groups of its own heads them in the sidebar, for a server of many sections:
+
+```ts
+groups: {
+  "On by default": { Search: ["search"], Topics: ["read_topic", "create_topic"] },
+  "Administration (opt-in)": { Webhooks: ["list_webhooks", "create_webhook"] },
+},
+```
+
 The snapshot stays as captured, so it can be refreshed from the server without losing its sections. A name the server lacks, or one listed twice, fails the build. Anything no group names is listed by kind after the groups, and the build names it. An entry's kind shows beside it only in a section that mixes kinds.
 
 Like an OpenAPI reference, an MCP reference is one page while that stays small and splits as it grows; see [Reference pages](../configuration.md#reference-pages). Link an entry from any page by name: `[Search](<operation:TOOL search>)`.

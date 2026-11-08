@@ -63,6 +63,15 @@ describe("buildNavFromSpec", () => {
     expect(nav.groups[1].items[1]).toMatchObject({ id: "tag-aged", items: [{ label: "List aged cheeses" }] });
   });
 
+  it("heads a group of sections that has no operations of its own, as a guide's sidebar heads its pages", () => {
+    const child = { ...operation, path: "/cheeses/aged", tags: ["Aged"], summary: "List aged cheeses" };
+    const tags = [{ name: "Dairy", operations: [] }, { name: "Cheese", parent: "Dairy", operations: [operation] }, { name: "Aged", parent: "Dairy", operations: [child] }];
+    const nav = buildNavFromSpec({ ...spec, tags, operations: [operation, child] }, "api");
+    const dairy = nav.groups[1];
+    expect(dairy).toMatchObject({ label: "Dairy", items: [{ label: "Cheese", href: "api.html#tag-cheese" }, { label: "Aged", href: "api.html#tag-aged" }] });
+    expect(dairy.href).toBeUndefined();
+  });
+
   it("names the authentication section apart from a section of the API with that name", () => {
     const securitySchemes = { key: { type: "apiKey" as const, name: "Authorization", in: "header" as const } };
     const intro = (tags: NormalizedSpec["tags"]) => buildNavFromSpec({ ...spec, tags, securitySchemes }, "api").groups[0].items.map(item => item.label);

@@ -29,7 +29,7 @@ To see a spec without writing a config, build it on its own: `sourcey build ./op
 
 ## The reference
 
-Each tag is a section of the reference, in the spec's order, named by its `summary` or its name, and opens with the tag's description. A tag with a `parent` (OpenAPI 3.2) sits inside its parent's section. The API's own description and its authentication schemes open the reference.
+Each tag is a section of the reference, in the spec's order, named by its `summary` or its name, and opens with the tag's description. A tag with a `parent` (OpenAPI 3.2) sits inside its parent's section. Tag groups (`x-tagGroups`) gather sections under headings in the sidebar, in the groups' order; a tag no group lists follows them. A heading with no operations of its own, a tag group or a 3.2 parent, heads its sections rather than linking anywhere, and a group named like one of its tags heads that tag too. A reference of more than about a dozen sections reads far better grouped; where the spec has no groups, add `x-tagGroups` in an [overlay](#overlays). The API's own description and its authentication schemes open the reference; a description whose sections open at `#` has them ranked under the reference's title.
 
 A reference is one page while that stays small, and is split by section or by operation as it grows; `reference.split` chooses for you, and `reference.operations` gives every operation a permanent address. A tab's `navigation` orders the reference by hand. See [Reference pages](../configuration.md#reference-pages).
 

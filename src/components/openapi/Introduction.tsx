@@ -12,7 +12,9 @@ import { ExternalDocsLink } from "./ExternalDocs.js";
  */
 export function Introduction() {
   const spec = useContext(SpecContext);
-  const { info, servers } = spec;
+  const { info } = spec;
+  // A document naming no server is served from wherever it is read, which a bare "/" says to no reader.
+  const servers = spec.servers.length === 1 && spec.servers[0].url === "/" && !spec.servers[0].description && !spec.servers[0].variables ? [] : spec.servers;
   const termsUrl = info.termsOfService
     ? safeUrl(info.termsOfService, {
         allowedProtocols: ["http:", "https:"],

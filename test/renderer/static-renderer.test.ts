@@ -468,6 +468,9 @@ describe("renderPage (spec)", () => {
     const html = renderSpec(spec, defaultOptions);
     expect(html).toContain("https://api.example.com");
     expect(html).toContain("Production");
+    // A document naming no server (normalized to a bare "/") lists none; a described "/" stays.
+    expect(renderSpec(createMinimalSpec({ servers: [{ url: "/" }] }), defaultOptions)).not.toContain("Base URL");
+    expect(renderSpec(createMinimalSpec({ servers: [{ url: "/", description: "This server" }] }), defaultOptions)).toContain("Base URL");
   });
 
   it("names what each placeholder of a templated server URL takes", () => {

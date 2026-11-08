@@ -103,7 +103,7 @@ export async function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): P
   const tags: NormalizedTag[] = [];
   const placed = new Set<NormalizedOperation>();
   const listed = new Set<string>();
-  for (const [group, names] of Object.entries(groups)) {
+  const section = (group: string, names: string[], parent?: string) => {
     const operations: NormalizedOperation[] = [];
     for (const name of names) {
       if (listed.has(name)) throw new Error(`MCP groups list "${name}" twice`);
@@ -113,7 +113,13 @@ export async function normalizeMcpSpec(spec: McpSpec, groups: McpGroups = {}): P
       operations.push(...matches);
     }
     for (const operation of operations) { operation.tags = [group]; placed.add(operation); }
-    tags.push({ name: group, operations });
+    tags.push({ name: group, operations, ...(parent ? { parent } : {}) });
+  };
+  for (const [group, entries] of Object.entries(groups)) {
+    if (Array.isArray(entries)) { section(group, entries); continue; }
+    // A heading over sections of its own.
+    tags.push({ name: group, operations: [] });
+    for (const [child, names] of Object.entries(entries)) section(child, names, group);
   }
   // What no group lists keeps its kind's section, after the groups.
   const kinds = [["Tools", "tool"], ["Resources", "resource"], ["Prompts", "prompt"]] as const;

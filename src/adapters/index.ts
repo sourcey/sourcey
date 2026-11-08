@@ -38,10 +38,17 @@ export function mcp(specOrOptions: string | McpSourceOptions): SourceAdapter {
     async resolve(ctx) {
       if (groups !== undefined) {
         if (!groups || typeof groups !== "object" || Array.isArray(groups)) throw new Error(`MCP groups in tab "${ctx.tabName}" must map each section's name to the names it lists`);
-        for (const [group, names] of Object.entries(groups)) {
+        const check = (group: string, names: unknown) => {
           if (!group.trim()) throw new Error(`MCP groups in tab "${ctx.tabName}" need a name for each section`);
           if (!Array.isArray(names) || !names.length || names.some(name => typeof name !== "string" || !name))
             throw new Error(`MCP group "${group}" in tab "${ctx.tabName}" must list the names of its tools, resources or prompts`);
+        };
+        for (const [group, entries] of Object.entries(groups)) {
+          // A heading names sections of its own.
+          if (entries && typeof entries === "object" && !Array.isArray(entries)) {
+            if (!group.trim() || !Object.keys(entries).length) throw new Error(`MCP heading "${group}" in tab "${ctx.tabName}" must name its sections`);
+            for (const [child, names] of Object.entries(entries)) check(child, names);
+          } else check(group, entries);
         }
       }
       if (ctx.isUrl(spec)) return { kind: "mcp", spec, groups };

@@ -592,7 +592,10 @@ export function rankedUnderTitle(input: string | undefined): string | undefined;
 export function rankedUnderTitle(input: string | undefined): string | undefined {
   const tokens = lexMarkdown(input);
   if (!tokens.some(token => token.type === "heading" && (token as Tokens.Heading).depth === 1)) return input;
-  return tokens.map(token => token.type === "heading" ? `${"#".repeat(Math.min(6, (token as Tokens.Heading).depth + 1))} ${(token as Tokens.Heading).text}` : token.raw).join("");
+  // A heading keeps the line breaks after it: text directly beneath one stays a paragraph of its own.
+  return tokens.map(token => token.type === "heading"
+    ? `${"#".repeat(Math.min(6, (token as Tokens.Heading).depth + 1))} ${(token as Tokens.Heading).text}${token.raw.match(/\s*$/)![0]}`
+    : token.raw).join("");
 }
 
 /**

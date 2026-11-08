@@ -123,6 +123,16 @@ export function buildNavFromSpec(
   // A tag with no operations of its own or beneath it lists nothing.
   const listed = <T extends SiteNavItem | SiteNavGroup>(items: T[]): T[] =>
     items.filter((item) => !isNavGroup(item) || (item.items = listed(item.items)).length > 0);
+  // A tag that only gathers others (a Redoc tag group, an OpenAPI 3.2 parent with no operations of
+  // its own) heads its sections, as a guide's sidebar heads its pages.
+  const tagsByName = new Map(spec.tags.map((tag) => [tag.name, tag]));
+  for (const tag of spec.tags) {
+    const group = tagGroups.get(tag.name);
+    if (group && !tag.parent && !tag.operations.some((op) => !op.hidden) && spec.tags.some((child) => child.parent === tag.name && tagsByName.has(child.name))) {
+      delete group.href;
+      delete group.id;
+    }
+  }
   groups.push(...listed(roots));
 
   // Models group

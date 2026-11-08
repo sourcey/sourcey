@@ -8,6 +8,8 @@ Sourcey release notes.
 
 - A reference split into pages keeps the deep links it had as one page: its overview takes fragment aliases for each section, operation and model (a Redoc page's `tag/Users/operation/getUser`, Swagger UI's `#/Users/getUser`), and a reader arriving at one is carried to the page that holds it.
 - Redoc's `x-tagGroups` group a reference's sections, each group a parent of the tags it lists, in its order.
+- A tag that only gathers others, a tag group or an OpenAPI 3.2 parent with no operations of its own, is a heading over its sections in the sidebar, as a guide's sidebar heads its pages. A group named like one of its tags heads it, the tag keeping its own anchor.
+- MCP groups can head groups of their own: a group whose value names groups is a heading over them, such as a server's default and opt-in toolsets.
 
 ### Performance
 
@@ -20,6 +22,7 @@ Sourcey release notes.
 - Sourcey's documentation and GitHub release notes read the root changelog instead of maintaining separate release summaries. The documentation keeps its existing changelog address.
 - A reference description's own headings are anchors, so links and imported fragments can name them, and a description whose sections open at `#` ranks them under the page's title instead of beside it.
 - The authentication section is named "Security schemes" where one of the API's own sections is already called "Authentication", so the sidebar no longer lists two "Authentication" entries.
+- A reference whose document names no server no longer shows a base URL of `/`.
 - A version that brings its own API description keeps the tab's imported fragments it still has, instead of failing the build on those only the current version holds.
 
 ### Security

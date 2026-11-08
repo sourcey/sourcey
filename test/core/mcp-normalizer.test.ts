@@ -104,6 +104,12 @@ describe("normalizeMcpSpec", () => {
     expect(ungrouped).toEqual(["export"]);
   });
 
+  it("heads sections with a heading the groups name, each section its parent's", async () => {
+    const { spec } = await normalizeMcpSpec(createSpec({ tools: ["login", "logout", "start_timer"].map((name) => ({ name, inputSchema: { type: "object" } })) }),
+      { Default: { Authentication: ["login", "logout"] }, Timer: ["start_timer"] });
+    expect(spec.tags.map((tag) => [tag.name, tag.parent, tag.operations.length])).toEqual([["Default", undefined, 0], ["Authentication", "Default", 2], ["Timer", undefined, 1]]);
+  });
+
   it("refuses a group naming what the server lacks, or a name listed twice", async () => {
     const server = createSpec({ tools: [{ name: "login", inputSchema: { type: "object" } }] });
     await expect(normalizeMcpSpec(server, { Access: ["login", "logn"] })).rejects.toThrow('MCP group "Access" lists "logn", which the server does not have');

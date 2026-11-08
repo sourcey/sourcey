@@ -361,7 +361,7 @@ Large generated navigation, route and anchor tables can live in JSON files impor
 
 ### Choose the reference order
 
-Generated navigation has a group per tag, in the spec's order, labelled by the tag's `summary` or name. A tag with a `parent` (OpenAPI 3.2) sits inside its parent's group, after the parent's own operations; an overlay can add that hierarchy to an older spec. A tag with nothing to list beneath it is left out.
+Generated navigation has a group per tag, in the spec's order, labelled by the tag's `summary` or name. A tag with a `parent` (OpenAPI 3.2) sits inside its parent's group, after the parent's own operations, and tag groups (`x-tagGroups`) gather tags the same way; an overlay can add either to a spec that has neither. A parent with no operations of its own is a heading over its tags, as a guide's sidebar heads its pages. A tag with nothing to list beneath it is left out.
 
 Give a tab its own navigation tree when the generated groups do not match how people use the API:
 

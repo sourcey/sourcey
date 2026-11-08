@@ -26,7 +26,7 @@ For each, look at 1440 px and 390 px wide, in light and in dark, and once at 192
 
 **One thing is current.** Click sidebar entries, section links within a page, and tabs. After each click exactly one sidebar entry should be lit: the place being read, or the page when the reader is at its top.
 
-**Structure matches the project.** Sections and their order are the project's own. A large reference reads in the groups its authors use. Nothing is cut short without saying so.
+**Structure matches the project, and is grouped.** Sections and their order are the project's own. Read each sidebar from top to bottom: a run of more than about a dozen equal entries is creamed together, not structure. A large reference reads under a few headings, from the groups its authors use where they have them (tag groups, an MCP server's toolsets, the product's own console), else by what each section works on. Tabs are at most Documentation, Guides, API Reference and MCP Reference; a project's sections or several APIs spread across more tabs read as clutter. Nothing is cut short without saying so.
 
 **Names and assets.**
 - The header shows the product's name, not a site title with a tagline.

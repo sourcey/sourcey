@@ -116,7 +116,8 @@ export interface McpSourceOptions {
 }
 
 /** Section names, each with the tools, resources and prompts it lists, by name. */
-export type McpGroups = Record<string, string[]>;
+/** Sections by name, each listing its entries; a heading lists sections of its own. */
+export type McpGroups = Record<string, string[] | Record<string, string[]>>;
 
 export type DoxygenSourceOptions = DoxygenConfig;
 export type GodocSourceOptions = GodocConfig | string;

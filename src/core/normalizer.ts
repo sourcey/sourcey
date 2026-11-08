@@ -25,6 +25,7 @@ import type {
   DiscriminatorObject,
 } from "./types.js";
 import { rankedUnderTitle } from "../utils/markdown.js";
+import { slugify } from "../utils/slug.js";
 
 const HTTP_METHODS: HttpMethod[] = [
   "get",
@@ -56,7 +57,7 @@ export function normalizeSpec(parsed: ParsedSpec): NormalizedSpec {
   }
   const securitySchemes = normalizeSecuritySchemes(doc.components?.securitySchemes);
   const servers = normalizeServers(doc.servers);
-  const tags = normalizeTags(groupedTags(doc.tags, (doc as Record<string, unknown>)["x-tagGroups"]), operations);
+  const tags = normalizeTags(groupedTags(doc.tags, (doc as Record<string, unknown>)["x-tagGroups"], new Set(operations.flatMap((op) => op.tags))), operations);
 
   return {
     sourceUrl: publicSourceUrl(parsed.source),
@@ -142,18 +143,28 @@ function normalizeServerVariables(
 /**
  * Redoc's `x-tagGroups` as OpenAPI 3.2 tag parents: each group a tag holding the tags it lists,
  * in its order, so the sections read as that sidebar groups them. A tag no group lists follows
- * the groups, where Redoc would hide it; a parent the document declares itself stays.
+ * the groups, where Redoc would hide it; a parent the document declares itself stays. A group
+ * named as a tag, declared or only used, in any case, heads under a name of its own.
  */
-function groupedTags(rawTags: Record<string, unknown>[] | undefined, groups: unknown): Record<string, unknown>[] | undefined {
+function groupedTags(rawTags: Record<string, unknown>[] | undefined, groups: unknown, used: ReadonlySet<string>): Record<string, unknown>[] | undefined {
   if (!Array.isArray(groups) || !groups.length) return rawTags;
   const declared = new Map((rawTags ?? []).map((tag) => [str(tag.name, ""), tag]));
   const ordered: Record<string, unknown>[] = [];
   const placed = new Set<string>();
+  const listed = new Set((groups as Record<string, unknown>[]).flatMap((group) => (Array.isArray(group?.tags) ? group.tags.map(String) : [])));
+  // Names as their anchors spell them: a group may not take a tag's anchor ("Agent" over "agent").
+  const taken = new Set([...declared.keys(), ...listed, ...used].map((name) => slugify(name)));
   for (const group of groups as Record<string, unknown>[]) {
-    const name = str(group?.name, "");
-    if (!name || !Array.isArray(group.tags)) continue;
-    if (!placed.has(name)) ordered.push({ ...declared.get(name), name });
+    const label = str(group?.name, "");
+    if (!label || !Array.isArray(group.tags)) continue;
+    // A group is not a tag: one named as a tag (Library over Library and ItemLookup) heads it under
+    // a name of its own, reading as the group.
+    // Its own name slugs apart from the tag's, so the tag keeps its anchor.
+    let name = label;
+    for (let n = 1; taken.has(slugify(name)); n++) name = `${label} (group${n > 1 ? ` ${n}` : ""})`;
+    ordered.push({ name, ...(name === label ? {} : { summary: label }) });
     placed.add(name);
+    taken.add(slugify(name));
     for (const member of group.tags.map(String)) {
       if (placed.has(member)) continue;
       placed.add(member);

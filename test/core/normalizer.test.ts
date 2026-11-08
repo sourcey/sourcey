@@ -261,6 +261,8 @@ describe("normalizeSpec", () => {
     const describe = (description: string) => normalizeSpec({ source: "inline.json", document: { openapi: "3.0.3", info: { title: "Ranked", version: "1", description }, paths: {} } } as unknown as ParsedSpec).info.description;
     expect(describe("# Authentication\n\nSign up first.\n\n## Roles\n\nThree.")).toBe("## Authentication\n\nSign up first.\n\n### Roles\n\nThree.");
     expect(describe("Intro.\n\n## Limits\n\nA hundred.")).toBe("Intro.\n\n## Limits\n\nA hundred.");
+    // Text directly beneath a heading stays a paragraph of its own.
+    expect(describe("# Authentication\nTwo token types.")).toBe("## Authentication\nTwo token types.");
   });
 
   it("reads Redoc's tag groups as parents, in the groups' order, keeping a tag no group lists", () => {
@@ -274,6 +276,13 @@ describe("normalizeSpec", () => {
     } as unknown as ParsedSpec);
     expect(spec.tags.map((tag) => [tag.name, tag.parent])).toEqual([["Auth", undefined], ["Login", "Auth"], ["Media", undefined], ["Videos", "Media"], ["Captions", "Media"], ["Stats", undefined]]);
     expect(spec.tags.find((tag) => tag.name === "Videos")!.description).toBe("Uploads and playback.");
+    // A group named as a tag, its own or one only operations use, in any case, heads under a name of its own.
+    const named = normalizeSpec({
+      source: "inline.json",
+      document: { openapi: "3.0.3", info: { title: "Named", version: "1" }, "x-tagGroups": [{ name: "Library", tags: ["Library", "Playlist"] }, { name: "Media", tags: ["Clips"] }, { name: "Agent", tags: ["agent"] }],
+        paths: { "/library": get("Library"), "/playlist": get("Playlist"), "/clips": get("Clips"), "/media": get("Media"), "/agent": get("agent") } },
+    } as unknown as ParsedSpec);
+    expect(named.tags.map((tag) => [tag.name, tag.summary, tag.parent, tag.operations.length])).toEqual([["Library (group)", "Library", undefined, 0], ["Library", undefined, "Library (group)", 1], ["Playlist", undefined, "Library (group)", 1], ["Media (group)", "Media", undefined, 0], ["Clips", undefined, "Media (group)", 1], ["Agent (group)", "Agent", undefined, 0], ["agent", undefined, "Agent (group)", 1], ["Media", undefined, undefined, 1]]);
   });
 
   it("preserves rich OpenAPI 3.2 metadata for tags, encodings, path items, and security schemes", async () => {
