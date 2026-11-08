@@ -129,6 +129,19 @@ describe("reference sections", () => {
     await expect(build(root, [{ tab: "API", slug: "api", source: openapi("old.json"), anchors }])).rejects.toThrow(/tag\/Orders/);
   }));
 
+  it("draws a tag group as a heading over its sections, each a level below it, naming nothing twice", () => fixture(async (root) => {
+    const spec = JSON.parse(openApi({ Library: 2, Playlist: 2, Search: 1 }));
+    await writeFile(join(root, "api.json"), JSON.stringify({ ...spec, "x-tagGroups": [{ name: "Library", tags: ["Library", "Playlist"] }, { name: "Discovery", tags: ["Search"] }] }));
+    const { html } = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: false } }]);
+    const page = html("api/index.html");
+    // The group named like its section heads it under the reader's name, its own staying internal.
+    expect(page).toMatch(/<h2 class="reference-tag-title[^"]*">Library<\/h2>/);
+    expect(page).toMatch(/<h3 class="reference-tag-title[^"]*">Library<\/h3>/);
+    expect(page).toMatch(/<h3 class="reference-tag-title[^"]*">Playlist<\/h3>/);
+    expect(page).not.toContain("(group)");
+    expect(page).not.toContain("uppercase tracking-[0.12em]");
+  }));
+
   it("shows the section around a page whole, and folds the others to their links", () => fixture(async (root) => {
     await writeFile(join(root, "api.json"), openApi({ Items: 90, Orders: 30 }));
     const { html } = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "operations" } }]);

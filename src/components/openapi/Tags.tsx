@@ -42,23 +42,27 @@ export function TagSection({ tag, showOperations, page = false }: { tag: Normali
   // Listed without their sections, operations keep their single-page anchors, once each.
   const anchored = new Set(showOperations ? [] : own);
   const methods = operations.map(op => op.method);
-  const Heading = page ? "h1" : "h2";
+  // A tag with no operations of its own only heads the sections beneath it, which on the same page
+  // sit a level below it and need not name it again.
+  const gathers = (candidate?: NormalizedTag) => !!candidate && !candidate.operations.some(op => !op.hidden);
+  const beneath = !page && gathers(tag.parent ? tagsByName.get(tag.parent) : undefined);
+  const Heading = page ? "h1" : beneath ? "h3" : "h2";
 
   return (
     <div class={page ? undefined : tag.parent ? "mt-8" : "mt-12"}>
       <div id={tagAnchor(tag.name, spec)} data-traverse-target={tagAnchor(tag.name, spec)} class={page ? "mb-8" : "mb-6"}>
         <AnchorAliases target={tagAnchor(tag.name, spec)} />
-        {parents.length > 0 && (
+        {parents.length > 0 && !beneath && (
           <div class="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-[rgb(var(--color-gray-500))] dark:text-[rgb(var(--color-gray-400))]">
             {parents.map(displayLabel).join(" / ")}
           </div>
         )}
         <div class="mb-2 flex flex-wrap items-center gap-2">
-          <Heading class={`${page ? "reference-page-title" : "reference-tag-title"} text-2xl sm:text-3xl font-bold tracking-tight text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))]`}>
+          <Heading class={`${page ? "reference-page-title" : "reference-tag-title"} ${beneath ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"} font-bold tracking-tight text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))]`}>
             {displayLabel(tag)}
           </Heading>
-          {/* The machine name, when the display name is more than its capitalisation. */}
-          {tag.summary && tag.summary.toLowerCase() !== tag.name.toLowerCase() && (
+          {/* The machine name, when the display name is more than its capitalisation; a heading's is its own. */}
+          {tag.summary && !gathers(tag) && tag.summary.toLowerCase() !== tag.name.toLowerCase() && (
             <Badge>
               <code>{tag.name}</code>
             </Badge>

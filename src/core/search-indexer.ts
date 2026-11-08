@@ -324,7 +324,8 @@ export function referenceOverviewSearchText(spec: NormalizedSpec): string {
   return [
     spec.info.title, spec.info.summary, spec.info.description,
     ...spec.servers.flatMap(server => [server.url, server.description]),
-    ...spec.tags.flatMap(tag => [tag.name, tag.summary, tag.description]),
+    // A heading's own name is internal when it has a reader's name (a tag group named like a tag).
+    ...spec.tags.flatMap(tag => [tag.summary && !tag.operations.length ? undefined : tag.name, tag.summary, tag.description]),
     ...Object.entries(spec.securitySchemes).flatMap(([name, scheme]) => [name, scheme.name, scheme.description]),
   ].filter(Boolean).join(" ");
 }
