@@ -584,6 +584,18 @@ function rendered(render: () => string, operationLinks: boolean | undefined, gen
 const marked = createMarkdownParser();
 
 /**
+ * Markdown that sits under a page's own title, its headings ranked below it: one whose sections
+ * open at `#` (as a reference's description often does) has each heading moved down a level.
+ */
+export function rankedUnderTitle(input: string): string;
+export function rankedUnderTitle(input: string | undefined): string | undefined;
+export function rankedUnderTitle(input: string | undefined): string | undefined {
+  const tokens = lexMarkdown(input);
+  if (!tokens.some(token => token.type === "heading" && (token as Tokens.Heading).depth === 1)) return input;
+  return tokens.map(token => token.type === "heading" ? `${"#".repeat(Math.min(6, (token as Tokens.Heading).depth + 1))} ${(token as Tokens.Heading).text}` : token.raw).join("");
+}
+
+/**
  * Lex markdown into tokens using the shared Sourcey Marked instance.
  * This keeps directive support and heading parsing aligned with rendering.
  * `definitions`, a page's reference link definitions, are read with a part

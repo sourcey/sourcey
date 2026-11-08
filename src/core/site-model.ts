@@ -14,6 +14,7 @@ import {
 import { toPublicPath, normalizeBaseUrl } from "../site-url.js";
 import { outputPathCandidatesForRequest, requestPathMatchesBase } from "../renderer/static-files.js";
 import { Parser } from "htmlparser2";
+import { renderMarkdown } from "../utils/markdown.js";
 
 export interface AlternateLink {
   rel?: "alternate" | "describedby" | "ard" | "api-catalog";
@@ -28,8 +29,11 @@ export interface EquivalentPageLink {
   lang?: string;
   kind: "locale" | "version";
   active: boolean;
-  /** Fragments that exist on both this page and the destination. */
-  anchors?: string[];
+  /**
+   * This page's fragments the destination lacks, the rest landing there as here; none when it is
+   * not this page's own equivalent (an overview), where no fragment carries.
+   */
+  missing?: string[];
 }
 
 export interface ResolvedSiteContext {
@@ -191,6 +195,8 @@ function pageAnchors(current: CurrentPage): string[] {
     return [tagAnchor(view.tag, spec), ...(sectionBodies(spec).get(view.tag) ?? []).flatMap((op) => operationAnchors(op, spec, false))];
   const result = [
     "introduction",
+    // The introduction's own sections, as its description heads them.
+    ...(spec.info.description ? drawnAnchors(renderMarkdown(spec.info.description)) : []),
     ...spec.tags.filter((tag) => !tag.hidden).map((tag) => tagAnchor(tag.name, spec)),
   ];
   if (Object.keys(spec.securitySchemes).length) result.push("authentication");

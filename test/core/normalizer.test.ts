@@ -257,6 +257,25 @@ describe("normalizeSpec", () => {
     expect(oauth.flows?.deviceAuthorization?.tokenUrl).toBe("https://example.com/oauth/token");
   });
 
+  it("ranks a description's sections under the reference's own title", () => {
+    const describe = (description: string) => normalizeSpec({ source: "inline.json", document: { openapi: "3.0.3", info: { title: "Ranked", version: "1", description }, paths: {} } } as unknown as ParsedSpec).info.description;
+    expect(describe("# Authentication\n\nSign up first.\n\n## Roles\n\nThree.")).toBe("## Authentication\n\nSign up first.\n\n### Roles\n\nThree.");
+    expect(describe("Intro.\n\n## Limits\n\nA hundred.")).toBe("Intro.\n\n## Limits\n\nA hundred.");
+  });
+
+  it("reads Redoc's tag groups as parents, in the groups' order, keeping a tag no group lists", () => {
+    const get = (tag: string) => ({ get: { tags: [tag], responses: { "200": { description: "OK" } } } });
+    const spec = normalizeSpec({
+      source: "inline.json",
+      document: { openapi: "3.0.3", info: { title: "Grouped", version: "1" },
+        tags: [{ name: "Videos", description: "Uploads and playback." }, { name: "Login" }, { name: "Stats" }],
+        "x-tagGroups": [{ name: "Auth", tags: ["Login"] }, { name: "Media", tags: ["Videos", "Captions"] }],
+        paths: { "/login": get("Login"), "/videos": get("Videos"), "/captions": get("Captions"), "/stats": get("Stats") } },
+    } as unknown as ParsedSpec);
+    expect(spec.tags.map((tag) => [tag.name, tag.parent])).toEqual([["Auth", undefined], ["Login", "Auth"], ["Media", undefined], ["Videos", "Media"], ["Captions", "Media"], ["Stats", undefined]]);
+    expect(spec.tags.find((tag) => tag.name === "Videos")!.description).toBe("Uploads and playback.");
+  });
+
   it("preserves rich OpenAPI 3.2 metadata for tags, encodings, path items, and security schemes", async () => {
     const spec = await loadAndNormalize("openapi-3.2-rich.yaml");
 

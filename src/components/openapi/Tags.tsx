@@ -1,3 +1,4 @@
+import { Fragment } from "preact";
 import { useContext } from "preact/hooks";
 import { Breakable } from "../ui/Breakable.js";
 import { OptionsContext, SpecContext } from "../../renderer/context.js";
@@ -69,7 +70,7 @@ export function TagSection({ tag, showOperations, page = false }: { tag: Normali
         )}
         <ExternalDocsLink docs={tag.externalDocs} />
       </div>
-      {links.length > 0 && <ul class="reference-operation-links">{links.map(op => <li id={anchored.has(op) ? operationAnchor(op, spec) : undefined}><a href={targets?.operations[operationKey(op)]?.href ?? `#${operationAnchor(op, spec)}`}>{kindTells(op.method, methods) && <span class="reference-method"><MethodBadge method={op.method} /></span>}<span class="reference-operation-label"><strong><Breakable text={op.summary ?? op.path} /></strong>{op.mcpExtras && op.description && <span class="reference-operation-summary">{op.description.split(/\n\s*\n/)[0]}</span>}</span><svg class="reference-operation-arrow" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg></a></li>)}</ul>}
+      {links.length > 0 && <ul class="reference-operation-links">{links.map(op => <li id={anchored.has(op) ? operationAnchor(op, spec) : undefined}>{anchored.has(op) && <AnchorAliases target={operationAnchor(op, spec)} carry />}<a href={targets?.operations[operationKey(op)]?.href ?? `#${operationAnchor(op, spec)}`}>{kindTells(op.method, methods) && <span class="reference-method"><MethodBadge method={op.method} /></span>}<span class="reference-operation-label"><strong><Breakable text={op.summary ?? op.path} /></strong>{op.mcpExtras && op.description && <span class="reference-operation-summary">{op.description.split(/\n\s*\n/)[0]}</span>}</span><svg class="reference-operation-arrow" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg></a></li>)}</ul>}
       {bodies.map((op) => (
         <Operation key={`${op.method}-${op.path}`} operation={op} />
       ))}
@@ -92,13 +93,14 @@ export function SectionIndex() {
   const unlisted = spec.tags.filter(tag => !tag.hidden && !listed.has(tag.name));
   return (
     <div class="mt-12">
-      {unlisted.map(tag => <span key={tag.name} class="reference-anchor-alias" id={tagAnchor(tag.name, spec)} aria-hidden="true" />)}
+      {unlisted.map(tag => <Fragment key={tag.name}><span class="reference-anchor-alias" id={tagAnchor(tag.name, spec)} aria-hidden="true" /><AnchorAliases target={tagAnchor(tag.name, spec)} carry /></Fragment>)}
       <ul class="reference-operation-links">{sections.map(([name, members]) => {
         const tag = referenceTag(spec, name);
         const summary = metadataSummary(tag.description) || listNames(members.map(op => op.summary ?? op.path), 3);
         return (
           <li key={name} id={tagAnchor(name, spec)}>
-            {members.map(op => <span key={operationKey(op)} class="reference-anchor-alias" id={operationAnchor(op, spec)} aria-hidden="true" />)}
+            <AnchorAliases target={tagAnchor(name, spec)} carry />
+            {members.map(op => <Fragment key={operationKey(op)}><span class="reference-anchor-alias" id={operationAnchor(op, spec)} aria-hidden="true" /><AnchorAliases target={operationAnchor(op, spec)} carry /></Fragment>)}
             <a href={options.referenceTargets?.sections[name]?.href}>
               <span class="reference-operation-label"><strong>{displayLabel(tag)}</strong><span class="reference-operation-summary">{summary}</span></span>
               <svg class="reference-operation-arrow" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>

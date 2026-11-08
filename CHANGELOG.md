@@ -4,9 +4,23 @@ Sourcey release notes.
 
 ## Unreleased
 
+### Added
+
+- A reference split into pages keeps the deep links it had as one page: its overview takes fragment aliases for each section, operation and model (a Redoc page's `tag/Users/operation/getUser`, Swagger UI's `#/Users/getUser`), and a reader arriving at one is carried to the page that holds it.
+- Redoc's `x-tagGroups` group a reference's sections, each group a parent of the tags it lists, in its order.
+
+### Performance
+
+- An operation page draws a response's types once and, past what a schema draws in full, links further types to their own model pages, nearest first, including types a lone `allOf` wraps. A 364-operation media server API's heaviest operation page falls from 2.9 MB to 0.9 MB of HTML.
+- Media types that carry the same response schema share one field list, and an example two media types share is shown once, named for both. Before, each was drawn again for every media type.
+- The language and version menus name only the fragments a destination lacks, instead of every fragment it has. On a page of a few thousand fields each menu entry had carried half a megabyte.
+
 ### Fixed
 
 - Sourcey's documentation and GitHub release notes read the root changelog instead of maintaining separate release summaries. The documentation keeps its existing changelog address.
+- A reference description's own headings are anchors, so links and imported fragments can name them, and a description whose sections open at `#` ranks them under the page's title instead of beside it.
+- The authentication section is named "Security schemes" where one of the API's own sections is already called "Authentication", so the sidebar no longer lists two "Authentication" entries.
+- A version that brings its own API description keeps the tab's imported fragments it still has, instead of failing the build on those only the current version holds.
 
 ### Security
 

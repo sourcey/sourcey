@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { NormalizedOperation, NormalizedParameter, NormalizedSchema, NormalizedSpec } from "./types.js";
 import { omittedField, type SchemaUsage } from "./schema.js";
 import { slugify } from "../utils/slug.js";
+import { tagDisplayName } from "./tag-utils.js";
 
 interface ReferenceAnchors {
   byOperation: ReadonlyMap<string, NormalizedOperation>;
@@ -77,6 +78,12 @@ function requireAnchor(map: ReadonlyMap<string, string>, key: string): string {
   if (!anchor) throw new Error(`Reference is not in its owning spec: ${key}`);
   return anchor;
 }
+/** The authentication section's name: its own, unless one of the API's sections already has it. */
+export function securitySectionLabel(spec: NormalizedSpec, messages: { authentication: string; securitySchemes: string }): string {
+  const taken = spec.tags.some(tag => !tag.hidden && tagDisplayName(tag).toLowerCase() === messages.authentication.toLowerCase());
+  return taken ? messages.securitySchemes : messages.authentication;
+}
+
 export function operationAnchor(
   operation: Pick<NormalizedOperation, "method" | "path">,
   spec: NormalizedSpec,
@@ -224,15 +231,21 @@ export function onlyFields(schema: NormalizedSchema): boolean {
     && !schema.description && schema.example === undefined && !schema.examples?.length;
 }
 
-/** Where a schema draws a named type: a row's or view's path below the schema, and how a reader names it. */
-export interface SchemaHome { at: string; label: string }
+/**
+ * Where a schema draws a named type: a row's or view's path below the schema, and how a reader
+ * names it; or, for a type the schema has no room left to draw, the type's own model.
+ */
+export interface SchemaHome { at: string; label: string; model?: string }
 
 /**
  * How a schema's rows are drawn. A row whose type is drawn elsewhere shows a
  * link there instead of opening onto its fields: always where the type is one
  * of the row's own ancestors, and, once the schema would draw more than
  * REFERENCE_SCHEMA_FULL_ROWS rows, wherever the type is drawn at a shallower
- * place, so each named type is drawn once. Paths are relative to the schema
+ * place, so each named type is drawn once. Drawn once, a schema that still
+ * runs past that many rows (a response reaching every type of its API) draws
+ * the types it reaches after that as links to their own models, nearest
+ * first. Paths are relative to the schema
  * (`""` is the schema itself); a field's anchor is its view's root anchor
  * followed by its path.
  */
@@ -281,7 +294,12 @@ function viewParts(view: PlanView, usage: SchemaUsage | undefined): { rows: Plan
 }
 
 /** The type a view or row opens onto, by the name its document gave it. */
-const namedType = (schema: NormalizedSchema) => schema.refName ?? schema.name;
+/**
+ * The type a schema draws: its own name, or the one type a lone `allOf` wraps to say more of it
+ * (`allOf: [UserDto], nullable: true`, as .NET's generators mark a reference nullable).
+ */
+const namedType = (schema: NormalizedSchema): string | undefined => schema.refName ?? schema.name
+  ?? (schema.allOf?.length === 1 && !schema.properties && !schema.oneOf && !schema.anyOf ? namedType(schema.allOf[0]) : undefined);
 
 /**
  * Walk a schema's views breadth first, so a type's first drawing is its
@@ -295,11 +313,15 @@ function walkPlan(schema: NormalizedSchema, usage: SchemaUsage | undefined, once
   const rootType = namedType(schema);
   const root: SchemaHome = { at: "", label: rootType ?? "" };
   viewHomes.add(root);
-  const queue: PlanView[] = [{ schema, at: "", depth: 0, label: "", ancestors: rootType ? new Map([[rootType, root]]) : new Map() }];
+  type Queued = PlanView & { parts?: ReturnType<typeof viewParts> };
+  const queue: Queued[] = [{ schema, at: "", depth: 0, label: "", ancestors: rootType ? new Map([[rootType, root]]) : new Map() }];
   if (rootType) homes.set(rootType, root);
+  // The rows of the types queued to be drawn and not drawn yet, which the room left must hold.
+  let queued = 0;
   for (let next = 0; next < queue.length && rows.length <= limit; next++) {
     const view = queue[next];
-    const parts = viewParts(view, usage);
+    const parts = view.parts ?? viewParts(view, usage);
+    if (view.parts) queued -= parts.rows.length;
     for (const row of parts.rows) {
       rows.push(row.at);
       const label = view.label ? `${view.label}.${row.name}` : row.name;
@@ -313,8 +335,18 @@ function walkPlan(schema: NormalizedSchema, usage: SchemaUsage | undefined, once
         continue;
       }
       const drawn: SchemaHome = { at: row.at, label };
+      const opened: Queued = { schema: row.inner, at: row.innerAt, depth: row.depth + 1, label, ancestors: type ? new Map(view.ancestors).set(type, drawn) : view.ancestors };
+      if (once && type) {
+        opened.parts = viewParts(opened, usage);
+        // Drawn once and still too large, the schema leaves a type it has no room for to its own model.
+        if (rows.length + queued + opened.parts.rows.length > REFERENCE_SCHEMA_FULL_ROWS) {
+          links.set(row.at, { at: "", label: type, model: type });
+          continue;
+        }
+        queued += opened.parts.rows.length;
+      }
       if (type && !homes.has(type)) homes.set(type, drawn);
-      queue.push({ schema: row.inner, at: row.innerAt, depth: row.depth + 1, label, ancestors: type ? new Map(view.ancestors).set(type, drawn) : view.ancestors });
+      queue.push(opened);
     }
     for (const part of parts.views) {
       // A part that is a named type of its own is where that type is drawn.
@@ -325,7 +357,13 @@ function walkPlan(schema: NormalizedSchema, usage: SchemaUsage | undefined, once
         viewHomes.add(drawn);
         if (!homes.has(type)) homes.set(type, drawn);
       }
-      queue.push({ ...part, label: view.label, ancestors: owns ? new Map(view.ancestors).set(type, drawn) : view.ancestors });
+      const opened: Queued = { ...part, label: view.label, ancestors: owns ? new Map(view.ancestors).set(type, drawn) : view.ancestors };
+      // A part's rows are the type's own, so they take their room as its fields do.
+      if (once) {
+        opened.parts = viewParts(opened, usage);
+        queued += opened.parts.rows.length;
+      }
+      queue.push(opened);
     }
   }
   return { links, views, rows };

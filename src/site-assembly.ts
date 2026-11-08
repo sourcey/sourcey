@@ -355,7 +355,7 @@ export async function assembleSite(config: ResolvedConfig, previous?: AssemblyCa
       const label = kind === "locale" ? candidate.localeConfig.label : candidate.version.label;
       return [{ kind, label: route ? label : `${label} · ${context.localeConfig.messages.overview}`,
         href: route?.publicPath ?? landing!, lang: kind === "locale" && route?.page.contentLocale === candidate.locale ? candidate.localeConfig.lang : undefined,
-        anchors: route ? [...routes.byKey.get(identityKey(page))!.anchors].filter(anchor => route.anchors.has(anchor)) : undefined,
+        missing: route ? [...routes.byKey.get(identityKey(page))!.anchors].filter(anchor => !route.anchors.has(anchor)) : undefined,
         active: kind === "locale" ? candidate.locale === context.locale : candidate.version.id === context.version.id }];
     }
     page.equivalents = [

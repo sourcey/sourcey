@@ -24,6 +24,7 @@ import type {
   CodeSample,
   DiscriminatorObject,
 } from "./types.js";
+import { rankedUnderTitle } from "../utils/markdown.js";
 
 const HTTP_METHODS: HttpMethod[] = [
   "get",
@@ -55,7 +56,7 @@ export function normalizeSpec(parsed: ParsedSpec): NormalizedSpec {
   }
   const securitySchemes = normalizeSecuritySchemes(doc.components?.securitySchemes);
   const servers = normalizeServers(doc.servers);
-  const tags = normalizeTags(doc.tags, operations);
+  const tags = normalizeTags(groupedTags(doc.tags, (doc as Record<string, unknown>)["x-tagGroups"]), operations);
 
   return {
     sourceUrl: publicSourceUrl(parsed.source),
@@ -88,7 +89,8 @@ function normalizeInfo(doc: OpenApiDocument) {
     title: str(info.title, "Untitled API"),
     summary: optStr(info.summary),
     version: str(info.version, "0.0.0"),
-    description: optStr(info.description),
+    // The reference's title heads its page; the description's own sections rank under it.
+    description: rankedUnderTitle(optStr(info.description)),
     termsOfService: optStr(info.termsOfService),
     contact: info.contact
       ? {
@@ -136,6 +138,32 @@ function normalizeServerVariables(
 }
 
 // ── Tags ───────────────────────────────────────────────────────────
+
+/**
+ * Redoc's `x-tagGroups` as OpenAPI 3.2 tag parents: each group a tag holding the tags it lists,
+ * in its order, so the sections read as that sidebar groups them. A tag no group lists follows
+ * the groups, where Redoc would hide it; a parent the document declares itself stays.
+ */
+function groupedTags(rawTags: Record<string, unknown>[] | undefined, groups: unknown): Record<string, unknown>[] | undefined {
+  if (!Array.isArray(groups) || !groups.length) return rawTags;
+  const declared = new Map((rawTags ?? []).map((tag) => [str(tag.name, ""), tag]));
+  const ordered: Record<string, unknown>[] = [];
+  const placed = new Set<string>();
+  for (const group of groups as Record<string, unknown>[]) {
+    const name = str(group?.name, "");
+    if (!name || !Array.isArray(group.tags)) continue;
+    if (!placed.has(name)) ordered.push({ ...declared.get(name), name });
+    placed.add(name);
+    for (const member of group.tags.map(String)) {
+      if (placed.has(member)) continue;
+      placed.add(member);
+      const tag = declared.get(member);
+      ordered.push({ ...tag, name: member, parent: tag?.parent ?? name });
+    }
+  }
+  for (const [name, tag] of declared) if (!placed.has(name)) ordered.push(tag);
+  return ordered;
+}
 
 function normalizeTags(
   rawTags: Record<string, unknown>[] | undefined,

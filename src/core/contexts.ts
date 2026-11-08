@@ -112,6 +112,9 @@ export async function resolveContexts(
           if (!source) return tab;
           return {
             ...tab,
+            // The tab's imported fragments are checked against its own document; another version's
+            // document keeps those it still has.
+            ...(source === versionSource && tab.anchors ? { anchorUnmatched: "ignore" as const } : {}),
             source,
             openapi: undefined,
             mcp: undefined,

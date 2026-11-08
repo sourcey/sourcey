@@ -1,4 +1,6 @@
 import type { EncodingObject, MediaTypeContent, NormalizedParameter } from "../../core/types.js";
+import type { SchemaUsage } from "../../core/schema.js";
+import { schemaFieldAnchors } from "../../core/reference-identity.js";
 import { SchemaDatatype } from "../schema/SchemaDatatype.js";
 import { Badge, DeprecatedBadge, RequiredBadge } from "../ui/Badge.js";
 import { Breakable } from "../ui/Breakable.js";
@@ -52,6 +54,24 @@ export function hasEncodingDetails(content: MediaTypeContent): boolean {
   return Object.keys(content.encoding ?? {}).length > 0
     || (content.prefixEncoding?.length ?? 0) > 0
     || !!content.itemEncoding;
+}
+
+/** Media types that carry the same schema and no encoding of their own, together: one field list reads for all. */
+export function mediaTypeGroups(content: Record<string, MediaTypeContent>): { mediaTypes: string[]; content: MediaTypeContent }[] {
+  const groups: { mediaTypes: string[]; content: MediaTypeContent; key?: string }[] = [];
+  for (const [mediaType, entry] of Object.entries(content)) {
+    const key = entry.schema && !hasEncodingDetails(entry) ? JSON.stringify(entry.schema) : undefined;
+    const group = key && groups.find(candidate => candidate.key === key);
+    if (group) group.mediaTypes.push(mediaType);
+    else groups.push({ mediaTypes: [mediaType], content: entry, key });
+  }
+  return groups;
+}
+
+/** The field anchors each other media type's list would have had, as aliases of the shared list's. */
+export function sharedFieldAliases(schema: NonNullable<MediaTypeContent["schema"]>, root: string, others: readonly string[], usage: SchemaUsage): Record<string, string> {
+  const targets = schemaFieldAnchors(schema, root, usage);
+  return Object.fromEntries(others.flatMap(other => schemaFieldAnchors(schema, other, usage).map((alias, index) => [alias, targets[index]])));
 }
 
 function EncodingDetails({ content }: { content: MediaTypeContent }) {

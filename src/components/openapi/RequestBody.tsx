@@ -1,12 +1,12 @@
 import { useContext } from "preact/hooks";
-import type { MediaTypeContent, NormalizedRequestBody } from "../../core/types.js";
+import type { NormalizedRequestBody } from "../../core/types.js";
 import { OptionsContext } from "../../renderer/context.js";
 import { SchemaView } from "../schema/SchemaView.js";
 import { ExampleVariantsCard } from "../schema/ExampleView.js";
 import { Markdown } from "../ui/Markdown.js";
-import { MediaTypeDetails, hasEncodingDetails } from "./MediaTypeDetails.js";
+import { MediaTypeDetails, hasEncodingDetails, mediaTypeGroups, sharedFieldAliases } from "./MediaTypeDetails.js";
 import { buildExampleVariants } from "../../utils/example-variants.js";
-import { referenceFieldPath, schemaFieldAnchors } from "../../core/reference-identity.js";
+import { referenceFieldPath } from "../../core/reference-identity.js";
 
 interface RequestBodyProps {
   body: NormalizedRequestBody;
@@ -38,7 +38,7 @@ export function RequestBody({ body, anchorRoot }: RequestBodyProps) {
             <MediaTypeDetails mediaTypes={mediaTypes} content={content} showLabel={mediaTypes.length > 1 || groups.length > 1 || hasEncodingDetails(content)} />
             {root && content.schema && mediaTypes.length > 1 ? (
               // Each other type's field anchors stay, on the rows they name.
-              <OptionsContext.Provider value={{ ...options, anchorAliases: { ...options.anchorAliases, ...sharedFieldAliases(content.schema, root, mediaTypes.slice(1).map(type => referenceFieldPath(anchorRoot!, type))) } }}>
+              <OptionsContext.Provider value={{ ...options, anchorAliases: { ...options.anchorAliases, ...sharedFieldAliases(content.schema, root, mediaTypes.slice(1).map(type => referenceFieldPath(anchorRoot!, type)), "request") } }}>
                 {fields}
               </OptionsContext.Provider>
             ) : fields}
@@ -47,24 +47,6 @@ export function RequestBody({ body, anchorRoot }: RequestBodyProps) {
       })}
     </div>
   );
-}
-
-/** A body's media types, those carrying one schema and no encoding of their own together. */
-function mediaTypeGroups(content: Record<string, MediaTypeContent>): { mediaTypes: string[]; content: MediaTypeContent }[] {
-  const groups: { mediaTypes: string[]; content: MediaTypeContent; key?: string }[] = [];
-  for (const [mediaType, entry] of Object.entries(content)) {
-    const key = entry.schema && !hasEncodingDetails(entry) ? JSON.stringify(entry.schema) : undefined;
-    const group = key && groups.find(candidate => candidate.key === key);
-    if (group) group.mediaTypes.push(mediaType);
-    else groups.push({ mediaTypes: [mediaType], content: entry, key });
-  }
-  return groups;
-}
-
-/** The field anchors each other media type's list would have had, as aliases of the shared list's. */
-function sharedFieldAliases(schema: NonNullable<MediaTypeContent["schema"]>, root: string, others: readonly string[]): Record<string, string> {
-  const targets = schemaFieldAnchors(schema, root, "request");
-  return Object.fromEntries(others.flatMap(other => schemaFieldAnchors(schema, other, "request").map((alias, index) => [alias, targets[index]])));
 }
 
 interface RequestBodyExampleProps {

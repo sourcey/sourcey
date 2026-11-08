@@ -4,6 +4,7 @@ import { OptionsContext, SpecContext } from "../../renderer/context.js";
 import { english } from "../../core/messages.js";
 import type { SecurityRequirement } from "../../core/types.js";
 import { SECTION_LABELS } from "./outline.js";
+import { securitySectionLabel } from "../../core/reference-identity.js";
 import { safeUrl } from "../../utils/html.js";
 import { SectionLabel } from "../ui/SectionLabel.js";
 import { Markdown } from "../ui/Markdown.js";
@@ -90,7 +91,7 @@ export function SecurityDefinitions() {
     >
       <AnchorAliases target="authentication" />
       <h2 class="text-xl font-bold text-[rgb(var(--color-gray-900))] dark:text-[rgb(var(--color-gray-200))] mb-4">
-        {messages.authentication}
+        {securitySectionLabel(spec, messages)}
       </h2>
       <div class="params-list">
         {schemes.map(([name, scheme]) => {

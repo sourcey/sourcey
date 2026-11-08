@@ -26,7 +26,7 @@ export function ContextControls() {
               <span>{items.find(item => item.active)?.label ?? label}</span>
               <svg class="sourcey-context-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </summary>
-            <ul aria-label={label}>{items.map(item => <li><a href={item.href} lang={item.lang} data-sourcey-context-anchors={JSON.stringify(item.anchors ?? [])} aria-current={item.active ? "page" : undefined}>{item.label}</a></li>)}</ul>
+            <ul aria-label={label}>{items.map(item => <li><a href={item.href} lang={item.lang} data-sourcey-context-missing={item.missing && JSON.stringify(item.missing)} aria-current={item.active ? "page" : undefined}>{item.label}</a></li>)}</ul>
           </details>
         );
       })}

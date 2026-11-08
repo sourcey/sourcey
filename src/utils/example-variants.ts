@@ -97,7 +97,8 @@ export function variantFromSchema(
  * body, or parameter). Provided examples win over the schema: named `examples`
  * first, then a single `example`, and only then a schema-generated fallback.
  * Every media type contributes, so multi-content-type responses surface them
- * all rather than just the first.
+ * all rather than just the first; an example two media types share reads once,
+ * named for both.
  */
 export function buildExampleVariants(
   content?: Record<string, MediaTypeContent>,
@@ -107,18 +108,25 @@ export function buildExampleVariants(
   const entries = Object.entries(content);
   const multiMedia = entries.length > 1;
   const variants: ExampleVariant[] = [];
+  const add = (variant: ExampleVariant) => {
+    const same = variants.find(earlier => earlier.raw === variant.raw && earlier.summary === variant.summary && earlier.externalValue === variant.externalValue);
+    if (!same) variants.push(variant);
+    // Labelled by its media type, the one example names each type it serves.
+    else if (same.label !== variant.label && variant.label === variant.mediaType) same.label = `${same.label}, ${variant.label}`;
+    else if (same.label !== variant.label) variants.push(variant);
+  };
 
   for (const [mediaType, media] of entries) {
     const named = media.examples ? Object.entries(media.examples) : [];
     if (named.length) {
       for (const [name, example] of named) {
         const variant = variantFromExample(name, example, mediaType);
-        if (variant) variants.push(variant);
+        if (variant) add(variant);
       }
       continue;
     }
     if (media.example !== undefined) {
-      variants.push(variantFromValue(media.example, {
+      add(variantFromValue(media.example, {
         label: multiMedia ? mediaType : "Example",
         mediaType,
       }));
@@ -131,7 +139,7 @@ export function buildExampleVariants(
         mediaType,
         usage,
       );
-      if (variant) variants.push(variant);
+      if (variant) add(variant);
     }
   }
 

@@ -105,6 +105,30 @@ describe("reference sections", () => {
     expect(await shape({ Items: 120, Orders: 2 })).toEqual({ views: new Set(["overview", "operation"]), said: [expect.stringMatching(/^info Published as a page per operation: 122 operations and \d+ field rows, and its section Items alone holds 120 operations/)] });
   }));
 
+  it("keeps a single-page reference's deep links on its overview's entries, each naming the place it stands for", () => fixture(async (root) => {
+    await writeFile(join(root, "api.json"), JSON.stringify({ ...JSON.parse(openApi({ Items: 30, Orders: 30, Users: 30 })), info: { title: "API", version: "1", description: "## Rate limits\n\nA hundred a minute." } }));
+    // The introduction's own headings are places on the overview too.
+    const anchors = { introduction: { "tag/Items": "tag-items", "tag/Items/operation/items0": "operation-items-0-get", "section/Rate-limits": "rate-limits" } };
+    const sections = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), anchors, reference: { split: "sections" } }]);
+    expect(sections.html("api/index.html")).toContain('<span class="reference-anchor-alias" id="section/Rate-limits" aria-hidden="true"></span>');
+    expect(sections.html("api/index.html")).toMatch(/<li id="tag-items"><span class="reference-anchor-alias" id="tag\/Items" data-anchor="tag-items"[^>]*><\/span><span class="reference-anchor-alias" id="operation-items-0-get"[^>]*><\/span><span class="reference-anchor-alias" id="tag\/Items\/operation\/items0" data-anchor="operation-items-0-get"[^>]*><\/span>/);
+    const operations = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), anchors, reference: { split: "operations" } }]);
+    expect(operations.html("api/index.html")).toMatch(/<li id="operation-items-0-get"><span class="reference-anchor-alias" id="tag\/Items\/operation\/items0" data-anchor="operation-items-0-get"[^>]*><\/span><a href="\/api\/operations\/operation-items-0-get\/">/);
+  }));
+
+  it("checks a tab's imported fragments against its own document, an earlier version's keeping those it has", () => fixture(async (root) => {
+    await writeFile(join(root, "api.json"), openApi({ Items: 2, Orders: 1 }));
+    await writeFile(join(root, "old.json"), openApi({ Items: 2 }));
+    const anchors = { introduction: { "tag/Items": "tag-items", "tag/Orders": "tag-orders" } };
+    const versions = { default: "2", items: [{ id: "2", label: "2", path: "" }, { id: "1", label: "1", path: "v1", source: openapi("old.json") }] };
+    const { html } = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), anchors, versions }]);
+    expect(html("api/index.html")).toContain('id="tag/Orders"');
+    expect(html("api/v1/index.html")).toContain('id="tag/Items"');
+    expect(html("api/v1/index.html")).not.toContain('id="tag/Orders"');
+    // The tab's own document still holds every fragment it imports.
+    await expect(build(root, [{ tab: "API", slug: "api", source: openapi("old.json"), anchors }])).rejects.toThrow(/tag\/Orders/);
+  }));
+
   it("shows the section around a page whole, and folds the others to their links", () => fixture(async (root) => {
     await writeFile(join(root, "api.json"), openApi({ Items: 90, Orders: 30 }));
     const { html } = await build(root, [{ tab: "API", slug: "api", source: openapi("api.json"), reference: { split: "operations" } }]);

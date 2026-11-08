@@ -93,7 +93,7 @@ export function Introduction() {
         </div>
       )}
 
-      {info.description && <Markdown content={info.description} class="max-w-none mt-8" />}
+      {info.description && <Markdown content={info.description} class="max-w-none mt-8" sections />}
       <ExternalDocsLink docs={spec.externalDocs} />
     </div>
   );

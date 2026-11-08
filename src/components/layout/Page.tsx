@@ -195,7 +195,7 @@ function SpecPageContent({ className = "", bare = false }: { className?: string;
         <SecurityDefinitions />
         {!mcpOverview && (view?.kind === "overview" && view.split === "sections" ? <SectionIndex /> : <Tags tags={spec.tags} showOperations={view?.kind !== "overview"} />)}
 
-        {view?.kind === "overview" && Object.keys(spec.schemas).length > 0 && <section class="mt-12"><h2 id="models"><AnchorAliases target="models" />{options.messages?.models ?? "Models"}</h2><ul class="reference-operation-links">{Object.entries(spec.schemas).map(([name, schema]) => <li id={definitionAnchor(name, spec)}><a href={options.referenceTargets?.schemas[name]?.href}><strong>{name}</strong>{schema.description && <span>{schema.description}</span>}</a></li>)}</ul></section>}
+        {view?.kind === "overview" && Object.keys(spec.schemas).length > 0 && <section class="mt-12"><h2 id="models"><AnchorAliases target="models" />{options.messages?.models ?? "Models"}</h2><ul class="reference-operation-links">{Object.entries(spec.schemas).map(([name, schema]) => <li id={definitionAnchor(name, spec)}><AnchorAliases target={definitionAnchor(name, spec)} carry /><a href={options.referenceTargets?.schemas[name]?.href}><strong>{name}</strong>{schema.description && <span>{schema.description}</span>}</a></li>)}</ul></section>}
         {view?.kind !== "overview" && Object.keys(spec.schemas).length > 0 && (
           <div class="mt-12">
             <div class="mb-6">

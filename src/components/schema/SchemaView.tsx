@@ -1,6 +1,6 @@
 import type { NormalizedSchema } from "../../core/types.js";
 import { useContext } from "preact/hooks";
-import { OptionsContext } from "../../renderer/context.js";
+import { OptionsContext, SpecContext } from "../../renderer/context.js";
 import { formatSchemaType, type SchemaUsage } from "../../core/schema.js";
 import { Markdown } from "../ui/Markdown.js";
 import { SchemaDatatype } from "./SchemaDatatype.js";
@@ -9,7 +9,7 @@ import { DisclosureIcon } from "../ui/DisclosureIcon.js";
 import { FieldRow } from "./FieldRow.js";
 import { AnchorAliases } from "../ui/AnchorAliases.js";
 import { Select } from "../ui/Select.js";
-import { referenceFieldPath, hasObjectFields, hasReferenceFields, innerSchema, objectFields, onlyFields, schemaPlan, REFERENCE_SCHEMA_MAX_DEPTH, type SchemaHome, type SchemaPlan } from "../../core/reference-identity.js";
+import { referenceFieldPath, hasObjectFields, hasReferenceFields, innerSchema, objectFields, onlyFields, schemaPlan, definitionAnchor, REFERENCE_SCHEMA_MAX_DEPTH, type SchemaHome, type SchemaPlan } from "../../core/reference-identity.js";
 
 interface SchemaViewProps {
   schema: NormalizedSchema;
@@ -290,9 +290,13 @@ function PropertyRow({ at, name, schema, required, depth, maxDepth, usage, ancho
   );
 }
 
-/** Where a row's fields are drawn: the field there, or the schema's own type. */
+/** Where a row's fields are drawn: the field there, the schema's own type, or the type's model. */
 function DrawnAt({ home, anchorRoot }: { home: SchemaHome; anchorRoot?: string }) {
-  const { messages } = useContext(OptionsContext);
+  const { messages, referenceTargets } = useContext(OptionsContext);
+  const spec = useContext(SpecContext);
   const label = <code>{home.label}</code>;
-  return <p class="schema-drawn-at">{messages.sameFieldsAs} {anchorRoot === undefined ? label : <a href={`#${anchorRoot + home.at}`}>{label}</a>}</p>;
+  const href = home.model
+    ? referenceTargets?.schemas[home.model]?.href ?? (spec?.schemas[home.model] ? `#${definitionAnchor(home.model, spec)}` : undefined)
+    : anchorRoot === undefined ? undefined : `#${anchorRoot + home.at}`;
+  return <p class="schema-drawn-at">{messages.sameFieldsAs} {href ? <a href={href}>{label}</a> : label}</p>;
 }

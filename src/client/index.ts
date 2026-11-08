@@ -11,3 +11,4 @@ import "./try-it-loader.js";
 
 import "./components.js";
 import "./context-links.js";
+import "./reference-entries.js";

@@ -62,6 +62,13 @@ describe("buildNavFromSpec", () => {
     expect(nav.groups[1].items.map(item => item.label)).toEqual(["List cheeses", "Aged cheeses"]);
     expect(nav.groups[1].items[1]).toMatchObject({ id: "tag-aged", items: [{ label: "List aged cheeses" }] });
   });
+
+  it("names the authentication section apart from a section of the API with that name", () => {
+    const securitySchemes = { key: { type: "apiKey" as const, name: "Authorization", in: "header" as const } };
+    const intro = (tags: NormalizedSpec["tags"]) => buildNavFromSpec({ ...spec, tags, securitySchemes }, "api").groups[0].items.map(item => item.label);
+    expect(intro(spec.tags)).toEqual(["Introduction", "Authentication"]);
+    expect(intro([...spec.tags, { name: "Authentication", operations: [{ ...operation, tags: ["Authentication"] }] }])).toEqual(["Introduction", "Security schemes"]);
+  });
 });
 
 describe("projectNavigation", () => {

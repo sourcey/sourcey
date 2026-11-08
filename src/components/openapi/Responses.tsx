@@ -13,6 +13,7 @@ import { buildExampleVariants } from "../../utils/example-variants.js";
 import { SchemaView } from "../schema/SchemaView.js";
 import { Parameters } from "./Parameters.js";
 import { DisclosureIcon } from "../ui/DisclosureIcon.js";
+import { mediaTypeGroups, sharedFieldAliases } from "./MediaTypeDetails.js";
 
 interface ResponsesProps {
   responses: NormalizedResponse[];
@@ -33,7 +34,8 @@ function statusColorClass(code: string): string {
 export function ResponsesCopy({ responses, operation }: ResponsesProps) {
   const spec = useContext(SpecContext);
   const page = useContext(PageContext);
-  const messages = useContext(OptionsContext).messages;
+  const options = useContext(OptionsContext);
+  const messages = options.messages;
   const sectionId = (status: string) => operation ? operationSectionAnchor(operation, spec, `response-${slugify(status)}`, page?.kind === "spec" && page.view?.kind === "operation") : undefined;
   const fieldRoot = operation && referenceFieldPath(operationFieldRoot(operation), "responses");
   if (!responses.length) return null;
@@ -69,11 +71,20 @@ export function ResponsesCopy({ responses, operation }: ResponsesProps) {
             </div>
           )}
           {r.headers && Object.keys(r.headers).length > 0 && <details class="schema-expandable"><summary class="schema-expandable-toggle"><DisclosureIcon />{messages?.responseHeaders ?? "Response headers"}</summary><div class="schema-expandable-content"><Parameters parameters={Object.values(r.headers)} anchorRoot={fieldRoot && referenceFieldPath(fieldRoot, r.statusCode, "headers")} /></div></details>}
-          {r.content && Object.entries(r.content).map(([mediaType, content]) => content.schema && <details key={mediaType} class="schema-expandable" open={index === 0}>
-            {/* A wildcard media type is a spec naming none (Swagger 2.0 without `produces`), not a format to show. */}
-            <summary class="schema-expandable-toggle"><DisclosureIcon />{messages?.responseFields ?? "Response fields"}{mediaType !== "*/*" && <> <code>{mediaType}</code></>}</summary>
-            <div class="schema-expandable-content"><SchemaView schema={content.schema} anchorRoot={fieldRoot && referenceFieldPath(fieldRoot, r.statusCode, "content", mediaType)} usage="response" /></div>
-          </details>)}
+          {/* Media types carrying the same schema share one list, each other type's field anchors kept on its rows. */}
+          {r.content && mediaTypeGroups(r.content).map(({ mediaTypes, content }) => {
+            if (!content.schema) return null;
+            const root = fieldRoot && referenceFieldPath(fieldRoot, r.statusCode, "content", mediaTypes[0]);
+            const fields = <SchemaView schema={content.schema} anchorRoot={root} usage="response" />;
+            // A wildcard media type is a spec naming none (Swagger 2.0 without `produces`), not a format to show.
+            const named = mediaTypes.filter(type => type !== "*/*");
+            return <details key={mediaTypes[0]} class="schema-expandable" open={index === 0}>
+              <summary class="schema-expandable-toggle"><DisclosureIcon />{messages?.responseFields ?? "Response fields"}{named.map((type, position) => <>{position ? "," : ""} <code>{type}</code></>)}</summary>
+              <div class="schema-expandable-content">{root && mediaTypes.length > 1 ? (
+                <OptionsContext.Provider value={{ ...options, anchorAliases: { ...options.anchorAliases, ...sharedFieldAliases(content.schema, root, mediaTypes.slice(1).map(type => referenceFieldPath(fieldRoot!, r.statusCode, "content", type)), "response") } }}>{fields}</OptionsContext.Provider>
+              ) : fields}</div>
+            </details>;
+          })}
         </div>
       ))}
     </div>

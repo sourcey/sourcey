@@ -59,6 +59,19 @@ describe("buildExampleVariants", () => {
     expect(variants[1].mediaType).toBe("application/xml");
   });
 
+  it("shows an example that media types share once, named for each, and a shared named example once", () => {
+    const feed = { examples: { nightly: { value: "<rss/>" } } };
+    const variants = buildExampleVariants(content({
+      "application/xml": { example: "<ok/>" },
+      "text/xml": { example: "<ok/>" },
+      "application/json": { example: { ok: true } },
+      "application/rss+xml": feed,
+      "application/atom+xml": feed,
+    }));
+
+    expect(variants.map((v) => v.label)).toEqual(["application/xml, text/xml", "application/json", "nightly"]);
+  });
+
   it("represents an external example as a link, not inline code", () => {
     const variants = buildExampleVariants(content({
       "application/json": {

@@ -3,7 +3,8 @@ import { tagDisplayName } from "./tag-utils.js";
 import type { ResolvedTab, ResolvedGroup, GroupConfig, NavigationTarget } from "../config.js";
 import { slugFromPath } from "./markdown-loader.js";
 import type { NavigationDocument } from "./markdown-loader.js";
-import { operationAnchor, definitionAnchor, tagAnchor } from "./reference-identity.js";
+import { operationAnchor, definitionAnchor, securitySectionLabel, tagAnchor } from "./reference-identity.js";
+import { english } from "./messages.js";
 import { pageOutputPath, tabIndexOutputPath, toPrettyLink, toPublicPath, type LinkStyle, type PrettyUrls } from "../site-url.js";
 
 /**
@@ -91,7 +92,7 @@ export function buildNavFromSpec(
   ];
   if (Object.keys(spec.securitySchemes).length > 0) {
     introItems.push({
-      label: "Authentication",
+      label: securitySectionLabel(spec, english),
       href: `${basePath}#authentication`,
       id: "authentication",
     });

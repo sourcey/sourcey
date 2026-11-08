@@ -157,6 +157,29 @@ describe("reference field destinations", () => {
     } finally { await rm(root, { recursive: true, force: true }); }
   });
 
+  it("leaves the types a schema has no room left to draw to their own models, nearest first, through a lone allOf", async () => {
+    // Twenty-five distinct thirty-field types come to more rows than a schema draws, even drawn once.
+    const types = Object.fromEntries(Array.from({ length: 25 }, (_, index) => [`Part${index}`, { type: "object", properties: Object.fromEntries(Array.from({ length: 30 }, (_, field) => [`field${field}`, { type: "string" }])) }]));
+    const whole = { type: "object", properties: Object.fromEntries(Object.keys(types).map((name, index) => [`part${index}`, index % 2 ? { $ref: `#/components/schemas/${name}` } : { allOf: [{ $ref: `#/components/schemas/${name}` }], nullable: true }])) };
+    const root = await mkdtemp(join(tmpdir(), "sourcey-schema-models-"));
+    try {
+      await writeFile(join(root, "api.json"), JSON.stringify({ openapi: "3.0.3", info: { title: "Models", version: "fixture" }, components: { schemas: { ...types, Whole: whole } },
+        paths: { "/wholes": { get: { summary: "Read a whole", responses: { "200": { description: "OK", content: { "application/json": { schema: { $ref: "#/components/schemas/Whole" } } } } } } } } }));
+      const config = await resolveConfigFromRaw({ theme: { fonts: { google: false } }, navigation: { tabs: [{ tab: "API", source: openapi("api.json"), reference: { split: "operations" } }] } }, root);
+      const site = await buildSourceySite({ config, generateOgImages: false });
+      const page = site.pages.find(entry => entry.currentPage.kind === "spec" && entry.currentPage.view?.kind === "operation")!;
+      if (page.currentPage.kind !== "spec") throw new Error("no reference page");
+      const html = renderPage(page.currentPage.spec, createRenderOptions(page, site.site), projectNavigation(page.navigation ?? site.navigation, page.tabSlug, page.pageSlug), page.currentPage, site.site);
+      const models = [...html.matchAll(/<p class="schema-drawn-at">[^<]*<a href="([^"]+)"><code>(Part\d+)<\/code>/g)].map(match => [match[2], match[1]]);
+      // The first parts are drawn in place; those past the room left lead to their models' pages, wrapped or not.
+      expect(html).toContain(">field0<");
+      expect(models.map(([name]) => name)).toEqual(expect.arrayContaining(["Part23", "Part24"]));
+      expect(models.map(([name]) => name)).not.toContain("Part0");
+      for (const [name, href] of models) expect(href).toBe(`/api/models/${name.toLowerCase()}.html`);
+      expect((html.match(/class="param-item"/g) ?? []).length).toBeLessThanOrEqual(530);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it("keeps semantic path segments distinct without lossy slugging", () => {
     const values = ["a/b", "a~002fb", "a b", "a-b", "Name", "name", "名字", "", "#", "\ud800", "\ud801"];
     expect(new Set(values.map(value => referenceFieldPath("root", value))).size).toBe(values.length);

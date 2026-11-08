@@ -1,12 +1,13 @@
 // Native links remain useful without JavaScript. Retain the current section
-// only when the compiled destination declares that exact fragment.
+// only when it is this page's and the compiled destination does not lack it.
 function retainSection(event) {
-  const link = event.target instanceof Element && event.target.closest("[data-sourcey-context-anchors]");
+  const link = event.target instanceof Element && event.target.closest("[data-sourcey-context-missing]");
   if (!link) return;
   let fragment;
   try { fragment = decodeURIComponent(location.hash.slice(1)); }
   catch { fragment = ""; }
-  link.hash = JSON.parse(link.getAttribute("data-sourcey-context-anchors")).includes(fragment) ? location.hash : "";
+  const kept = fragment && document.getElementById(fragment) && !JSON.parse(link.getAttribute("data-sourcey-context-missing")).includes(fragment);
+  link.hash = kept ? location.hash : "";
 }
 document.addEventListener("click", retainSection);
 document.addEventListener("auxclick", retainSection);
