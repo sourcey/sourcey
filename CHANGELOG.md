@@ -6,8 +6,8 @@ Sourcey release notes.
 
 ### Added
 
-- A reference split into pages keeps the deep links it had as one page: its overview takes fragment aliases for each section, operation and model (a Redoc page's `tag/Users/operation/getUser`, Swagger UI's `#/Users/getUser`), and a reader arriving at one is carried to the page that holds it.
-- Redoc's `x-tagGroups` group a reference's sections, each group a parent of the tags it lists, in its order.
+- A reference split into pages keeps the deep links it had as one page: its overview takes fragment aliases for each section, operation and model (such as `#tag/Users/operation/getUser` or `#/Users/getUser`), and a reader arriving at one is carried to the page that holds it.
+- Tag groups (`x-tagGroups`) group a reference's sections, each group a parent of the tags it lists, in its order.
 - A tag that only gathers others, a tag group or an OpenAPI 3.2 parent with no operations of its own, is a heading over its sections in the sidebar, as a guide's sidebar heads its pages, and on a reference page its sections sit a level below it without naming it again. A group named like one of its tags heads it, the tag keeping its own anchor.
 - MCP groups can head groups of their own: a group whose value names groups is a heading over them, such as a server's default and opt-in toolsets.
 
