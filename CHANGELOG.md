@@ -2,7 +2,7 @@
 
 Sourcey release notes.
 
-## Unreleased
+## 3.9.5 - 2026-11-08
 
 ### Added
 
