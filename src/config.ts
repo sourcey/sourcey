@@ -491,7 +491,7 @@ export interface TabConfig {
   openapi?: string;
   groups?: GroupConfig[];
   doxygen?: DoxygenConfig;
-  /** Path to an mcp.json file (MCP server snapshot). */
+  /** Path to a captured MCP server snapshot, e.g. server.snapshot.json. */
   mcp?: string;
   /**
    * Native Go documentation. String shorthand expands to

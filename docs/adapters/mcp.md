@@ -18,7 +18,7 @@ export default defineConfig({
           groups: [{ group: "Start", pages: ["introduction"] }],
         }),
       },
-      { tab: "MCP Reference", slug: "mcp", source: mcp("./mcp.json") },
+      { tab: "MCP Reference", slug: "mcp", source: mcp("./server.snapshot.json") },
     ],
   },
 });
@@ -26,7 +26,11 @@ export default defineConfig({
 
 ## The snapshot
 
-`mcp.json` records what a server offers, as the protocol's own listings describe it: its tools, resources, resource templates and prompts, and how to connect to it. Commit it beside the config, so the reference builds without the server running. [mcp-parser](../guides/mcp-snapshot.md) writes one from a running server, and [mcp-schema](https://github.com/sourcey/mcp-schema) defines its format.
+`server.snapshot.json` records what a server offers, as the protocol's own listings describe it: its tools, resources, resource templates and prompts, and how to connect to it. Commit it beside the config, so the reference builds without the server running. [mcp-parser](../guides/mcp-snapshot.md) writes one from a running server, and [mcp-schema](https://github.com/sourcey/mcp-schema) defines its format.
+
+An Agent Plugin's root `mcp.json` lists server connections under `mcpServers`.
+To build a reference from one, [snapshot its named server](../guides/mcp-snapshot.md#from-an-agent-plugin)
+first, then point `mcp()` at the resulting snapshot.
 
 ## The reference
 
@@ -58,7 +62,7 @@ A server's reference is divided by kind, Tools, Resources and Prompts, unless it
 
 ```ts
 source: mcp({
-  spec: "./mcp.json",
+  spec: "./server.snapshot.json",
   groups: {
     Authentication: ["login", "logout"],
     Timer: ["timer_status", "start_timer", "stop_timer"],

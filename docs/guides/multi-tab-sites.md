@@ -11,7 +11,7 @@ A site can have several tabs, each with its own source: Markdown guides, an Open
 | --- | --- | --- |
 | Markdown | `markdown({ groups })` | Guides, tutorials, concepts |
 | OpenAPI | `openapi("./openapi.yaml")` | An HTTP API's reference |
-| MCP | `mcp("./mcp.json")` | An MCP server's tools, resources and prompts |
+| MCP | `mcp("./server.snapshot.json")` | An MCP server's tools, resources and prompts |
 | Doxygen | `doxygen({ xml: "./xml" })` | A C or C++ library's reference |
 | Go | `godoc(".")` | A Go module's packages and symbols |
 | Rust | `rustdoc({ manifest: "./Cargo.toml" })` | A Rust crate's reference |
