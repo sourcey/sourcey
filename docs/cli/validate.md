@@ -23,4 +23,4 @@ A spec Sourcey cannot read exits `1` with the reason, such as malformed YAML or 
   ✗ Invalid: Unable to detect spec version. Expected "swagger": "2.0" or "openapi": "3.x.x"
 ```
 
-It reads the spec, converts Swagger 2.0, resolves every `$ref` and normalises the result, as a build does. To check a whole site, its pages and links as well as its specs, use [`sourcey check`](./check.md). An MCP snapshot is checked by [mcp-parser](../guides/mcp-snapshot.md): `npx mcp-parser validate ./mcp.json`.
+It reads the spec, converts Swagger 2.0, resolves every `$ref` and normalises the result, as a build does. To check a whole site, its pages and links as well as its specs, use [`sourcey check`](./check.md). An MCP snapshot is checked by [mcp-parser](../guides/mcp-snapshot.md): `npx mcp-parser validate ./server.snapshot.json`.

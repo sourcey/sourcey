@@ -8,27 +8,27 @@ This snapshots a running MCP server, configures Sourcey, and builds a reference 
 ## Before you start
 
 - Node.js 22.22.2 or later, 24.15 or later, or 26
-- A running MCP server, or an `mcp.json` [written by hand](./mcp-snapshot.md#by-hand)
+- A running MCP server, or a snapshot [written by hand](./mcp-snapshot.md#by-hand)
 
 ## 1. Snapshot the server
 
-[mcp-parser](https://github.com/sourcey/mcp-parser) asks a running server what it offers and writes the answer to `mcp.json`:
+[mcp-parser](https://github.com/sourcey/mcp-parser) asks a running server what it offers and writes the answer to `server.snapshot.json`:
 
 ```bash
-npx mcp-parser snapshot --stdio "node my-server.js" -o mcp.json
+npx mcp-parser snapshot --stdio "node my-server.js" -o server.snapshot.json
 ```
 
 A server on SSE or streamable HTTP:
 
 ```bash
-npx mcp-parser snapshot --sse http://localhost:3000/sse -o mcp.json
-npx mcp-parser snapshot --http http://localhost:3000/mcp -o mcp.json
+npx mcp-parser snapshot --sse http://localhost:3000/sse -o server.snapshot.json
+npx mcp-parser snapshot --http http://localhost:3000/mcp -o server.snapshot.json
 ```
 
 ## 2. Check the snapshot
 
 ```bash
-npx mcp-parser validate ./mcp.json
+npx mcp-parser validate ./server.snapshot.json
 ```
 
 ```text
@@ -49,7 +49,7 @@ import { defineConfig, mcp } from "sourcey";
 export default defineConfig({
   name: "My MCP Server",
   navigation: {
-    tabs: [{ tab: "MCP Reference", slug: "", source: mcp("./mcp.json") }],
+    tabs: [{ tab: "MCP Reference", slug: "", source: mcp("./server.snapshot.json") }],
   },
 });
 ```
@@ -90,7 +90,7 @@ export default defineConfig({
           groups: [{ group: "Getting Started", pages: ["introduction"] }],
         }),
       },
-      { tab: "MCP Reference", slug: "mcp", source: mcp("./mcp.json") },
+      { tab: "MCP Reference", slug: "mcp", source: mcp("./server.snapshot.json") },
     ],
   },
 });
@@ -106,4 +106,4 @@ npx sourcey build
 
 ## An example
 
-The [Cheese Store MCP tab](https://sourcey.com/cheesestore/mcp) has tools, resources, resource templates and prompts. Its [source](https://github.com/cheesestore/docs) holds the config and `mcp.json`. See [MCP](../adapters/mcp.md) for sections, connection details and links to tools from other pages.
+The [Cheese Store MCP tab](https://sourcey.com/cheesestore/mcp) has tools, resources, resource templates and prompts. Its [source](https://github.com/cheesestore/docs) holds the config and server snapshot. See [MCP](../adapters/mcp.md) for sections, connection details and links to tools from other pages.

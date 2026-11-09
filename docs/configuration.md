@@ -71,7 +71,7 @@ export default defineConfig({
       {
         tab: "MCP Reference",
         slug: "mcp",
-        source: mcp("./mcp.json"),
+        source: mcp("./server.snapshot.json"),
       },
       {
         tab: "C++ Reference",
