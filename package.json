@@ -97,7 +97,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.6.5",
     "@types/sanitize-html": "^2.16.2",
-    "astro": "7.4.2",
+    "astro": "7.4.7",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "lucide-static": "1.61.0",
